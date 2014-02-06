@@ -70,10 +70,13 @@ public class RPGM extends RandomSpeedBase {
         int nodesRemaining = node.length;
         int offset = 0;
 
+	int groupLeaderId = 0;
+
         while (nodesRemaining > 0) {
             MobileNode ref = new MobileNode();
             rpoints.addElement(ref);
             double t = 0.0;
+
             
             //pick position inside the interval [maxdist; x - maxdist], [maxdist; y - maxdist] 
             //(to ensure that the group area doesn't overflow the borders)
@@ -111,6 +114,24 @@ public class RPGM extends RandomSpeedBase {
 
             int size; // define group size
             while ((size = (int)Math.round(randomNextGaussian() * groupSizeDeviation + avgMobileNodesPerGroup)) < 1);
+// ACS begin
+	    if (groupLeaderId == 0) {
+		size = 3;
+	    } 
+
+	    if (groupLeaderId == 3) {
+		size = 8;
+            }
+	    if (groupLeaderId == 11) {
+                size = 8;
+            }
+            if (groupLeaderId == 19) {
+                size = 11;
+            }
+
+
+
+// ACS end
 
             if (size > nodesRemaining) {
                 size = nodesRemaining;
@@ -119,16 +140,30 @@ public class RPGM extends RandomSpeedBase {
             nodesRemaining -= size;
             offset += size;
 
+		
+
+	    System.out.println("\ngroup leader: " + groupLeaderId);	
+	    System.out.println("nodes in the group: ");	
+
             for (int i = offset - size; i < offset; i++) {
                 node[i] = new GroupNode(ref);
+		System.out.println("node: " + i);	
             }
+
+	    groupLeaderId += size;
         }
+
 
         // nodes follow their reference points:
         for (int i = 0; i < node.length; i++) {
+
+	    System.out.println("\nnode " + i);
+
             double t = 0.0;
             MobileNode group = node[i].group();
             Position src = group.positionAt(t).rndprox(maxdist, randomNextDouble(), randomNextDouble());
+
+	    System.out.println("src: " + src.toString());
 
             if (!node[i].add(0.0, src)) {
                 System.err.println(getInfo().name + ".generate: error while adding node movement (1)");
@@ -164,6 +199,8 @@ public class RPGM extends RandomSpeedBase {
                     final double c_src = 1 - c_dst;
                     dst = new Position(c_src * src.x + c_dst * dst.x, c_src * src.y + c_dst * dst.y);
                 }
+
+	        System.out.println("dst: " + dst.toString());
 
                 if (pGroupChange > 0.0) {
                     // create dummy with current src and dst for easier parameter passing
