@@ -4,6 +4,13 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Vector;
 
+// ACS begin
+import java.util.HashMap;
+import java.util.Iterator;
+import java.io.FileReader;
+import java.io.BufferedReader;
+// ACS end
+
 import edu.bonn.cs.iv.bonnmotion.GroupNode;
 import edu.bonn.cs.iv.bonnmotion.MobileNode;
 import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
@@ -31,6 +38,13 @@ public class RPGM extends RandomSpeedBase {
     public static ModuleInfo getInfo() {
         return info;
     }
+
+// ACS begin
+    protected String groupMembershipFileName = null;
+    protected HashMap<Integer, Vector<Integer>> groupMembershipTable = null;
+    protected int numSubseg = 4;
+    protected double speedScale = 1.5;
+// ACS end
     
     /** Maximum deviation from group center [m]. */
     protected double maxdist = 2.5;
@@ -51,6 +65,50 @@ public class RPGM extends RandomSpeedBase {
         generate();
     }
 
+// ACS begin
+    public boolean readGroupMembership() {
+	BufferedReader br = null;
+
+	groupMembershipTable = new HashMap<Integer, Vector<Integer>>();
+
+	try {
+		br = new BufferedReader(new FileReader(groupMembershipFileName));
+	} catch (java.io.FileNotFoundException fnfe) {
+		System.err.println("Unable to read group membership: " + fnfe.getMessage());
+		return false;
+	}
+
+	String line;
+	int groupId = 0;
+
+	try {
+		while ((line = br.readLine()) != null) {
+			
+//			System.out.println(line);
+			String[] splitLine = line.split(" ");
+
+			Vector<Integer> members = new Vector<Integer>(splitLine.length);
+
+			for (int i = 0; i < splitLine.length; i++) {
+				members.add(new Integer(Integer.parseInt(splitLine[i])));
+			}
+
+			groupMembershipTable.put(new Integer(groupId), members);
+			groupId++;
+
+		}
+
+		br.close();
+	} catch (java.io.IOException ioe) {
+		System.err.println("Unable to read group membership: " + ioe.getMessage());
+		return false;
+	}
+
+	return true;
+    }
+
+// ACS end
+
     public RPGM(String[] args) {
         go(args);
     }
@@ -60,7 +118,211 @@ public class RPGM extends RandomSpeedBase {
         generate();
     }
 
+// ACS begin
+
     public void generate() {
+	if (groupMembershipTable != null)
+	{
+		generateForExplicitlyDefinedGroups();
+	} else {
+    		generateForRandomlyDefinedGroups();
+	}
+
+    }
+
+    public void generateForExplicitlyDefinedGroups() {
+        preGeneration();
+
+	int numNodes = 0;
+
+	Iterator iter = groupMembershipTable.keySet().iterator();
+
+	while(iter.hasNext()) {
+   	    Integer groupId = (Integer)iter.next();
+    	    Vector<Integer> members = (Vector<Integer>)groupMembershipTable.get(groupId);
+	    numNodes += members.size();
+	}
+
+        final GroupNode[] node = new GroupNode[numNodes];
+        //final Vector<MobileNode> rpoints = new Vector<MobileNode>();
+
+        // groups move in a random waypoint manner:
+        //int nodesRemaining = node.length;
+        //int offset = 0;
+
+
+	iter = groupMembershipTable.keySet().iterator();
+	int curNode = 0;
+
+	while(iter.hasNext()) {
+
+   	    Integer groupId = (Integer)iter.next();
+    	    Vector<Integer> members = (Vector<Integer>)groupMembershipTable.get(groupId);
+
+            MobileNode ref = new MobileNode();
+
+            //rpoints.addElement(ref);
+
+            double t = 0.0;
+
+            
+            //pick position inside the interval [maxdist; x - maxdist], [maxdist; y - maxdist] 
+            //(to ensure that the group area doesn't overflow the borders)
+            Position src = new Position((x - 2 * maxdist) * randomNextDouble() + maxdist, (y - 2 * maxdist) * randomNextDouble() + maxdist);
+
+            if (!ref.add(0.0, src)) {
+                System.err.println(getInfo().name + ".generate: error while adding group movement (1)");
+                System.exit(-1);
+            }
+
+            while (t < duration) {
+                Position dst = new Position((x - 2 * maxdist) * randomNextDouble() + maxdist, (y - 2 * maxdist) * randomNextDouble() + maxdist);
+
+                double speed = (maxspeed - minspeed) * randomNextDouble() + minspeed;
+                t += src.distance(dst) / speed;
+
+                if (!ref.add(t, dst)) {
+                    System.err.println(getInfo().name + ".generate: error while adding group movement (2)");
+                    System.exit(-1);
+                }
+
+                if ((t < duration) && (maxpause > 0.0)) {
+                    double pause = maxpause * randomNextDouble();
+                    if (pause > 0.0) {
+                        t += pause;
+
+                        if (!ref.add(t, dst)) {
+                            System.err.println(getInfo().name + ".generate: error while adding group movement (3)");
+                            System.exit(-1);
+                        }
+                    }
+                }
+                src = dst;
+            }
+
+
+	    System.out.println("\ngroup leader: " + groupId);	
+	    System.out.println("nodes in the group: " + members.size());	
+
+            MobileNode group = ref;
+
+            for (int i = 0; i < members.size(); i++) {
+		Integer memberId = (Integer)members.elementAt(i);	
+		GroupNode memberNode = new GroupNode(ref); 
+		node[curNode] = memberNode;
+		curNode++;
+
+	    	System.out.println("\nnode " + memberId);
+            
+		double mt = 0.0;
+
+            	Position msrc = group.positionAt(mt).rndprox(maxdist, randomNextDouble(), randomNextDouble());
+
+	    	System.out.println("src: " + msrc.toString());
+
+	        if (!memberNode.add(0.0, msrc)) {
+   	             System.err.println(getInfo().name + ".generate: error while adding node movement (1)");
+   	             System.exit(-1);
+		}
+
+	        while (mt < duration) {
+   	       		Position mdst = new Position(0.0, 0.0);
+   	             	double speed;
+   	             	final double[] groupChangeTimes = group.changeTimes();
+   	             	int currentGroupChangeTimeIndex = 0;
+
+   	             	while ((currentGroupChangeTimeIndex < groupChangeTimes.length) && (groupChangeTimes[currentGroupChangeTimeIndex] <= mt))
+                    		currentGroupChangeTimeIndex++;
+                
+   	             	double next = (currentGroupChangeTimeIndex < groupChangeTimes.length) ? groupChangeTimes[currentGroupChangeTimeIndex] : duration;
+   	             	boolean pause = (currentGroupChangeTimeIndex == 0);
+
+   	             	if (!pause) {
+   	               	  final Position pos1 = group.positionAt(groupChangeTimes[currentGroupChangeTimeIndex - 1]);
+   	               	  final Position pos2 = group.positionAt(groupChangeTimes[currentGroupChangeTimeIndex]);
+   	               	  pause = pos1.equals(pos2);
+   	             	}
+
+			Position grpSegStart = group.positionAt(groupChangeTimes[currentGroupChangeTimeIndex - 1]);
+                        Position grpSegEnd = group.positionAt(groupChangeTimes[currentGroupChangeTimeIndex]);
+
+
+
+
+
+			for(int segm = 1;segm<= numSubseg; segm++) {
+
+				double inetrimX =  grpSegStart.x + segm * (grpSegEnd.x - grpSegStart.x) / numSubseg;
+                                double inetrimY =  grpSegStart.y + segm * (grpSegEnd.y - grpSegStart.y) / numSubseg;
+
+
+
+                                double prevX =  grpSegStart.x + (segm-1) * (grpSegEnd.x - grpSegStart.x) / numSubseg;
+                                double prevY =  grpSegStart.y + (segm-1) * (grpSegEnd.y - grpSegStart.y) / numSubseg;
+
+
+				Position grpSegInterim = new Position(inetrimX, inetrimY );
+                                Position grpSegPrev = new Position(prevX, prevY );
+			  
+
+
+				double interimTime =groupChangeTimes[currentGroupChangeTimeIndex - 1] + segm * (groupChangeTimes[currentGroupChangeTimeIndex] - groupChangeTimes[currentGroupChangeTimeIndex - 1]) / numSubseg;
+                        	do {
+					mdst = grpSegInterim.rndprox(maxdist, randomNextDouble(), randomNextDouble());
+					speed = grpSegPrev.distance(mdst) / interimTime;
+				} while ( speed > maxspeed*speedScale );
+
+				if (!memberNode.add(interimTime, mdst)) {
+                                	System.err.println(getInfo().name + ".generate: error while adding node movement (4) for intermediate dest");
+                                	System.exit(-1);
+                        	}
+				System.out.println("dst: " + mdst.toString());
+
+			}
+
+
+
+			/*
+   	             	do {
+   	               	  mdst = group.positionAt(next).rndprox(maxdist, randomNextDouble(), randomNextDouble());
+   	               	  speed = msrc.distance(mdst) / (next - mt);
+   	             	} while (!pause && (speed > maxspeed));
+
+                	if (speed > maxspeed) {
+                   	 final double c_dst = ((maxspeed - minspeed) * randomNextDouble() + minspeed) / speed;
+                   	 final double c_src = 1 - c_dst;
+                   	 mdst = new Position(c_src * msrc.x + c_dst * mdst.x, c_src * msrc.y + c_dst * mdst.y);
+                	}
+			*/
+
+			/*
+		        System.out.println("dst: " + mdst.toString());
+
+		        if (!memberNode.add(next, mdst)) {
+        	          	System.err.println(getInfo().name + ".generate: error while adding node movement (4)");
+               		     	System.exit(-1);
+                	}
+			*/
+			
+
+                	msrc = mdst;
+                	mt = next;
+		    } //end of while mt < duration 
+
+        	} //end of iteration through nodes of a group
+
+
+        } //end of iteration through group leaders
+
+        this.node = node;
+
+    }//end of generateForExplicitlyDefinedGroups method
+
+
+
+// ACS end
+
+    public void generateForRandomlyDefinedGroups() {
         preGeneration();
 
         final GroupNode[] node = new GroupNode[this.node.length];
@@ -114,24 +376,6 @@ public class RPGM extends RandomSpeedBase {
 
             int size; // define group size
             while ((size = (int)Math.round(randomNextGaussian() * groupSizeDeviation + avgMobileNodesPerGroup)) < 1);
-// ACS begin
-	    if (groupLeaderId == 0) {
-		size = 3;
-	    } 
-
-	    if (groupLeaderId == 3) {
-		size = 8;
-            }
-	    if (groupLeaderId == 11) {
-                size = 8;
-            }
-            if (groupLeaderId == 19) {
-                size = 11;
-            }
-
-
-
-// ACS end
 
             if (size > nodesRemaining) {
                 size = nodesRemaining;
@@ -369,6 +613,22 @@ public class RPGM extends RandomSpeedBase {
             case 'c':
                 pGroupChange = Double.parseDouble(val);
                 return true;
+// ACS begin
+            case 'e':
+		numSubseg = Integer.parseInt(val);
+		return true;
+            case 'g':
+                groupMembershipFileName = val;
+
+		if (!readGroupMembership()) {
+			return false;
+		} else {
+                	return true;
+		}
+            case 'm':
+		speedScale = Double.parseDouble(val);
+		return true;
+// ACS end
             case 'r':
                 maxdist = Double.parseDouble(val);
                 return true;
@@ -388,5 +648,10 @@ public class RPGM extends RandomSpeedBase {
         System.out.println("\t-c <group change probability>");
         System.out.println("\t-r <max. distance to group center>");
         System.out.println("\t-s <group size standard deviation>");
+// ACS begin
+        System.out.println("\t-e <number of subsegments in each RP segment>");
+        System.out.println("\t-g <group membership file>");
+        System.out.println("\t-m <max speed scale for member speed relative to RP speed>");
+// ACS end
     }
 }
