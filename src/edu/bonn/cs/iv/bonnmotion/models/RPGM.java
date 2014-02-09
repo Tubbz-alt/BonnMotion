@@ -646,12 +646,12 @@ public class RPGM extends RandomSpeedBase {
         System.out.println(getInfo().name + ":");
         System.out.println("\t-a <average no. of nodes per group>");
         System.out.println("\t-c <group change probability>");
-        System.out.println("\t-r <max. distance to group center>");
-        System.out.println("\t-s <group size standard deviation>");
 // ACS begin
         System.out.println("\t-e <number of subsegments in each RP segment>");
         System.out.println("\t-g <group membership file>");
         System.out.println("\t-m <max speed scale for member speed relative to RP speed>");
 // ACS end
+        System.out.println("\t-r <max. distance to group center>");
+        System.out.println("\t-s <group size standard deviation>");
     }
 }
