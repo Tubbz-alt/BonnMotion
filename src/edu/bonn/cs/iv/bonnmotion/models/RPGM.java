@@ -201,7 +201,7 @@ public class RPGM extends RandomSpeedBase {
             }
 
 
-	    System.out.println("\ngroup leader: " + groupId);	
+	    System.out.println("\ngroup " + groupId);	
 	    System.out.println("nodes in the group: " + members.size());	
 
             MobileNode group = ref;
@@ -218,23 +218,26 @@ public class RPGM extends RandomSpeedBase {
 
             	Position msrc = group.positionAt(mt).rndprox(maxdist, randomNextDouble(), randomNextDouble());
 
-	    	System.out.println("src: " + msrc.toString());
+//	    	System.out.println("src: " + msrc.toString());
 
 	        if (!memberNode.add(0.0, msrc)) {
    	             System.err.println(getInfo().name + ".generate: error while adding node movement (1)");
    	             System.exit(-1);
 		}
 
+
 	        while (mt < duration) {
    	       		Position mdst = new Position(0.0, 0.0);
-   	             	double speed;
    	             	final double[] groupChangeTimes = group.changeTimes();
    	             	int currentGroupChangeTimeIndex = 0;
+             		double speed = 0;
+
 
    	             	while ((currentGroupChangeTimeIndex < groupChangeTimes.length) && (groupChangeTimes[currentGroupChangeTimeIndex] <= mt))
                     		currentGroupChangeTimeIndex++;
                 
    	             	double next = (currentGroupChangeTimeIndex < groupChangeTimes.length) ? groupChangeTimes[currentGroupChangeTimeIndex] : duration;
+
    	             	boolean pause = (currentGroupChangeTimeIndex == 0);
 
    	             	if (!pause) {
@@ -246,67 +249,57 @@ public class RPGM extends RandomSpeedBase {
 			Position grpSegStart = group.positionAt(groupChangeTimes[currentGroupChangeTimeIndex - 1]);
                         Position grpSegEnd = group.positionAt(groupChangeTimes[currentGroupChangeTimeIndex]);
 
+//			double gct = groupChangeTimes[currentGroupChangeTimeIndex] - groupChangeTimes[currentGroupChangeTimeIndex - 1];
 
 
+// don't do any movement within a pause
 
+			Position prevLoc = msrc;
 
-			for(int segm = 1;segm<= numSubseg; segm++) {
+			if (!pause) {
+//				System.out.println("group takes " + gct + " to move from " + group.positionAt(groupChangeTimes[currentGroupChangeTimeIndex - 1]).toString() + " to " + group.positionAt(groupChangeTimes[currentGroupChangeTimeIndex]).toString());
+	
+				double segTimeDelta = (groupChangeTimes[currentGroupChangeTimeIndex] - groupChangeTimes[currentGroupChangeTimeIndex - 1]) / numSubseg;
 
-				double inetrimX =  grpSegStart.x + segm * (grpSegEnd.x - grpSegStart.x) / numSubseg;
-                                double inetrimY =  grpSegStart.y + segm * (grpSegEnd.y - grpSegStart.y) / numSubseg;
+				for (int segm = 1; segm <= numSubseg; segm++) {
 
+					double interimX =  grpSegStart.x + segm * (grpSegEnd.x - grpSegStart.x) / numSubseg;
+					double interimY =  grpSegStart.y + segm * (grpSegEnd.y - grpSegStart.y) / numSubseg;
 
+                                	double prevX =  grpSegStart.x + (segm - 1) * (grpSegEnd.x - grpSegStart.x) / numSubseg;
+                                	double prevY =  grpSegStart.y + (segm - 1) * (grpSegEnd.y - grpSegStart.y) / numSubseg;
 
-                                double prevX =  grpSegStart.x + (segm-1) * (grpSegEnd.x - grpSegStart.x) / numSubseg;
-                                double prevY =  grpSegStart.y + (segm-1) * (grpSegEnd.y - grpSegStart.y) / numSubseg;
+					Position grpSegInterim = new Position(interimX, interimY);
+                                	Position grpSegPrev = new Position(prevX, prevY);
 
+					double interimTime = groupChangeTimes[currentGroupChangeTimeIndex - 1] + segm * segTimeDelta;
 
-				Position grpSegInterim = new Position(inetrimX, inetrimY );
-                                Position grpSegPrev = new Position(prevX, prevY );
-			  
+//					System.out.println("segment: " + segm + ", interimTime: " + interimTime);
 
+					do {
+						mdst = grpSegInterim.rndprox(maxdist, randomNextDouble(), randomNextDouble());
+						speed = prevLoc.distance(mdst) / segTimeDelta;
+					} while (speed > maxspeed*speedScale);
 
-				double interimTime =groupChangeTimes[currentGroupChangeTimeIndex - 1] + segm * (groupChangeTimes[currentGroupChangeTimeIndex] - groupChangeTimes[currentGroupChangeTimeIndex - 1]) / numSubseg;
-                        	do {
-					mdst = grpSegInterim.rndprox(maxdist, randomNextDouble(), randomNextDouble());
-					speed = grpSegPrev.distance(mdst) / interimTime;
-				} while ( speed > maxspeed*speedScale );
+					prevLoc = mdst;
 
-				if (!memberNode.add(interimTime, mdst)) {
-                                	System.err.println(getInfo().name + ".generate: error while adding node movement (4) for intermediate dest");
-                                	System.exit(-1);
-                        	}
-				System.out.println("dst: " + mdst.toString());
-
+					if (!memberNode.add(interimTime, mdst)) {
+                                		System.err.println(getInfo().name + ".generate: error while adding node movement (4) for intermediate dest");
+                                		System.exit(-1);
+                        		}
+				}
+			} else {
+				mdst = msrc;
 			}
 
-
-
-			/*
-   	             	do {
-   	               	  mdst = group.positionAt(next).rndprox(maxdist, randomNextDouble(), randomNextDouble());
-   	               	  speed = msrc.distance(mdst) / (next - mt);
-   	             	} while (!pause && (speed > maxspeed));
-
-                	if (speed > maxspeed) {
-                   	 final double c_dst = ((maxspeed - minspeed) * randomNextDouble() + minspeed) / speed;
-                   	 final double c_src = 1 - c_dst;
-                   	 mdst = new Position(c_src * msrc.x + c_dst * mdst.x, c_src * msrc.y + c_dst * mdst.y);
-                	}
-			*/
-
-			/*
-		        System.out.println("dst: " + mdst.toString());
-
-		        if (!memberNode.add(next, mdst)) {
-        	          	System.err.println(getInfo().name + ".generate: error while adding node movement (4)");
-               		     	System.exit(-1);
-                	}
-			*/
-			
+//			if (!pause) {
+//				System.out.println("src: " + msrc.toString() + ", dst: " + mdst.toString() + ", speed: " + msrc.distance(mdst) / gct);
+//			}
 
                 	msrc = mdst;
                 	mt = next;
+
+//			System.out.println("");
 		    } //end of while mt < duration 
 
         	} //end of iteration through nodes of a group
