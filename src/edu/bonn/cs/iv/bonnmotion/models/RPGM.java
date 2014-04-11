@@ -583,17 +583,27 @@ public class RPGM extends RandomSpeedBase {
             maxdist = Double.parseDouble(value);
             return true;
         }
+        else if (key.equals("numSubseg")) {
+            numSubseg = Integer.parseInt(value);
+            return true;
+        }
+        else if (key.equals("speedScale")) {
+            speedScale = Double.parseDouble(value);
+            return true;
+        }
         else
             return super.parseArg(key, value);
     }
 
     public void write(String _name) throws FileNotFoundException, IOException {
-        String[] p = new String[4];
+        String[] p = new String[6];
 
         p[0] = "groupsize_E=" + avgMobileNodesPerGroup;
         p[1] = "groupsize_S=" + groupSizeDeviation;
         p[2] = "pGroupChange=" + pGroupChange;
         p[3] = "maxdist=" + maxdist;
+        p[4] = "numSubseg=" + numSubseg;
+        p[5] = "speedScale=" + speedScale;
 
         super.write(_name, p);
     }
