@@ -250,7 +250,7 @@ public class GaussMarkov extends Scenario {
 							}
 							else if ((yR >= 0) && (yR <= y) && ((dir > 1.5 * Math.PI) || (dir < 0.5 * Math.PI))) {
 								newY = yR;
-								newX = y;
+								newX = x;
 								dir = (twoPi + Math.PI - dir) % twoPi;
 							}
 
