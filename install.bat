@@ -10,7 +10,7 @@ REM *********************************************
 
 echo BonnMotion - mobility scenario generation and analysis tool
 echo Copyright (C) 2002-2012 University of Bonn
-echo Copyright (C) 2012-2015 University of Osnabrueck 
+echo Copyright (C) 2012-2016 University of Osnabrueck 
 echo.
 echo This program is free software; you can redistribute it and/or modify
 echo it under the terms of the GNU General Public License as published by

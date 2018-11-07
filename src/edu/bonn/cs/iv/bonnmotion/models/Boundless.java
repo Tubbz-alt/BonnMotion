@@ -1,7 +1,7 @@
 /*******************************************************************************
  ** BonnMotion - a mobility scenario generation and analysis tool             **
  ** Copyright (C) 2002-2012 University of Bonn                                **
- ** Copyright (C) 2012-2015 University of Osnabrueck                          **
+ ** Copyright (C) 2012-2016 University of Osnabrueck                          **
  **                                                                           **
  ** This program is free software; you can redistribute it and/or modify      **
  ** it under the terms of the GNU General Public License as published by      **
@@ -47,7 +47,7 @@ public class Boundless extends RandomSpeedBase {
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 682 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 723 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("Chris Walsh");

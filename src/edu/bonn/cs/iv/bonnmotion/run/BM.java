@@ -1,7 +1,7 @@
 /*******************************************************************************
  ** BonnMotion - a mobility scenario generation and analysis tool             **
  ** Copyright (C) 2002-2012 University of Bonn                                **
- ** Copyright (C) 2012-2015 University of Osnabrueck                          **
+ ** Copyright (C) 2012-2016 University of Osnabrueck                          **
  **                                                                           **
  ** This program is free software; you can redistribute it and/or modify      **
  ** it under the terms of the GNU General Public License as published by      **
@@ -28,7 +28,7 @@ import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
 
 public class BM {
     private final static String PROG_NAME = "BonnMotion";
-    private final static String PROG_VER = "3.0.0";
+    private final static String PROG_VER = "3.0.1";
     private final static String MODELS_PACK = "edu.bonn.cs.iv.bonnmotion.models";
     private final static String MODELS[] =
         {

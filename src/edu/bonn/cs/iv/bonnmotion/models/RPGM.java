@@ -1,7 +1,7 @@
 /*******************************************************************************
  ** BonnMotion - a mobility scenario generation and analysis tool             **
  ** Copyright (C) 2002-2012 University of Bonn                                **
- ** Copyright (C) 2012-2015 University of Osnabrueck                          **
+ ** Copyright (C) 2012-2016 University of Osnabrueck                          **
  **                                                                           **
  ** This program is free software; you can redistribute it and/or modify      **
  ** it under the terms of the GNU General Public License as published by      **
@@ -40,7 +40,7 @@ public class RPGM extends RandomSpeedBase {
         info.description = "Application to create movement scenarios according to the Reference Point Group Mobility model";
         
         info.major = 1;
-        info.minor = 0;
+        info.minor = 1;
         info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 650 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
@@ -173,16 +173,15 @@ public class RPGM extends RandomSpeedBase {
                     pause = pos1.equals(pos2);
                 }
 
-                do {
-                    dst = group.positionAt(next).rndprox(maxdist, randomNextDouble(), randomNextDouble(), parameterData.calculationDim);
-                    speed = src.distance(dst) / (next - t);
-                }
-                while (!pause && (speed > maxspeed));
 
-                if (speed > maxspeed) {
-                    final double c_dst = ((maxspeed - minspeed) * randomNextDouble() + minspeed) / speed;
-                    final double c_src = 1 - c_dst;
-                    dst = new Position(c_src * src.x + c_dst * dst.x, c_src * src.y + c_dst * dst.y);
+                if (!pause) {
+                    do {
+                        dst = group.positionAt(next).rndprox(maxdist, randomNextDouble(), randomNextDouble(), parameterData.calculationDim);
+                        speed = src.distance(dst) / (next - t);
+                    }
+                    while (speed > maxspeed || speed < minspeed);
+                } else {
+                    dst = src;
                 }
 
                 if (pGroupChange > 0.0) {
