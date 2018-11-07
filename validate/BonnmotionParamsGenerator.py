@@ -1,19 +1,25 @@
 # -*- coding: utf-8 -*-
-#    A validation script for Bonnmotion (http://net.cs.uni-bonn.de/wg/cs/applications/bonnmotion/)
-#    Copyright (C) 2011 University of Bonn
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+################################################################################
+## A validation script for                                                    ##
+## BonnMotion - a mobility scenario generation and analysis tool              ##
+## Copyright (C) 2002-2012 University of Bonn                                 ##
+## Copyright (C) 2012-2016 University of Osnabrueck                           ##
+##                                                                            ##
+## This program is free software; you can redistribute it and/or modify       ##
+## it under the terms of the GNU General Public License as published by       ##
+## the Free Software Foundation; either version 2 of the License, or          ##
+## (at your option) any later version.                                        ##
+##                                                                            ##
+## This program is distributed in the hope that it will be useful,            ##
+## but WITHOUT ANY WARRANTY; without even the implied warranty of             ##
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the              ##
+## GNU General Public License for more details.                               ##
+##                                                                            ##
+## You should have received a copy of the GNU General Public License          ##
+## along with this program; if not, write to the Free Software                ##
+## Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA  ##
+################################################################################
+
 
 from Config import Config
 from Common import InputDirOrFile
@@ -100,7 +106,7 @@ class BonnmotionParamsGenerator(object):
                     elif DELIMITERSETS in testcasearray[testcase][x]:                   #parameter is a set
                         variableparams[x] = self._calcVariableSets(testcasearray[testcase][x][1:-1])
                     elif '$' in testcasearray[testcase][x]:
-                        constantparams[x] = os.path.join(os.getcwd(), os.path.dirname(self.modeltestFilename), testcasearray[testcase][x][3:])
+                        constantparams[x] = os.path.join(os.path.dirname(self.modeltestFilename), testcasearray[testcase][x][3:])
                     else:
                         variableparams[x] = [testcasearray[testcase][x][1:-1]]
                 else:                                               #parameter is constant
@@ -128,19 +134,23 @@ class BonnmotionParamsGenerator(object):
                 constantparams[x] = str(variableparams[x][0])
             
             if (len(variableparams) == 0):                      # if there are no variable params there is only one constant
-                self._writeParametersToFile(constantparams, Config().readConfigEntry('tempoutputparamsfile').replace('INDEX', '0'))
+                self._writeParametersToFile(constantparams, os.path.join(Config().readConfigEntry('bonnmotionvalidatepath'), Config().readConfigEntry('tempoutputparamsfile').replace('INDEX', '0')))
                 self.noOfFilesCreated = 1  
                 return        
             
-            first = 0                                           # avoids redundant combinations
-            for x in variableparams:
-                output = constantparams.copy()                  # copy constant parameters to output
-                
-                for y in variableparams[x][first:]:
-                    output[x] = str(y)
-                    self._writeParametersToFile(output, Config().readConfigEntry('tempoutputparamsfile').replace('INDEX', str(n))) 
-                    n += 1
-                first = 1
+        # tool to create the cross product of all possible values
+        import itertools
+        keys =  variableparams.keys()
+        values =  variableparams.values()
+        # go through every combination and add it to the constant parameters and create a param file
+        for element in itertools.product(*values):
+            output = constantparams.copy()
+            cnt = 0;
+            for key in keys:
+                output[key] = str(element[cnt])
+                cnt = cnt + 1
+            self._writeParametersToFile(output, os.path.join(Config().readConfigEntry('bonnmotionvalidatepath'), Config().readConfigEntry('tempoutputparamsfile').replace('INDEX', str(n))))     
+            n += 1
         self.noOfFilesCreated = n
     
     ##
@@ -178,6 +188,8 @@ class BonnmotionParamsGenerator(object):
                 elif key == 'appparams':
                     if '$' in value:
                         value = string.replace(value, '$', os.path.join(os.getcwd(), os.path.dirname(self.apptestFilename)) + os.sep)
+                    if '{&}' in value:
+                        value = string.replace(value, '{&}', Config().readConfigEntry('bonnmotionvalidatepath'))
                     result['cases'][testcase][key] = value
                 else:
                     raise Exception("invalid key provided in apptest file: " + line)

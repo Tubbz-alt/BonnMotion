@@ -1,3 +1,23 @@
+/*******************************************************************************
+ ** BonnMotion - a mobility scenario generation and analysis tool             **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2016 University of Osnabrueck                          **
+ **                                                                           **
+ ** This program is free software; you can redistribute it and/or modify      **
+ ** it under the terms of the GNU General Public License as published by      **
+ ** the Free Software Foundation; either version 2 of the License, or         **
+ ** (at your option) any later version.                                       **
+ **                                                                           **
+ ** This program is distributed in the hope that it will be useful,           **
+ ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
+ ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
+ ** GNU General Public License for more details.                              **
+ **                                                                           **
+ ** You should have received a copy of the GNU General Public License         **
+ ** along with this program; if not, write to the Free Software               **
+ ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
+ *******************************************************************************/
+
 package edu.bonn.cs.iv.bonnmotion.models;
 
 import java.io.FileNotFoundException;
@@ -27,7 +47,7 @@ public class ProbRandomWalk extends Scenario {
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 252 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 650 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("Chris Walsh");
@@ -69,8 +89,8 @@ public class ProbRandomWalk extends Scenario {
 		int xstate = 0, ystate = 0;
 		preGeneration();
 
-		for (int i = 0; i < node.length; i++) {
-			node[i] = new MobileNode();
+		for (int i = 0; i < parameterData.nodes.length; i++) {
+			parameterData.nodes[i] = new MobileNode();
 			double t = 0.0;
 			Position src = null;
 			
@@ -86,10 +106,10 @@ public class ProbRandomWalk extends Scenario {
 			} 
 			else src = randomNextPosition();
 			
-			if (!node[i].add(t, src))		// add source waypoint
+			if (!parameterData.nodes[i].add(t, src))		// add source waypoint
 				throw new RuntimeException(getInfo().name + ".go: error while adding waypoint (1)");
 			
-			while (t < duration) {
+			while (t < parameterData.duration) {
 				Position dst;
 
 				rand1 = randomNextDouble();
@@ -138,17 +158,17 @@ public class ProbRandomWalk extends Scenario {
 				potentialX = src.x + dX;
 			    potentialY = src.y + dY;
 				
-				if (potentialX >= x) potentialX = x;
+				if (potentialX >= parameterData.x) potentialX = parameterData.x;
 				else if (potentialX <= 0) potentialX = 0;
 				
-				if (potentialY >= y) potentialY = y;
+				if (potentialY >= parameterData.y) potentialY = parameterData.y;
 				else if (potentialY <= 0) potentialY = 0;
 				
 				dst = new Position(potentialX, potentialY);
 				
 				t += interval;
 				
-				if (!node[i].add(t, dst))
+				if (!parameterData.nodes[i].add(t, dst))
 					throw new RuntimeException(getInfo().name + ".go: error while adding waypoint (1)");
 		
 				src = dst;
@@ -168,7 +188,7 @@ public class ProbRandomWalk extends Scenario {
 	public void write( String _name ) throws FileNotFoundException, IOException {
 		String[] p = new String[1];
 		p[0] = "interval=" + interval;
-		super.write(_name, p);
+		super.writeParametersAndMovement(_name, p);
 	}
 
 	protected boolean parseArg(char key, String val) {
@@ -189,12 +209,12 @@ public class ProbRandomWalk extends Scenario {
 	}
 	
 	protected void postGeneration() {
-		for (int i = 0; i < node.length; i++) {
-			Waypoint l = node[i].getLastWaypoint();
-			if (l.time > duration) {
-				Position p = node[i].positionAt(duration);
-				node[i].removeLastElement();
-				node[i].add(duration, p);
+		for (int i = 0; i < parameterData.nodes.length; i++) {
+			Waypoint l = parameterData.nodes[i].getLastWaypoint();
+			if (l.time > parameterData.duration) {
+				Position p = parameterData.nodes[i].positionAt(parameterData.duration);
+				parameterData.nodes[i].removeLastElement();
+				parameterData.nodes[i].add(parameterData.duration, p);
 			}
 		}
 		super.postGeneration();

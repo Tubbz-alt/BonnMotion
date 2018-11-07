@@ -1,8 +1,26 @@
+/*******************************************************************************
+ ** BonnMotion - a mobility scenario generation and analysis tool             **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2016 University of Osnabrueck                          **
+ **                                                                           **
+ ** This program is free software; you can redistribute it and/or modify      **
+ ** it under the terms of the GNU General Public License as published by      **
+ ** the Free Software Foundation; either version 2 of the License, or         **
+ ** (at your option) any later version.                                       **
+ **                                                                           **
+ ** This program is distributed in the hope that it will be useful,           **
+ ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
+ ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
+ ** GNU General Public License for more details.                              **
+ **                                                                           **
+ ** You should have received a copy of the GNU General Public License         **
+ ** along with this program; if not, write to the Free Software               **
+ ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
+ *******************************************************************************/
+
 package edu.bonn.cs.iv.bonnmotion.apps;
 
 import edu.bonn.cs.iv.bonnmotion.*;
-import edu.bonn.cs.iv.graph.*;
-import edu.bonn.cs.iv.util.*;
 
 import java.io.*;
 import java.util.Vector;
@@ -11,6 +29,8 @@ import java.util.Vector;
 /**
 * Longest Link Metric 
 */
+
+//ToDo: Remove this class and add to StatisticsNG
 public class LongestLink extends App {
     private static ModuleInfo info;
     
@@ -20,7 +40,7 @@ public class LongestLink extends App {
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 412 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 650 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("Raphael Ernst");
@@ -115,6 +135,7 @@ public class LongestLink extends App {
         return true;
 	}
 	
+	//ToDo: Use LongestLinkMetrics from edu.bonnmotion.cs.iv.bonnmotion.apps.statistics -> Not yet possible. Requires scenario3d
 	protected double longestLink(final double time) {
 		MobileNode[] node = s.getNode();
 		double longestEdge = Double.MIN_VALUE;

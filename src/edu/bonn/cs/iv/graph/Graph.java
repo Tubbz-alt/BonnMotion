@@ -1,3 +1,23 @@
+/*******************************************************************************
+ ** BonnMotion - a mobility scenario generation and analysis tool             **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2016 University of Osnabrueck                          **
+ **                                                                           **
+ ** This program is free software; you can redistribute it and/or modify      **
+ ** it under the terms of the GNU General Public License as published by      **
+ ** the Free Software Foundation; either version 2 of the License, or         **
+ ** (at your option) any later version.                                       **
+ **                                                                           **
+ ** This program is distributed in the hope that it will be useful,           **
+ ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
+ ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
+ ** GNU General Public License for more details.                              **
+ **                                                                           **
+ ** You should have received a copy of the GNU General Public License         **
+ ** along with this program; if not, write to the Free Software               **
+ ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
+ *******************************************************************************/
+
 package edu.bonn.cs.iv.graph;
 
 import edu.bonn.cs.iv.util.*;
@@ -243,7 +263,7 @@ public class Graph {
 					int c = 1;
 					boolean found = false;
 					while (! found) {
-						int x = ((Integer)bcc.elementAt(bcc.size() - 1)).intValue();
+						int x = bcc.elementAt(bcc.size() - 1).intValue();
 						c++;
 						found = (x == v);
 						bcc.removeElementAt(bcc.size() - 1);
@@ -260,7 +280,7 @@ public class Graph {
 					int c = 1;
 					boolean found = false;
 					while (! found) {
-						int x = ((Integer)bcc.elementAt(bcc.size() - 1)).intValue();
+						int x = bcc.elementAt(bcc.size() - 1).intValue();
 						c++;
 						found = (x == v);
 						bcc.removeElementAt(bcc.size() - 1);
@@ -442,7 +462,7 @@ public class Graph {
     		s[0].add(src);
     		toDo.addElement(src);
     		while (toDo.size() > 0) {
-    			Node v = (Node)toDo.firstElement();
+    			Node v = toDo.firstElement();
     			toDo.removeElementAt(0);
     			for (int i = 0; i < v.outDeg(); i++) {
     				Edge e = v.succAt(i);
@@ -477,7 +497,7 @@ public class Graph {
     		s[0].add(src);
     		toDo.addElement(src);
     		while (toDo.size() > 0) {
-    			Node v = (Node)toDo.firstElement();
+    			Node v = toDo.firstElement();
     			toDo.removeElementAt(0);
     			//int vID = v.getKey();
     			for (int i = 0; i < v.outDeg(); i++) {
@@ -512,7 +532,7 @@ public class Graph {
     		s[0].add(src);
     		toDo.addElement(src);
     		while (toDo.size() > 0) {
-    			Node v = (Node)toDo.firstElement();
+    			Node v = toDo.firstElement();
     			toDo.removeElementAt(0);
     			for (int i = 0; i < v.outDeg(); i++) {
     				Edge e = v.succAt(i);
@@ -532,7 +552,7 @@ public class Graph {
 		}
 		SortedList[] r = new SortedList[components.size()];
 		for (int i = 0; i < r.length; i++)
-			r[i] = (SortedList)components.elementAt(i);
+			r[i] = components.elementAt(i);
 		return r;
 	}
 

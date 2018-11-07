@@ -1,7 +1,7 @@
 /*******************************************************************************
  ** BonnMotion - a mobility scenario generation and analysis tool             **
- ** Copyright (c) 2013 University of Osnabrueck                               **
- ** Code: Matthias Schwamborn                                                 **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2016 University of Osnabrueck                          **
  **                                                                           **
  ** This program is free software; you can redistribute it and/or modify      **
  ** it under the terms of the GNU General Public License as published by      **
@@ -22,85 +22,84 @@ package edu.bonn.cs.iv.util.maps;
 
 import java.awt.geom.Point2D;
 
-public class CoordinateTransformation {
-	
-    public static enum proj4lib {
+public class CoordinateTransformation
+{	
+    public static enum proj4lib
+    {
     	JAVAPROJ, // OLD/OBSOLETE
     	PROJ4J    // NEW
     };
     
     private proj4lib useLib = proj4lib.PROJ4J;
     private String projCRS = null;
+    private String projCRSSpec = "+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +a=6378137 +b=6378137 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"; // epsg:3857 (generic Pseudo-Mercator)
     private String wgs84CRS = "epsg:4326";
     
-    private com.jhlabs.map.proj.Projection proj_old = null;
     private org.osgeo.proj4j.BasicCoordinateTransform proj_new = null;
     private org.osgeo.proj4j.BasicCoordinateTransform proj_new_inv = null;
         
-    public CoordinateTransformation(String p, proj4lib l) {
-    	projCRS = p;
+    public CoordinateTransformation(String p, proj4lib l)
+    {
+    	if (p != null) {
+    		projCRS = p;
+    	}
     	useLib = l;
     	
     	initProjections();
     }
     
-    public CoordinateTransformation(String p) {
-    	projCRS = p;
+    public CoordinateTransformation(String p)
+    {
+    	if (p != null) {
+    		projCRS = p;
+    	}
     	
     	initProjections();
     }
     
-    private void initProjections() {
-    	// WGS84 CRS implicitly included
-    	proj_old = com.jhlabs.map.proj.ProjectionFactory.getNamedPROJ4CoordinateSystem(projCRS);
-    	
+    private void initProjections()
+    {    	
     	org.osgeo.proj4j.CRSFactory crsf = new org.osgeo.proj4j.CRSFactory();
-    	proj_new = new org.osgeo.proj4j.BasicCoordinateTransform(crsf.createFromName(wgs84CRS), crsf.createFromName(projCRS));
-    	proj_new_inv = new org.osgeo.proj4j.BasicCoordinateTransform(crsf.createFromName(projCRS), crsf.createFromName(wgs84CRS));
+    	if (projCRS != null) {
+        	proj_new = new org.osgeo.proj4j.BasicCoordinateTransform(crsf.createFromName(wgs84CRS), crsf.createFromName(projCRS));
+        	proj_new_inv = new org.osgeo.proj4j.BasicCoordinateTransform(crsf.createFromName(projCRS), crsf.createFromName(wgs84CRS));
+    	} else {
+        	proj_new = new org.osgeo.proj4j.BasicCoordinateTransform(crsf.createFromName(wgs84CRS), crsf.createFromParameters("epsg:3857", projCRSSpec));
+        	proj_new_inv = new org.osgeo.proj4j.BasicCoordinateTransform(crsf.createFromParameters("epsg:3857", projCRSSpec), crsf.createFromName(wgs84CRS));
+    	}
+
     }
     
-    public Point2D.Double transform(double x, double y) {
+    public Point2D.Double transform(double x, double y)
+    {
     	return transform(x, y, false);
     }
     
-    public Point2D.Double transform_inverse(double x, double y) {
+    public Point2D.Double transform_inverse(double x, double y)
+    {
     	return transform(x, y, true);
     }
     
-    private Point2D.Double transform(double x, double y, boolean inverse) {
-    	if (useLib == proj4lib.JAVAPROJ) {
-    		return transform_old(x, y, inverse);
-    	} else if (useLib == proj4lib.PROJ4J) {
+    private Point2D.Double transform(double x, double y, boolean inverse)
+    {
+    	if (useLib == proj4lib.PROJ4J) {
     		return transform_new(x, y, inverse);
     	} else {
     		return new Point2D.Double(x, y);
     	}
     }
     
-    public String getProj4Description() {
-    	if (useLib == proj4lib.JAVAPROJ) {
-    		return proj_old.getPROJ4Description();
-    	} else if (useLib == proj4lib.PROJ4J) {
+    public String getProj4Description()
+    {
+    	if (useLib == proj4lib.PROJ4J) {
     		return proj_new.getTargetCRS().getParameterString();
     	} else {
     		return "N/A";
     	}
     }
     
-    private Point2D.Double transform_old(double x, double y, boolean inverse) {
-    	Point2D.Double src = new Point2D.Double(x, y);
-    	Point2D.Double dst = new Point2D.Double();
-    	
-    	if (!inverse) {
-    		proj_old.transform(src, dst);
-    	} else {
-    		proj_old.inverseTransform(src, dst);
-    	}
-    	
-    	return dst;
-    }
-    
-    private Point2D.Double transform_new(double x, double y, boolean inverse) {
+    private Point2D.Double transform_new(double x, double y, boolean inverse)
+    {
     	org.osgeo.proj4j.ProjCoordinate src = new org.osgeo.proj4j.ProjCoordinate(x, y);
     	org.osgeo.proj4j.ProjCoordinate dst = new org.osgeo.proj4j.ProjCoordinate();
     	

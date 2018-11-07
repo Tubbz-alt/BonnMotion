@@ -1,3 +1,23 @@
+/*******************************************************************************
+ ** BonnMotion - a mobility scenario generation and analysis tool             **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2016 University of Osnabrueck                          **
+ **                                                                           **
+ ** This program is free software; you can redistribute it and/or modify      **
+ ** it under the terms of the GNU General Public License as published by      **
+ ** the Free Software Foundation; either version 2 of the License, or         **
+ ** (at your option) any later version.                                       **
+ **                                                                           **
+ ** This program is distributed in the hope that it will be useful,           **
+ ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
+ ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
+ ** GNU General Public License for more details.                              **
+ **                                                                           **
+ ** You should have received a copy of the GNU General Public License         **
+ ** along with this program; if not, write to the Free Software               **
+ ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
+ *******************************************************************************/
+
 package edu.bonn.cs.iv.bonnmotion.models;
 
 import java.io.FileNotFoundException;
@@ -20,7 +40,7 @@ public class OriginalGaussMarkov extends Scenario {
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 353 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 650 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("University of Bonn");
@@ -135,8 +155,8 @@ public class OriginalGaussMarkov extends Scenario {
 		preGeneration();
 
 		alpha3 *= velocityStdDev;
-		for (int i = 0; i < node.length; i++) {
-			node[i] = new MobileNode();
+		for (int i = 0; i < parameterData.nodes.length; i++) {
+			parameterData.nodes[i] = new MobileNode();
 			double t = 0.0;
 			Position src = null;
 			if (isTransition) {
@@ -148,8 +168,8 @@ public class OriginalGaussMarkov extends Scenario {
 					e.printStackTrace();
 				}
 			} else {
-				src = new Position(x * randomNextDouble(), y * randomNextDouble());
-				if (!node[i].add(0.0, src)) {
+				src = new Position(parameterData.x * randomNextDouble(), parameterData.y * randomNextDouble());
+				if (!parameterData.nodes[i].add(0.0, src)) {
 					System.out.println(getInfo().name + ".<init>: error while adding node movement (1)");
 					System.exit(0);
 				}
@@ -159,25 +179,25 @@ public class OriginalGaussMarkov extends Scenario {
 			Position velocity = new Position(0., 0.);
 			double remaining = updateFrequency;
 			
-			while (t < duration) {
+			while (t < parameterData.duration) {
 				double t1;
 				Position dst = new Position(src.x + velocity.x * remaining, src.y + velocity.y * remaining);
 
 				boolean oobBottom = (dst.y < 0.);
-				boolean oobTop = (dst.y > y);
+				boolean oobTop = (dst.y > parameterData.y);
 				boolean oobLeft = (dst.x < 0.);
-				boolean oobRight = (dst.x > x);
+				boolean oobRight = (dst.x > parameterData.x);
 				if (oobBottom || oobTop || oobLeft || oobRight) {
 					if (oobTop && oobRight) {
 						double r1 = (dst.y - src.y) / (dst.x - src.x);
-						double r2 = (dst.y - y) / (dst.x - x);
+						double r2 = (dst.y - parameterData.y) / (dst.x - parameterData.x);
 						if (r1 < r2)
 							oobRight = false;
 						else
 							oobTop = false;
 					} else if (oobTop && oobLeft) {
 						double r1 = (dst.y - src.y) / (dst.x - src.x);
-						double r2 = (dst.y - y) / dst.x;
+						double r2 = (dst.y - parameterData.y) / dst.x;
 						if (r1 < r2)
 							oobTop = false;
 						else
@@ -191,7 +211,7 @@ public class OriginalGaussMarkov extends Scenario {
 							oobBottom = false;
 					} else if (oobBottom && oobRight) {
 						double r1 = (dst.y - src.y) / (dst.x - src.x);
-						double r2 = dst.y / (dst.x - x);
+						double r2 = dst.y / (dst.x - parameterData.x);
 						if (r1 < r2)
 							oobBottom = false;
 						else
@@ -200,8 +220,8 @@ public class OriginalGaussMarkov extends Scenario {
 					double wNew = -1.;
 					double tbounce = Double.POSITIVE_INFINITY;
 					if (oobTop) {
-						tbounce = (wNew = (y - src.y) / (dst.y - src.y)) * remaining;
-						dst = new Position(src.x + tbounce * velocity.x, y);
+						tbounce = (wNew = (parameterData.y - src.y) / (dst.y - src.y)) * remaining;
+						dst = new Position(src.x + tbounce * velocity.x, parameterData.y);
 						velocity = new Position(velocity.x, -velocity.y);
 						velocityMean = new Position(velocityMean.x, -velocityMean.y);
 					} else if (oobBottom) {
@@ -210,8 +230,8 @@ public class OriginalGaussMarkov extends Scenario {
 						velocity = new Position(velocity.x, -velocity.y);
 						velocityMean = new Position(velocityMean.x, -velocityMean.y);
 					} else if (oobRight) {
-						tbounce = (wNew = (x - src.x) / (dst.x - src.x)) * remaining;
-						dst = new Position(x, src.y + tbounce * velocity.y);
+						tbounce = (wNew = (parameterData.x - src.x) / (dst.x - src.x)) * remaining;
+						dst = new Position(parameterData.x, src.y + tbounce * velocity.y);
 						velocity = new Position(-velocity.x, velocity.y);
 						velocityMean = new Position(-velocityMean.x, velocityMean.y);
 					} else if (oobLeft) {
@@ -236,7 +256,7 @@ public class OriginalGaussMarkov extends Scenario {
 						velocity = new Position(scale * velocity.x, scale * velocity.y);
 					}
 				}
-				if (!node[i].add(t1, dst)) {
+				if (!parameterData.nodes[i].add(t1, dst)) {
 					System.out.println(getInfo().name + ".<init>: error while adding node movement (2)");
 					System.exit(0);
 				}
@@ -261,7 +281,7 @@ public class OriginalGaussMarkov extends Scenario {
 		p[3] = "avgSpeed=" + avgSpeed;
 		p[4] = "maxSpeed=" + maxSpeed;
 		
-		super.write(_name, p);
+		super.writeParametersAndMovement(_name, p);
 	}
 
 	public static void printHelp() {

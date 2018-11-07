@@ -1,122 +1,80 @@
+/*******************************************************************************
+ ** BonnMotion - a mobility scenario generation and analysis tool             **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2016 University of Osnabrueck                          **
+ **                                                                           **
+ ** This program is free software; you can redistribute it and/or modify      **
+ ** it under the terms of the GNU General Public License as published by      **
+ ** the Free Software Foundation; either version 2 of the License, or         **
+ ** (at your option) any later version.                                       **
+ **                                                                           **
+ ** This program is distributed in the hope that it will be useful,           **
+ ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
+ ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
+ ** GNU General Public License for more details.                              **
+ **                                                                           **
+ ** You should have received a copy of the GNU General Public License         **
+ ** along with this program; if not, write to the Free Software               **
+ ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
+ *******************************************************************************/
+
 package edu.bonn.cs.iv.bonnmotion;
 
-import java.io.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.util.Random;
+import java.util.StringTokenizer;
 import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
 
+
+
+//import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import edu.bonn.cs.iv.bonnmotion.models.DisasterArea;
-import edu.bonn.cs.iv.util.IntegerHashMap;
+import edu.bonn.cs.iv.bonnmotion.printer.Dimension;
+import edu.bonn.cs.iv.bonnmotion.printer.Printer;
 import edu.bonn.cs.iv.util.IntegerHashSet;
 
-/** Base class for creating new scenarios. */
-public class Scenario extends App implements Model, ScenarioLink {
-    protected MobileNode[] node; /* Mobile nodes. */
-    protected double x = 200.0; /** Area x length [m]. */
-    protected double y = 200.0; /** Area y length [m]. */
-    protected double duration = 600.0; /** Duration of scenario [s]. */
-    protected double ignore = 3600.0; /** Length of initial time span which is to be cut off after scenario generation [s]. */
-    protected long randomSeed = System.currentTimeMillis(); /** Random seed to initialise RNG. */ // this is what the java.util.Random constructor does without parameter, too
-    protected Building[] buildings = new Building[0]; /** Buildings */
-    protected Random rand;
-    public long count_rands;
-
-    /** Name of the model */
-    protected String modelName = null;
-    protected boolean circular = false;
-    protected double[] aFieldParams = null;
-    protected AttractorField aField = null;
-
-    /** if true generate() first must do transition */
-    protected boolean isTransition = false;
-    protected int transitionMode = 0;
-    protected Scenario predecessorScenario = null;
-
-    /** caches movements from last read(basename). null if read(basename) was not executed yet */
-    public String movements = null;
-
-    /**
-     * Returns random double from the RandomSeed.
-     * @return double
-     */
-    protected double randomNextDouble() {
-            count_rands++;
-            return getRand().nextDouble();
-    }
-
-	protected double randomNextDouble(final double value) {
-		count_rands++;
-		return (getRand().nextDouble()*value);
-	}
-
-    /**
-     * Returns 1.0 or -1.0
-     * @return 1.0 or -1.0
-     */
-    protected double randomNextPlusOrMinusOne() {
-        count_rands++;
-        if(getRand().nextBoolean()) { return 1.0; }
-        else { return -1.0; }
-    }
-
-    /**
-     * Returns a pseudorandom, uniformly distributed int value between 0 (inclusive) and the specified value (exclusive), drawn from this random number generator's sequence. (Docu taken from: http://download.oracle.com/javase/1.4.2/docs/api/java/util/Random.html#nextInt%28int%29)
-     * @param n the bound on the random number to be returned. Must be positive.
-     * @return a pseudorandom, uniformly distributed int value between 0 (inclusive) and n (exclusive).
-     */
-    protected int randomNextInt(int n) {
-        count_rands++;
-        return getRand().nextInt(n);
-    }
+public class Scenario  extends App implements Model, ScenarioLink {
 	
-	protected int randomNextInt() {
-		count_rands++;
-		return getRand().nextInt();
+	protected ScenarioParameters parameterData = new ScenarioParameters();
+	protected Building[] buildings = new Building[0]; /** Buildings */
+	protected Random rand;
+	public long count_rands = 0;
+	private boolean isOutputDimSetExplicitly = false;
+	private static boolean negativeHeightWarningShowed = false;
+	
+	/** if true generate() first must do transition */
+	protected boolean isTransition = false;
+	protected int transitionMode = 0;
+	protected Scenario predecessorScenario = null;
+
+	/** caches movements from last read(basename). null if read(basename) was not executed yet */
+	public String movements = null;
+
+	public Scenario() {
 	}
-
-    /**
-     * Returns random Gaussian from the RandomSeed
-     * @return double
-     */
-    protected double randomNextGaussian() {
-            count_rands++;
-            return getRand().nextGaussian();
-    }
-
-    /**
-     * Returns random Weibull from the RandomSeed
-     * @return double
-     */
-    protected double randomNextWeibull(double shape, double scale) {
-        count_rands++;
-        return scale * java.lang.Math.pow(-java.lang.Math.log(getRand().nextDouble()), 1.0 / shape);
-    }
-
-	public Scenario() {}
-
+	
 	public Scenario(int nodes, double x, double y, double duration, double ignore, long randomSeed) {
-		node = new MobileNode[nodes];
-		this.x = x;
-		this.y = y;
-		this.duration = duration;
-		this.ignore = ignore;
-		setRand(new Random(this.randomSeed = randomSeed));
-		count_rands = 0;
+		this(nodes, x, y, 0.0, duration, ignore, randomSeed);
 	}
-
-    public static Scenario getScenario(String basename) throws FileNotFoundException, IOException {
-        if (Scenario.is3DScenario(basename)) {
-            return new Scenario3D(basename);
-        }
-        else {
-            return new Scenario(basename);
-        }
-    }
-
+	
+	public Scenario(int nodes, double x, double y, double z, double duration, double ignore, long randomSeed) {
+		parameterData.nodes = new MobileNode[nodes];
+		this.parameterData.x = x;
+		this.parameterData.y = y;
+		this.parameterData.z = z;
+		this.parameterData.duration = duration;
+		this.parameterData.ignore = ignore;
+		setRand(new Random(this.parameterData.randomSeed = randomSeed));
+	}
 
 	protected Scenario(String basename) throws FileNotFoundException, IOException {
 		read(basename);
-		count_rands = 0;
+		
 	}
 
 	protected Scenario(String basename, boolean haveLD) throws FileNotFoundException, IOException {
@@ -124,151 +82,635 @@ public class Scenario extends App implements Model, ScenarioLink {
 	}
 
 	protected Scenario(String args[], Scenario _pre, Integer _transitionMode) {
-		// we've got a predecessor, so a transtion is needed
+		// we've got a predecessor, so a transition is needed
 		predecessorScenario = _pre;
 		transitionMode = _transitionMode.intValue();
-		isTransition = true;	
-		count_rands = 0;
-	}	
+		isTransition = true;
+		
+	}
+
+	public static Scenario getScenario(String basename) throws FileNotFoundException, IOException {
+		return new Scenario(basename);
+	}
+
+
+
+	public double getZ() {
+		return parameterData.z;
+	}
 
 	protected boolean parseArg(char key, String val) {
 		switch (key) {
 		case 'a':
-			aFieldParams = parseDoubleArray(val);
+			parameterData.aFieldParams = parseDoubleArray(val);
 			return true;
 		case 'c' : // "circular"
-			circular = true;
+			parameterData.circular = true;
 			return true;
 		case 'd' : // "duration"
-			duration = Double.parseDouble(val);
+			parameterData.duration = Double.parseDouble(val);
 			return true;
 		case 'i' : // "ignore" (Einschwingphase)
-			ignore = Double.parseDouble(val);
-			if ( isTransition && predecessorScenario != null && ignore != 0 ) // Req. for chainscenarios
-				System.out.println( "warning: Ingore is set to " + ignore + ". Are you sure you want this in a chained Scenario?" );
+			parameterData.ignore = Double.parseDouble(val);
+			if ( isTransition && predecessorScenario != null && parameterData.ignore != 0 ) // Req. for chainscenarios
+				System.out.println( "warning: Ingore is set to " + parameterData.ignore + ". Are you sure you want this in a chained Scenario?" );
 			return true;
-		case 'n' : // "nodes"
-			node = new MobileNode[Integer.parseInt(val)];
+		case 'n': // "nodes"
+			parameterData.nodes = new MobileNode[Integer.parseInt(val)];
 			return true;
+		case 'J': // "Output-dimension"
+			if (val.equals("2D") || val.equals("2d")){
+				isOutputDimSetExplicitly = true;
+				setOutputDimension2D();
+				return true;
+			}else if (val.equals("3D") || val.equals("3d")){
+				isOutputDimSetExplicitly = true;
+				setOutputDimension3D();
+				return true;
+			}else{
+				return false;
+			}
 		case 'x' : // "x"
-			x = Double.parseDouble(val);
+			parameterData.x = Double.parseDouble(val);
 			return true;
 		case 'y' : // "y"
-			y = Double.parseDouble(val);
+			parameterData.y = Double.parseDouble(val);
+			return true;
+		case 'z': // "z"
+			setCalculationDimension3D();
+			// if z is given set Output also to 3D (standard) but only when J is not present
+			if (!isOutputDimSetExplicitly){
+				setOutputDimension3D();
+			}
+			parameterData.z = Double.parseDouble(val);
+			if (parameterData.z==0){
+				System.out.println("warning: Calculations are now performed in 3D, even though z == 0.\nIf you don't want this behaviour, remove z-flag.");
+			}
 			return true;
 		case 'R' :
-			randomSeed = Long.parseLong(val);
+			parameterData.randomSeed = Long.parseLong(val);
 			return true;
 		default :
 			return super.parseArg(key, val);
 		}
 	}
-
+	
 	protected boolean parseArg(String key, String val) {
 		if (key.equals("model")) {
-			modelName = val;
+			parameterData.modelName = val;
 			return true;
 		} else if (key.equals("ignore") ) {
-			ignore = Double.parseDouble(val);
+			parameterData.ignore = Double.parseDouble(val);
 			return true;
 		} else if (	key.equals("randomSeed") ) {
 			System.out.println("randomSeed (String):"+val);
-			randomSeed = Long.parseLong(val);
-			System.out.println("randomSeed (Long):"+randomSeed);
+			parameterData.randomSeed = Long.parseLong(val);
+			System.out.println("randomSeed (Long):"+parameterData.randomSeed);
 			return true;
 		} else if (	key.equals("x") ) {
-			x = Double.parseDouble(val);
+			parameterData.x = Double.parseDouble(val);
 			return true;
 		} else if (	key.equals("y") ) {
-			y = Double.parseDouble(val);
+			parameterData.y = Double.parseDouble(val);
+			return true;
+		} else if (key.equals("z")) {
+			setCalculationDimension3D();
+			// if z is given set Output also to 3D (standard) but only when J is not present
+			if (!isOutputDimSetExplicitly){
+				setOutputDimension3D();
+			}
+			parameterData.z = Double.parseDouble(val);
+			return true;
+		} else if(key.equals("J")){ // "Output-dimension"
+			if (val.equals("2D") || val.equals("2d")){
+				isOutputDimSetExplicitly = true;
+				setOutputDimension2D();
+				return true;
+			}else if (val.equals("3D") || val.equals("3d")){
+				isOutputDimSetExplicitly = true;
+				setOutputDimension3D();
+				return true;
+			}else{
+				return false;
+			}
+		} else if (key.equals("nn")) {
+			parameterData.nodes = new MobileNode[Integer.parseInt(val)];
 			return true;
 		} else if (	key.equals("duration") ) {
-			duration = Double.parseDouble(val);
-			return true;
-		} else if (	key.equals("nn") ) {
-			node = new MobileNode[Integer.parseInt(val)];
+			parameterData.duration = Double.parseDouble(val);
 			return true;
 		} else if (	key.equals("nbuildings") ) {
 			buildings = new Building[Integer.parseInt(val)];
 			return true;
 		} else if (	key.equals("circular") ) {
 			if (val.equals("true"))
-				circular = true;
+				parameterData.circular = true;
 			return true;
 		} else if (key.equals("aFieldParams")) {
-			aFieldParams = parseDoubleArray(val);
+			parameterData.aFieldParams = parseDoubleArray(val);
 			return true;
 		} else {
 			return false;
 		}
 	}
+
+	/** Helper function for creating scenarios. */
+	public Position randomNextPosition() {
+		Position pos = randomNextPosition(-1., -1., -1.);
+		return pos;
+
+	}
+
+
+
+	public Position randomNextPosition(double fx, double fy, double fz) {
+		
+		double x2 = 0., y2 = 0., z2 = 0, r = 0., rx = 0., ry = 0., rz = 0.;
+		if (parameterData.circular) {
+			x2 = parameterData.x / 2.0;
+			y2 = parameterData.y / 2.0;
+			if (this.parameterData.calculationDim == Dimension.THREED){
+				z2 = parameterData.z / 2.0;
+				r = (x2 < y2) ? ((x2 < z2) ? x2 : z2) : ((y2 < z2) ? y2 : z2);
+			} else {
+				z2 = 0.0;
+				r = (x2 < y2) ? x2 : y2;
+			}
+			
+		}
+		Position pos = null;
+		do {
+			if (parameterData.aField == null) {
+				rx = (fx < 0.) ? parameterData.x * randomNextDouble() : fx;
+				ry = (fy < 0.) ? parameterData.y * randomNextDouble() : fy;
+				rz = 0.0;
+				if (this.parameterData.calculationDim == Dimension.THREED){
+					rz = (fz < 0.) ? parameterData.z * randomNextDouble() : fz;
+				}
+				
+			}
+			else {
+				if (this.parameterData.calculationDim == Dimension.THREED){
+					/*
+					 * pos = aField.getPos(randomNextDouble(), randomNextGaussian(),
+					 * randomNextGaussian()); if (pos != null) { rx = pos.x; ry = pos.y;
+					 */
+					throw new RuntimeException("Not Implemented");
+				} else {
+					pos = parameterData.aField.getPos(randomNextDouble(), randomNextGaussian(), randomNextGaussian());
+					if (pos != null) {
+						rx = pos.x;
+						ry = pos.y;
+					}
+				}
+			}
+		}
+		while (((parameterData.aField != null) && (pos == null))
+				|| (parameterData.circular && (Math.sqrt((rx - x2) * (rx - x2) + (ry - y2) * (ry - y2) + (rz - z2) * (rz - z2)) > r)));
+		
+		if (pos == null) 
+			return new Position(rx, ry, rz);
+		else 
+			return pos;
+	}
 	
-    /**
-     * Checks the .params file if the scenario is a 3D scenario
-     * @param basename The name of the scenario to check
-     * @return true if the scenario is a 3D scenario, false otherwise
-     * @throws IOException if the scenario file was not found
-     */
-    protected static boolean is3DScenario(String basename) throws IOException {
-        String line;
-        BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(basename + ".params")));
-        while ((line = in.readLine()) != null) {
-            StringTokenizer st = new StringTokenizer(line, "=");
-            String key = st.nextToken();
-            st.nextToken();
+	
 
-            if (key.equals("z")) {
-                return true;
-            }
-        }
-        in.close();
-        return false;
-    }
+	public static void printHelp() {
+		App.printHelp();
+		System.out.println("Scenario:");
+		System.out.println("\t-a <attractor parameters (if applicable for model)>");
+		System.out.println("\t-c [use circular shape (if applicable for model)]");
+		System.out.println("\t-d <scenario duration>");
+		System.out.println("\t-i <number of seconds to skip>");
+		System.out.println("\t-n <number of nodes>");
+		System.out.println("\t-x <width of simulation area>");
+		System.out.println("\t-y <height of simulation area>");
+		System.out.println("\t-z <depth of simulation area>");
+		System.out.println("\t-R <random seed>");
+		System.out.println("\t-J <2D, 3D> Dimension of movement output");
 
+	}
+
+
+	/**
+	 * Reads the base information of a scenario from a
+	 * file.
+	 * It is typically invoked by application to re-read the processing
+	 * scenario from a generated file.
+	 * @param basename Basename of the scenario
+	 */
+	protected String read(String basename) throws FileNotFoundException, IOException {
+		String help = read(basename, false);
+		return help;
+	}
+
+	/**
+	 * Reads the base information of a scenario from a file. It is typically invoked by application
+	 * to re-read the processing scenario from a generated file.
+	 * 
+	 * @param basename
+	 *            Basename of the scenario
+	 * @param haveLD
+	 *            have pre-computed link dump or read movements.gz
+	 */
+	protected String read(String basename, boolean hasPrecomputedLinkDump) throws FileNotFoundException, IOException {
+
+		paramFromFile(basename+".params");
+
+		// read buildings
+		if (buildings.length > 0) {
+			readBuildings(basename);
+		}
+
+		// read movements
+		StringBuilder movements = new StringBuilder();
+
+		if (!hasPrecomputedLinkDump) {
+			if (parameterData.outputDim == Dimension.THREED){
+				buildScenarioFromMovementFile3D(basename, movements);
+			} else {
+				buildScenarioFromMovementFile2D(basename, movements);
+			}
+		}
+		this.movements = movements.toString();
+		return this.movements;
+	}
+
+	private void buildScenarioFromMovementFile3D(String basename, StringBuilder movements) throws IOException, FileNotFoundException {
+		String line;
+		double extendedtime = 0.0;
+		double xpos = 0.0;
+		double ypos = 0.0;
+		double zpos = 0.0;
+		double status = 0.0;
+		boolean nodestart = false;
+		boolean nodestop = false;
+		BufferedReader in = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(basename + ".movements.gz"))));
+		int i = 0;
+		int j = 0;
+		while ((line = in.readLine()) != null) {
+			//comment prefix
+			if (line.startsWith("#")) {
+				continue;
+			}
+
+			if (!(getModelName().equals(DisasterArea.getInfo().name))) {
+				parameterData.nodes[i] = new MobileNode();
+			}
+			StringTokenizer st = new StringTokenizer(line);
+			while (st.hasMoreTokens()) {
+				if (getModelName().equals(DisasterArea.getInfo().name)) {
+					switch (i % 5) {
+					case 0:
+						extendedtime = Double.parseDouble(st.nextToken());
+						if(extendedtime == 0.0){
+							nodestart = true;
+						}
+						else{
+							nodestart = false;
+						}
+						if(extendedtime == parameterData.duration){
+							nodestop = true;
+						}
+						else{
+							nodestop = false;
+						}
+						break;
+					case 1:
+						xpos = Double.parseDouble(st.nextToken());
+						break;
+					case 2:
+						ypos = Double.parseDouble(st.nextToken());
+						break;
+					case 3:
+						zpos = Double.parseDouble(st.nextToken());
+						break;
+					case 4:
+						status = Double.parseDouble(st.nextToken());
+						if(nodestart){
+							parameterData.nodes[j] = new MobileNode();
+						}
+						Position extendedpos = new Position(xpos, ypos, zpos, status);
+						if(!parameterData.nodes[j].add(extendedtime, extendedpos)){
+							System.out.println(extendedtime + ": " + extendedpos.x + "/" + extendedpos.y + "/" + extendedpos.z);
+							throw new RuntimeException("Error while adding waypoint.");
+						}
+						if(nodestop){
+							j++;
+						}
+
+						movements.append(" ");
+						movements.append(extendedtime);
+						movements.append(" ");
+						movements.append(xpos);
+						movements.append(" ");
+						movements.append(ypos);
+						movements.append(" ");
+						movements.append(zpos);
+						movements.append(" ");
+						movements.append(status);
+
+						if(parameterData.duration == extendedtime){
+							movements.append("\n");
+						}
+
+						break;
+					default:
+						break;
+					}
+				}
+				else{
+					double time = Double.parseDouble(st.nextToken());
+					Position pos = new Position(Double.parseDouble(st.nextToken()),
+							Double.parseDouble(st.nextToken()),
+							Double.parseDouble(st.nextToken()));
+
+					if(!negativeHeightWarningShowed && pos.z < 0){
+						System.err.printf("NOTE: your input contains a node with a negative z-value (%f;%f;%f).\n"+
+								"The following behaviour is not tested enough. Especially be careful with the resulting statistics!\n", pos.x, pos.y, pos.z);
+						negativeHeightWarningShowed = true;
+					}
+
+					if(!parameterData.nodes[i].add(time, pos)){
+						System.out.println(time + ": " + pos.x + "/" + pos.y + "/" + pos.z);
+						in.close();
+						throw new RuntimeException("Error while adding waypoint.");
+					}
+				}
+			}
+			i++;
+		}
+		in.close();
+	}
+
+	private void buildScenarioFromMovementFile2D(String basename, StringBuilder movements) throws IOException, FileNotFoundException {
+		String line;
+
+		double extendedtime = 0.0;
+		double xpos = 0.0;
+		double ypos = 0.0;
+		double status = 0.0;
+		boolean nodestart = false;
+		boolean nodestop = false;
+		BufferedReader in = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(basename + ".movements.gz"))));
+		int i = 0;
+		int j = 0;
+		while ((line = in.readLine()) != null) {
+
+			//comment prefix
+			if (line.startsWith("#")) {
+				continue;
+			}
+
+			if(!(getModelName().equals(DisasterArea.getInfo().name))){
+				parameterData.nodes[i] = new MobileNode();
+			}
+			StringTokenizer st = new StringTokenizer(line);
+			while (st.hasMoreTokens()) {
+				if(getModelName().equals(DisasterArea.getInfo().name)){
+					switch(i%4) {
+					case 0:
+						extendedtime = Double.parseDouble(st.nextToken());
+						if(extendedtime == 0.0){
+							nodestart = true;
+						}
+						else{
+							nodestart = false;
+						}
+						if(extendedtime == parameterData.duration){
+							nodestop = true;
+						}
+						else{
+							nodestop = false;
+						}
+						break;
+					case 1:
+						xpos = Double.parseDouble(st.nextToken());
+						break;
+					case 2:
+						ypos = Double.parseDouble(st.nextToken());
+						break;
+					case 3:
+						status = Double.parseDouble(st.nextToken());
+						if(nodestart){
+							parameterData.nodes[j] = new MobileNode();
+						}
+						Position extendedpos = new Position(xpos, ypos, 0, status);
+						if (!parameterData.nodes[j].add(extendedtime, extendedpos)) {
+							System.out.println( extendedtime + ": " + extendedpos.x + "/" + extendedpos.y );
+							in.close();
+							throw new RuntimeException("Error while adding waypoint.");
+						}
+						if(nodestop){
+							j++;
+						}
+
+						movements.append(" ");
+						movements.append(extendedtime);
+						movements.append(" ");
+						movements.append(xpos);
+						movements.append(" ");
+						movements.append(ypos);
+						movements.append(" ");
+						movements.append(status);
+						if(parameterData.duration == extendedtime){
+							movements.append("\n");
+						}
+
+						break;
+					default:
+						break;
+					}
+				}
+				else{
+					double time = Double.parseDouble(st.nextToken());
+					Position pos = new Position(Double.parseDouble(st.nextToken()),Double.parseDouble(st.nextToken()));
+					if (!parameterData.nodes[i].add(time, pos)) {
+						System.out.println( time + ": " + pos.x + "/" + pos.y );
+						in.close();
+						throw new RuntimeException("Error while adding waypoint.");
+					}
+				}
+			}
+			i++;
+		}
+		in.close();
+	}
+
+	private void readBuildings(String basename) throws FileNotFoundException, IOException {
+		int i = 0;
+		String line;
+		BufferedReader buildingsReader = new BufferedReader(new InputStreamReader(new FileInputStream(basename + ".buildings")));
+		// XXX: do sanity check that number of lines matches number of buildings
+		while ((line = buildingsReader.readLine()) != null) {
+			StringTokenizer st = new StringTokenizer(line);
+			buildings[i] = new Building(Double.parseDouble(st.nextToken()),
+					Double.parseDouble(st.nextToken()),
+					Double.parseDouble(st.nextToken()),
+					Double.parseDouble(st.nextToken()),
+					Double.parseDouble(st.nextToken()),
+					Double.parseDouble(st.nextToken()));
+			i++;
+		}
+		buildingsReader.close();
+	}
+
+	public Building[] getBuilding() {
+		Building[] b = new Building[buildings.length];
+		System.arraycopy(buildings, 0, b, 0, buildings.length);
+		return b;
+	}
+
+	public MobileNode[] getNode() {
+		MobileNode[] r = new MobileNode[this.parameterData.nodes.length];
+		System.arraycopy(this.parameterData.nodes, 0, r, 0, this.parameterData.nodes.length);
+		return r;
+	}
+
+	// vanishes ambulace parking point nodes
+	public MobileNode[] getNode(String Modelname, String basename) {
+		if (Modelname.equals(DisasterArea.getInfo().name)) {
+			IntegerHashSet VanishingNodes = searchVanishing(basename);
+
+			int writtenNodes = 0;
+			MobileNode[] r = new MobileNode[parameterData.nodes.length - VanishingNodes.size()];
+			for (int i = 0; i < parameterData.nodes.length; i++) {
+				boolean vanish = false;
+				Integer nodeaddress = new Integer(i);
+				if (VanishingNodes.contains(nodeaddress)) {
+					vanish = true;
+				}
+				if (!vanish) {
+					System.arraycopy(parameterData.nodes, i, r, writtenNodes, 1);
+					writtenNodes++;
+				}
+			}
+			return r;
+		}
+		return null;
+	}
+
+	public MobileNode getNode(int n) {
+		try {
+			if (parameterData.nodes[n] == null) {
+				parameterData.nodes[n] = new MobileNode();
+			}
+			return parameterData.nodes[n];
+		} catch (ArrayIndexOutOfBoundsException e) {
+			System.err.println("Fatal error: Requesting non-existing node" + e.getLocalizedMessage());
+			System.exit(-1);
+			return null;
+		}
+
+	}
+	
+	/**
+	 * Returns random double from the RandomSeed.
+	 * @return double
+	 */
+	public double randomNextDouble() {
+		count_rands++;
+		return getRand().nextDouble();
+	}
+	
+	public double randomNextDouble(final double value) {
+		count_rands++;
+		return (getRand().nextDouble()*value);
+	}
+
+	/**
+	 * Returns 1.0 or -1.0
+	 * @return 1.0 or -1.0
+	 */
+	public double randomNextPlusOrMinusOne() {
+		count_rands++;
+		if(getRand().nextBoolean()) { return 1.0; }
+		else { return -1.0; }
+	}
+
+	/**
+	 * Returns a pseudorandom, uniformly distributed int value between 0 (inclusive) and the specified value (exclusive), drawn from this random number generator's sequence. (Docu taken from: http://download.oracle.com/javase/1.4.2/docs/api/java/util/Random.html#nextInt%28int%29)
+	 * @param n the bound on the random number to be returned. Must be positive.
+	 * @return a pseudorandom, uniformly distributed int value between 0 (inclusive) and n (exclusive).
+	 */
+	public int randomNextInt(int n) {
+		count_rands++;
+		return getRand().nextInt(n);
+	}
+
+	public int randomNextInt() {
+		count_rands++;
+		return getRand().nextInt();
+	}
+
+	/**
+	 * Returns random Gaussian from the RandomSeed
+	 * @return double
+	 */
+	public double randomNextGaussian() {
+		count_rands++;
+		return getRand().nextGaussian();
+	}
+
+	/**
+	 * Returns random Weibull from the RandomSeed
+	 * @return double
+	 */
+	public double randomNextWeibull(double shape, double scale) {
+		count_rands++;
+		return scale * java.lang.Math.pow(-java.lang.Math.log(getRand().nextDouble()), 1.0 / shape);
+	}
+	
 	/** Called by subclasses before they generate node movements. */
 	protected void preGeneration() {
-		duration += ignore;
-		setRand(new Random(randomSeed));
+		if (this.parameterData.outputDim == Dimension.THREED){
+			System.out.println("note: Output is now in 3D.");
+		}
+		
+		parameterData.duration += parameterData.ignore;
+		setRand(new Random(parameterData.randomSeed));
 
-		if (aFieldParams != null) {
-			aField = new AttractorField(x, y);
-			aField.add(aFieldParams);
+		if (parameterData.aFieldParams != null) {
+			parameterData.aField = new AttractorField(parameterData.x, parameterData.y);
+			parameterData.aField.add(parameterData.aFieldParams);
 		}
 
 		String myClass = this.getClass().getName();
 		myClass = myClass.substring(myClass.lastIndexOf('.') + 1);
 
-		if (modelName == null) {
-			modelName = myClass;
+		if (parameterData.modelName == null) {
+			parameterData.modelName = myClass;
 		}
-		else if (! modelName.equals(myClass)) {
-			System.out.println("model mismatch: modelName=" + modelName + " myClass=" + myClass);
+		else if (! parameterData.modelName.equals(myClass)) {
+			System.out.println("model mismatch: modelName=" + parameterData.modelName + " myClass=" + myClass);
 			System.exit(0);
 		}
 	}
 
+
 	/** Called by subclasses after they generate node movements. */
 	protected void postGeneration() {
-		if (ignore < 600.0 && !isTransition ) {// this is a somewhat arbitrary value :)
+		if (parameterData.ignore < 600.0 && !isTransition ) {// this is a somewhat arbitrary value :)
 			System.out.println("warning: setting the initial phase to be cut off to be too short may result in very weird scenarios");
 		}
-		if (ignore > 0.0) {
-			cut(ignore, duration);
+		if (parameterData.ignore > 0.0) {
+			cut(parameterData.ignore, parameterData.duration);
 		}
 		long next_seed = getRand().nextLong();
 		while (Long.signum(next_seed) < 0) {
-		    next_seed = getRand().nextLong();
+			next_seed = getRand().nextLong();
 		}
 		System.out.println("Next RNG-Seed =" + next_seed+ " | #Randoms = "+count_rands);
 	}
-
+	
 	/** Extract a certain time span from the scenario. */
 	public void cut(double begin, double end) {
-		if ((begin >= 0.0) && (end <= duration) && (begin <= end)) {
-			for (int i = 0; i < node.length; i++) {
-			    node[i].cut(begin, end);
+		if ((begin >= 0.0) && (end <= parameterData.duration) && (begin <= end)) {
+			for (int i = 0; i < parameterData.nodes.length; i++) {
+				parameterData.nodes[i].cut(begin, end);
 			}
-			duration = end - begin;
+			parameterData.duration = end - begin;
 		}
 	}
 
@@ -287,82 +729,20 @@ public class Scenario extends App implements Model, ScenarioLink {
 			}
 		}
 		parse(args);
-		if ( node == null ) {
+		if ( parameterData.nodes == null ) {
 			System.out.println("Please define the number of nodes.");
 			System.exit(0);
 		}
 	}
-
-	public static void printHelp() {
-		App.printHelp();
-		System.out.println("Scenario:");
-		System.out.println("\t-a <attractor parameters (if applicable for model)>");
-		System.out.println("\t-c [use circular shape (if applicable for model)]");
-		System.out.println("\t-d <scenario duration>");
-		System.out.println("\t-i <number of seconds to skip>");
-		System.out.println("\t-n <number of nodes>");
-		System.out.println("\t-x <width of simulation area>");
-		System.out.println("\t-y <height of simulation area>");
-		System.out.println("\t-R <random seed>");
-	}
-
+	
 	public String getModelName() {
-		return modelName;
+		return parameterData.modelName;
 	}
 
 	public void setModelName( String _modelName ) {
-		modelName = _modelName;
+		parameterData.modelName = _modelName;
 	}
-
-	public double getDuration() {
-		return duration;
-	}
-
-	public Building[] getBuilding() {
-		Building[] b = new Building[buildings.length];
-		System.arraycopy(buildings,0,b,0,buildings.length);
-		return b;
-	}
-
-	public MobileNode[] getNode() {
-		MobileNode[] r = new MobileNode[node.length];
-		System.arraycopy(node, 0, r, 0, node.length);
-		return r;
-	}
-
-	public int getNumberOfNodes() {
-		return node.length;
-	}
-
-	//vanishes ambulace parking point nodes 
-	public MobileNode[] getNode(String Modelname, String basename){
-		if(Modelname.equals(DisasterArea.getInfo().name)){
-			IntegerHashSet VanishingNodes = searchVanishing(basename);
-			/*Iterator<?> it = VanishingNodes.iterator();
-			while(it.hasNext()){
-				System.out.println("drin " + it.next());
-			}*/
-			int writtenNodes = 0;
-			MobileNode[] r = new MobileNode[node.length - VanishingNodes.size()];
-			for(int i = 0; i < node.length; i++){
-				boolean vanish = false;
-				Integer nodeaddress = new Integer(i);
-				if(VanishingNodes.contains(nodeaddress)){
-					vanish = true;
-				}
-				if(!vanish){
-					System.arraycopy(node, i, r, writtenNodes, 1);
-					writtenNodes++;
-				}
-			}
-			return r;
-		}
-		/*else{
-			System.out.println("doch nicht");
-		}*/
-		return null;
-	}
-
+	
 	public IntegerHashSet searchVanishing(String basename){
 
 		IntegerHashSet VanishingNodes = new IntegerHashSet();
@@ -389,51 +769,38 @@ public class Scenario extends App implements Model, ScenarioLink {
 		 */
 		return VanishingNodes;
 	}
-
-	public MobileNode getNode(int n) {
-		try {
-		    if (node[n] == null) {
-				node[n] = new MobileNode();
-		    }
-		    return node[n];
-		} catch(ArrayIndexOutOfBoundsException e) {
-		    System.err.println("Fatal error: Requesting non-existing node" + e.getLocalizedMessage());
-		    System.exit(-1);
-		    return null;
-		}
-	}
-
+	
 	public double getX() {
-		return x;
+		return parameterData.x;
 	}
 
 	public double getY() {
-		return y;
+		return parameterData.y;
 	}
 
 	public double getIgnore() {
-		return ignore;
+		return parameterData.ignore;
 	}
 
 	public long getRandomSeed() {
-		return randomSeed;
+		return parameterData.randomSeed;
 	}
 
 	public void setNode( MobileNode[] _node ) {
-		node = _node;
+		parameterData.nodes = _node;
 	}
-	
+
 	public int nodeCount() {
-		return node.length;
+		return parameterData.nodes.length;
 	}
 
 	public int nodeCount(String Modelname, String basename){
 		if(Modelname.equals(DisasterArea.getInfo().name)){
-			return node.length - searchVanishing(basename).size();
+			return parameterData.nodes.length - searchVanishing(basename).size();
 		}
-		return node.length;
+		return parameterData.nodes.length;
 	}
-
+	
 	/**
 	 * Does the same job as paramFronFile but w/o showing warnings.
 	 * @see Scenario#paramFromFile(String _fn)
@@ -468,320 +835,33 @@ public class Scenario extends App implements Model, ScenarioLink {
 		in.close();
 	}
 
-	/**
-	 * Reads the base information of a scenario from a
-	 * file.
-	 * It is typically invoked by application to re-read the processing
-	 * scenario from a generated file.
-	 * @param basename Basename of the scenario
-	 */
-	protected String read(String basename) throws FileNotFoundException, IOException {
-		String help = read(basename, false);
-		return help;
-	}
-
-	/**
-	 * Reads the base information of a scenario from a
-	 * file.
-	 * It is typically invoked by application to re-read the processing
-	 * scenario from a generated file.
-	 * @param basename Basename of the scenario
-	 * @param haveLD have pre-computed link dump or read movements.gz
-	 */
-	protected String read(String basename, boolean hasPrecomputedLinkDump) throws FileNotFoundException, IOException {
-		String line;
-
-		paramFromFile(basename+".params");
-
-		int i = 0; 
-		// read buildings
-		if (buildings.length > 0) {
-			BufferedReader bin =
-				new BufferedReader(new InputStreamReader(new FileInputStream(basename + ".buildings")));
-			// XXX: do sanity check that number of lines matches number of buildings
-			while ((line = bin.readLine()) != null) {
-				StringTokenizer st = new StringTokenizer(line);
-				buildings[i] = new Building(Double.parseDouble(st.nextToken()),
-						Double.parseDouble(st.nextToken()),
-						Double.parseDouble(st.nextToken()),
-						Double.parseDouble(st.nextToken()),
-						Double.parseDouble(st.nextToken()),
-						Double.parseDouble(st.nextToken()));
-				i++;
-			}
-			bin.close();
-		}
-
-		// read movements
-		StringBuilder movements = new StringBuilder();
-
-		if (!hasPrecomputedLinkDump) {
-			double extendedtime = 0.0;
-			double xpos = 0.0;
-			double ypos = 0.0;
-			double status = 0.0;
-			int j = 0;
-			boolean nodestart = false;
-			boolean nodestop = false;
-			BufferedReader in = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(basename + ".movements.gz"))));
-			i = 0;
-			j = 0;
-			while ((line = in.readLine()) != null) {
-			    assert !(line.equals("#3D")) : "trying to read 3D scenario file using 2D code";
-			    
-			    //comment prefix
-                if (line.startsWith("#")) {
-                    continue;
-                }
-                
-				if(!(getModelName().equals(DisasterArea.getInfo().name))){
-					node[i] = new MobileNode();
-				}
-				StringTokenizer st = new StringTokenizer(line);
-				while (st.hasMoreTokens()) {
-					if(getModelName().equals(DisasterArea.getInfo().name)){
-						switch(i%4) {
-						case 0:
-							extendedtime = Double.parseDouble(st.nextToken());
-							if(extendedtime == 0.0){
-								nodestart = true;
-							}
-							else{
-								nodestart = false;
-							}
-							if(extendedtime == duration){
-								nodestop = true;
-							}
-							else{
-								nodestop = false;
-							}
-							break;
-						case 1:
-							xpos = Double.parseDouble(st.nextToken());
-							break;
-						case 2:
-							ypos = Double.parseDouble(st.nextToken());
-							break;
-						case 3:
-							status = Double.parseDouble(st.nextToken());
-							if(nodestart){
-								node[j] = new MobileNode();
-							}
-							Position extendedpos = new Position(xpos, ypos, status);
-							if (!node[j].add(extendedtime, extendedpos)) {
-								System.out.println( extendedtime + ": " + extendedpos.x + "/" + extendedpos.y );				
-								throw new RuntimeException("Error while adding waypoint.");
-							}
-							if(nodestop){
-								j++;
-							}
-
-							movements.append(" ");
-							movements.append(extendedtime);
-							movements.append(" ");
-							movements.append(xpos);
-							movements.append(" ");
-							movements.append(ypos);
-							movements.append(" ");
-							movements.append(status);
-							if(duration == extendedtime){
-							    movements.append("\n");
-							}
-		
-							break;
-						default:
-							break;
-						}
-					}
-					else{
-						double time = Double.parseDouble(st.nextToken());
-						Position pos = new Position(Double.parseDouble(st.nextToken()),Double.parseDouble(st.nextToken()));
-						if (!node[i].add(time, pos)) {
-							System.out.println( time + ": " + pos.x + "/" + pos.y );				
-							throw new RuntimeException("Error while adding waypoint.");
-						}
-					}
-				}
-				i++;
-			}
-			in.close();
-		}
-		this.movements = movements.toString();
-		return this.movements;
-	}
-
+	
 	public void setDuration(double _duration) {
-		duration = _duration;
+		parameterData.duration = _duration;
 	}
-
+	
 	public void write( String _name ) throws FileNotFoundException, IOException {
-		write(_name, null);
-	}
+		writeParametersAndMovement(_name, null);
 
+	}
+	
 	/**
 	 * Writes the generated scenario and the scenario
 	 * parameters to files.
 	 * @param basename Basename of the output files
+	 * @param params Individual parameters for each model
 	 */
-	public void write(String basename, String[] params) throws FileNotFoundException, IOException {
-
-		PrintWriter info = new PrintWriter(new FileOutputStream(basename + ".params"));
-		info.println( "model=" + getModelName() );
-		info.println( "ignore=" + ignore );
-		info.println( "randomSeed=" + randomSeed );
-		this.writeCoordinates(info);
-		info.println( "duration=" + duration );
-		info.println( "nn=" + node.length );
-		info.println( "circular=" + circular );
-		if ( params != null ) {
-			for (int i = 0; i < params.length; i++) {
-				info.println(params[i]);
-			}
-		}
-
-		if (aFieldParams != null) {
-			info.print("aFieldParams=" + aFieldParams[0]);
-			for (int i = 1; i < aFieldParams.length; i++)
-				info.print("," + aFieldParams[i]);
-			info.println("");
-		}
-
-		info.close();
-		PrintWriter movements =	new PrintWriter(new GZIPOutputStream(new FileOutputStream(basename + ".movements.gz")));
-
-		if (this instanceof Scenario3D) {
-		    movements.println("#3D");
-		}
-		
-		for (int i = 0; i < node.length; i++) {
-			movements.println(node[i].movementString());
-		}
-		movements.close();
+	public void writeParametersAndMovement(String basename, String[] params) throws FileNotFoundException, IOException {
+		Printer printer = new Printer(parameterData.outputDim);
+		printer.writeOutsourced(basename, parameterData, params);
 	}
 
-	public void writeCoordinates(PrintWriter info) {
-		info.println("x=" + x);
-		info.println("y=" + y);
-	}
-
-	/**
-	 * Writes the generated scenario and the scenario
-	 * parameters to files. Pays attention to status changes.
-	 * @param basename Basename of the output files
-	 */
-	@SuppressWarnings("unchecked")
-	public void write(String basename, String[] params, IntegerHashMap statuschanges) throws FileNotFoundException, IOException {
-		PrintWriter info = new PrintWriter(new FileOutputStream(basename + ".params"));
-		info.println( "model=" + getModelName() );
-		info.println( "ignore=" + ignore );
-		info.println( "randomSeed=" + randomSeed );
-		this.writeCoordinates(info);
-		info.println( "duration=" + duration );
-		info.println( "nn=" + node.length );
-		info.println( "circular=" + circular );
-		if ( params != null )
-			for (int i = 0; i < params.length; i++)
-				info.println(params[i]);
-
-		if (aFieldParams != null) {
-			info.print("aFieldParams=" + aFieldParams[0]);
-			for (int i = 1; i < aFieldParams.length; i++)
-				info.print("," + aFieldParams[i]);
-			info.println("");
-		}
-
-		info.close();
-		PrintWriter movements = new PrintWriter(new GZIPOutputStream(new FileOutputStream(basename + ".movements.gz")));
-		for (int i = 0; i < node.length; i++) {
-			Integer nodeaddress = new Integer(i);
-			LinkedList<Double> statuschangetimes = new LinkedList<Double>();
-			String[] splitted = node[i].movementString().split(" ");
-			int waypoints = splitted.length / 3;
-			String[] towrite = new String[waypoints * 3 + waypoints];
-			for(int j = 0; j < towrite.length; j++){
-				towrite[j] = "0";
-			}
-			for(int j = 0; j < waypoints; j++){
-				towrite[4*j] = splitted[3*j];
-				towrite[4*j+1] = splitted[3*j+1];
-				towrite[4*j+2] = splitted[3*j+2];
-				if(statuschanges.get(nodeaddress) == null){
-					towrite[4*j+3] = "0";
-				}
-				else{
-					statuschangetimes = ((LinkedList<Double>)statuschanges.get(nodeaddress));
-					Double time = new Double(towrite[4*j]);
-					double cutignore = time.doubleValue() + ignore;
-					Double realtime = new Double(cutignore);
-					for(int k = 0; k < statuschangetimes.size(); k++){
-						if(((Double)statuschangetimes.get(k)).compareTo(realtime) == 0){
-							if((k%2) == 0){
-								//borderentry
-								towrite[4*j+3] = "2";
-								break;
-							}
-							else{
-								//borderexit
-								towrite[4*j+3] = "1";
-								break;
-							}
-						}
-						else{
-							//not on border, not status change
-							towrite[4*j+3] = "0";
-						}
-					}
-				}
-			}
-			for(int j = 0; j < towrite.length; j++){
-				movements.println(towrite[j]);
-			}
-		}
-		movements.close();
-		read(basename);
-	}
-
-	/** Helper function for creating scenarios. */
-	public Position randomNextPosition() {
-	    assert !(this instanceof Scenario3D) : "using 2D method with 3D object";
-	    
-		return randomNextPosition(-1., -1.);
-	}
-
-	/** Helper function for creating scenarios. */
-	public Position randomNextPosition(double fx, double fy) {
-	    assert !(this instanceof Scenario3D) : "using 2D method with 3D object";
-	       
-		double x2 = 0., y2 = 0., r = 0., rx = 0., ry = 0.;
-		if (circular) {
-			x2 = x/2.0;
-			y2 = y/2.0;
-			r = (x2 < y2) ? x2 : y2;
-		}
-		Position pos = null;
-		do {
-			if (aField == null) {
-				rx = (fx < 0.) ? x * randomNextDouble() : fx;
-				ry = (fy < 0.) ? y * randomNextDouble() : fy;
-			} else {
-				pos = aField.getPos(randomNextDouble(), randomNextGaussian(), randomNextGaussian());
-				if (pos != null) {
-					rx = pos.x;
-					ry = pos.y;
-				}
-			}
-		} while (((aField != null) && (pos == null)) || (circular && (Math.sqrt((rx - x2) * (rx - x2) + (ry - y2) * (ry - y2)) > r)));
-		if (pos == null)
-			return new Position(rx, ry);
-		else
-			return pos;
-	}
 
 	public Waypoint transition(Scenario _pre, int _mode, int _nn) throws ScenarioLinkException {
 		if (_pre == null) // No predecessor => We start an 0/0 @ 0.0
 			return new Waypoint( 0, randomNextPosition() );
 
-		if (_pre.node.length != node.length)
+		if (_pre.parameterData.nodes.length != parameterData.nodes.length)
 			throw new ScenarioLinkException("#Node does not match");
 
 		MobileNode[] preNodes = null;
@@ -790,16 +870,16 @@ public class Scenario extends App implements Model, ScenarioLink {
 		preNodes = _pre.getNode();
 		w = preNodes[_nn].getLastWaypoint();
 		switch (_mode) {
-			case LINKMODE_FAST :
-				nw = transitionWaypointFast( w );
-				break;
-			case LINKMODE_MOVE :
-				nw = transitionWaypointMove( w, _nn );
-				break;
-			default :
-				throw new ScenarioLinkException("Unknown Mode");
+		case LINKMODE_FAST :
+			nw = transitionWaypointFast( w );
+			break;
+		case LINKMODE_MOVE :
+			nw = transitionWaypointMove( w, _nn );
+			break;
+		default :
+			throw new ScenarioLinkException("Unknown Mode");
 		}
-		node[_nn].add(nw.time, nw.pos);
+		parameterData.nodes[_nn].add(nw.time, nw.pos);
 		return nw;
 	}
 
@@ -807,10 +887,10 @@ public class Scenario extends App implements Model, ScenarioLink {
 		Waypoint w = null;
 
 		//		The predecessor Scenario is greater: if the node is outside the new field: realocate the node 
-		if ( (_w.pos.x > x) || (_w.pos.y > y) ) {
+		if ( (_w.pos.x > parameterData.x) || (_w.pos.y > parameterData.y) ) {
 			System.out.println( "\t\tOut!!!!  X: "+ _w.pos.x +" / Y: "+ _w.pos.y );
-			double xRe =  _w.pos.x - (int)(_w.pos.x / x) * (_w.pos.x%x); 
-			double yRe =  _w.pos.y - (int)(_w.pos.y / y) * (_w.pos.y%y);
+			double xRe =  _w.pos.x - (int)(_w.pos.x / parameterData.x) * (_w.pos.x%parameterData.x); 
+			double yRe =  _w.pos.y - (int)(_w.pos.y / parameterData.y) * (_w.pos.y%parameterData.y);
 			System.out.println( "\t\tNew Pos: X: " + xRe + " / Y: " + yRe);
 			w = new Waypoint( 0.0, new Position( xRe, yRe) );
 		} else {
@@ -824,7 +904,7 @@ public class Scenario extends App implements Model, ScenarioLink {
 		Waypoint w = transitionWaypointFast( _w );
 
 		if ( (w.pos.x != _w.pos.x) || (w.pos.y != _w.pos.y) ) {
-			node[_nn].add( 0.0, _w.pos );
+			parameterData.nodes[_nn].add( 0.0, _w.pos );
 			return new Waypoint(2.0, w.pos);
 		} else {
 			return new Waypoint( 0.0, _w.pos );
@@ -838,4 +918,37 @@ public class Scenario extends App implements Model, ScenarioLink {
 	public void setRand(Random rand) {
 		this.rand = rand;
 	}
+	
+	public void setOutputDimension3D() {
+		parameterData.outputDim = Dimension.THREED;
+	}
+
+	public void setOutputDimension2D() {
+		parameterData.outputDim = Dimension.TWOD;
+	}
+	
+	public void setCalculationDimension3D() {
+		System.out.println("note: Calculations are now performed in 3D, since depth value z is provided.");
+		parameterData.calculationDim = Dimension.THREED;
+	}
+
+	public void setCalculationDimension2D() {
+		parameterData.calculationDim = Dimension.TWOD;
+	}
+	
+	public ScenarioParameters getScenarioParameters() {
+		return this.parameterData;
+	}
+	
+	public double getDuration() {
+		return parameterData.duration;
+	}
+	
+	public void writeCoordinates(PrintWriter info) {
+		info.println("x=" + parameterData.x);
+		info.println("y=" + parameterData.y);
+		info.println("z=" + parameterData.z);
+	}
+
+
 }

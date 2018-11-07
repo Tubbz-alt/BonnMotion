@@ -1,3 +1,23 @@
+/*******************************************************************************
+ ** BonnMotion - a mobility scenario generation and analysis tool             **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2016 University of Osnabrueck                          **
+ **                                                                           **
+ ** This program is free software; you can redistribute it and/or modify      **
+ ** it under the terms of the GNU General Public License as published by      **
+ ** the Free Software Foundation; either version 2 of the License, or         **
+ ** (at your option) any later version.                                       **
+ **                                                                           **
+ ** This program is distributed in the hope that it will be useful,           **
+ ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
+ ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
+ ** GNU General Public License for more details.                              **
+ **                                                                           **
+ ** You should have received a copy of the GNU General Public License         **
+ ** along with this program; if not, write to the Free Software               **
+ ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
+ *******************************************************************************/
+
 package edu.bonn.cs.iv.bonnmotion.models;
 
 import java.io.FileNotFoundException;
@@ -32,7 +52,7 @@ public class RandomDirection extends RandomSpeedBase {
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 252 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 650 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("Chris Walsh");
@@ -73,8 +93,8 @@ public class RandomDirection extends RandomSpeedBase {
 		double xTime, yTime, speed, newX, newY, angle;
 		preGeneration();
 
-		for (int i = 0; i < node.length; i++) {
-			node[i] = new MobileNode();
+		for (int i = 0; i < parameterData.nodes.length; i++) {
+			parameterData.nodes[i] = new MobileNode();
 			double t = 0.0;
 			Position src = null;
 			
@@ -92,42 +112,42 @@ public class RandomDirection extends RandomSpeedBase {
 			
 			angle = randomNextDouble() * 2 * Math.PI;
 			
-			while (t < duration) {
+			while (t < parameterData.duration) {
 				Position dst;
 				
-				if (!node[i].add(t, src))
+				if (!parameterData.nodes[i].add(t, src))
 					throw new RuntimeException(getInfo().name + ".go: error while adding waypoint (1)");
 				
 				speed = (maxspeed - minspeed) * randomNextDouble() + minspeed;
 				
 				if (angle >= 0 && angle < Math.PI/2)
 				{
-					xTime = (x - src.x)/(speed*Math.cos(angle));
-					yTime = (y - src.y)/(speed*Math.sin(angle));
+					xTime = (parameterData.x - src.x)/(speed*Math.cos(angle));
+					yTime = (parameterData.y - src.y)/(speed*Math.sin(angle));
 					
 					if(xTime < yTime) // hit right wall first 
 					{
-						newX = x;
+						newX = parameterData.x;
 						newY = (speed*xTime*Math.sin(angle)) + src.y;
 						angle = (randomNextDouble() * Math.PI) + (Math.PI/2);
 					}
 					else if (yTime < xTime) // hit top wall first 
 					{
 						newX = (speed*yTime*Math.cos(angle)) + src.x;
-						newY = y;
+						newY = parameterData.y;
 						angle = (randomNextDouble() * Math.PI) + (Math.PI);
 					}
 					else // hit corner angle = Math.PI/2
 					{
-						newX = x;
-						newY = y;
+						newX = parameterData.x;
+						newY = parameterData.y;
 						angle = (randomNextDouble() * Math.PI/2) + (Math.PI);
 					}					
 				}
 				else if (angle >= Math.PI/2 && angle < Math.PI)
 				{
 					xTime = (0 - src.x)/(speed*Math.cos(angle));
-					yTime = (y - src.y)/(speed*Math.sin(angle));
+					yTime = (parameterData.y - src.y)/(speed*Math.sin(angle));
 					
 					if(xTime < yTime) // hit left wall first
 					{
@@ -138,13 +158,13 @@ public class RandomDirection extends RandomSpeedBase {
 					else if (yTime < xTime) // hit top wall first
 					{
 						newX = (speed*yTime*Math.cos(angle)) + src.x;
-						newY = y;
+						newY = parameterData.y;
 						angle = (randomNextDouble() * Math.PI) + (Math.PI);
 					}
 					else // hit corner angle = Math.PI/2
 					{
 						newX = 0;
-						newY = y;
+						newY = parameterData.y;
 						angle = (randomNextDouble() * Math.PI/2) + (Math.PI*3/2);
 					}	
 				}
@@ -174,12 +194,12 @@ public class RandomDirection extends RandomSpeedBase {
 				}
 				else if (angle >= Math.PI*3/2 && angle < Math.PI*2)
 				{
-					xTime = (x - src.x)/(speed*Math.cos(angle));
+					xTime = (parameterData.x - src.x)/(speed*Math.cos(angle));
 					yTime = (0 - src.y)/(speed*Math.sin(angle));
 					
 					if(xTime < yTime) // hit right wall first
 					{
-						newX = x;
+						newX = parameterData.x;
 						newY = (speed*xTime*Math.sin(angle)) + src.y;
 						angle = (randomNextDouble() * Math.PI) + (Math.PI/2);
 					}
@@ -191,7 +211,7 @@ public class RandomDirection extends RandomSpeedBase {
 					}
 					else // hit corner angle = Math.PI/2
 					{
-						newX = x;
+						newX = parameterData.x;
 						newY = 0;
 						angle = (randomNextDouble() * Math.PI/2) + (Math.PI/2);
 					}
@@ -201,10 +221,10 @@ public class RandomDirection extends RandomSpeedBase {
 				dst = new Position(newX, newY);
 				t += src.distance(dst) / speed;
 				
-				if (!node[i].add(t, dst))
+				if (!parameterData.nodes[i].add(t, dst))
 					throw new RuntimeException(getInfo().name + ".go: error while adding waypoint (2)");
 				
-				if ((t < duration) && (maxpause > 0.0)) {
+				if ((t < parameterData.duration) && (maxpause > 0.0)) {
 					double pause = (maxpause-minpause) * randomNextDouble() + minpause;
 					t += pause;
 				}
@@ -248,12 +268,12 @@ public class RandomDirection extends RandomSpeedBase {
 	}
 
 	protected void postGeneration() {
-		for (int i = 0; i < node.length; i++) {
-			Waypoint l = node[i].getLastWaypoint();
-			if (l.time > duration) {
-				Position p = node[i].positionAt(duration);
-				node[i].removeLastElement();
-				node[i].add(duration, p);
+		for (int i = 0; i < parameterData.nodes.length; i++) {
+			Waypoint l = parameterData.nodes[i].getLastWaypoint();
+			if (l.time > parameterData.duration) {
+				Position p = parameterData.nodes[i].positionAt(parameterData.duration);
+				parameterData.nodes[i].removeLastElement();
+				parameterData.nodes[i].add(parameterData.duration, p);
 			}
 		}
 		super.postGeneration();

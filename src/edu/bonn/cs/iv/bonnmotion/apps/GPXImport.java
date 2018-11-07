@@ -1,3 +1,23 @@
+/*******************************************************************************
+ ** BonnMotion - a mobility scenario generation and analysis tool             **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2016 University of Osnabrueck                          **
+ **                                                                           **
+ ** This program is free software; you can redistribute it and/or modify      **
+ ** it under the terms of the GNU General Public License as published by      **
+ ** the Free Software Foundation; either version 2 of the License, or         **
+ ** (at your option) any later version.                                       **
+ **                                                                           **
+ ** This program is distributed in the hope that it will be useful,           **
+ ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
+ ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
+ ** GNU General Public License for more details.                              **
+ **                                                                           **
+ ** You should have received a copy of the GNU General Public License         **
+ ** along with this program; if not, write to the Free Software               **
+ ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
+ *******************************************************************************/
+
 package edu.bonn.cs.iv.bonnmotion.apps;
 
 import java.awt.geom.Point2D;
@@ -31,6 +51,7 @@ import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
  *
  */
 public class GPXImport extends App {
+
     private static ModuleInfo info;
     
     static {
@@ -39,7 +60,7 @@ public class GPXImport extends App {
         
         info.major = 2;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 373 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 650 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("University of Bonn");
@@ -112,10 +133,10 @@ public class GPXImport extends App {
 	private Date starttime = null;
 	private Date endtime = null;
 	
-	
-	private GpxPoint currentWPoint = null;
-	private GpxPoint currentTrkPoint = null;
-	private GpxPoint currentRtePoint = null;
+	// Not Used?
+//	private GpxPoint currentWPoint = null;
+//	private GpxPoint currentTrkPoint = null;
+//	private GpxPoint currentRtePoint = null;
 	private GpxPoint currentPoint = null;
 	private TimePoint currentStart = null;
 	private TimePoint currentEnd = null;
@@ -229,9 +250,9 @@ public class GPXImport extends App {
 							
 							if (srcList != null && srcList.getLength() > 0){ //anfang if 1
 								for (int a = 0; a < srcList.getLength(); a++) {
-									Element srcElement = (Element)srcList.item(0);
-									NodeList srcList2 = srcElement.getChildNodes();
-									String name = ((Node)srcList2.item(0)).getNodeValue().trim();
+//									Element srcElement = (Element)srcList.item(0);
+//									NodeList srcList2 = srcElement.getChildNodes();
+//									String name = srcList2.item(0).getNodeValue().trim();
 									boolean twice = false;
 									Set<String> trkkeys = this.trks.keySet();
 									for (String str : trkkeys){
@@ -274,7 +295,7 @@ public class GPXImport extends App {
 				
 					for (int s = 0; s < nodeLst.getLength(); s++) {
 						Node fstNode = nodeLst.item(s); 
-						Element srcTag = (Element)fstNode;
+//						Element srcTag = (Element)fstNode;
 						if (fstNode.getNodeType() == Node.ELEMENT_NODE) {
 							Element wpoint = (Element) nodeLst.item(s);
 							TimePoint wptTimePoint = new TimePoint(FileName, "wpt", s);
@@ -320,9 +341,9 @@ public class GPXImport extends App {
 							String Name = "";	
 							if (srcList != null && srcList.getLength() > 0){ 
 								for (int a = 0; a < srcList.getLength(); a++) {
-									Element srcElement = (Element)srcList.item(0);
-									NodeList srcList2 = srcElement.getChildNodes();
-									String name = ((Node)srcList2.item(0)).getNodeValue().trim();
+//									Element srcElement = (Element)srcList.item(0);
+//									NodeList srcList2 = srcElement.getChildNodes();
+//									String name = srcList2.item(0).getNodeValue().trim();
 									boolean twice = false;
 									Set<String> trkkeys = this.trks.keySet();
 									for (String str : trkkeys){
@@ -377,7 +398,7 @@ public class GPXImport extends App {
 		if (hightList!= null && hightList.getLength() >0 ){  //parse the ele tack if exists otherwise it 
 			Element eleElement = (Element)hightList.item(0); // will be replaced by default height
 			NodeList eleList = eleElement.getChildNodes();
-			ele = ((Node)eleList.item(0)).getNodeValue().trim();
+			ele = eleList.item(0).getNodeValue().trim();
 		} else {
 			ele = "-99999.000000";
 		}
@@ -405,7 +426,7 @@ public class GPXImport extends App {
 			NodeList timeList2 = timeElement.getChildNodes();
 			this.timestr = "";
 			SimpleDateFormat f = new SimpleDateFormat("y-M-d'T'H:m:s'Z'");
-			timestr = ((Node)timeList2.item(0)).getNodeValue().trim();
+			timestr = timeList2.item(0).getNodeValue().trim();
 									
 			try {
 				this.currentPoint.time = f.parse(this.timestr);
@@ -525,7 +546,7 @@ public class GPXImport extends App {
 		System.out.println("\t-F <output filename> (mandatory if there are multiple input files) ");
 	}
 	/**
-	* calculate differents between starttime and endtime
+	* calculate differents between starttime and endtime in milliseconds
 	*/
 	private long calculateDateDiff(Date starttime, Date endtime) {
 		GregorianCalendar cal1 = new GregorianCalendar();
@@ -643,7 +664,7 @@ public class GPXImport extends App {
 	private void printMovements(ArrayList<GpxPoint> coordlist, PrintWriter movements){
 		double min_x = this.minFromDoubleList(this.bounds.get("min_x"));
 		double min_y = this.minFromDoubleList(this.bounds.get("min_y"));
-		long delta = this.calculateDateDiff(this.starttime, this.endtime);
+		long delta = 0;
 		for (GpxPoint p : coordlist) {
 			// check if this entry is outside duration range
 			if (p.time.after(this.endtime)) {
@@ -655,9 +676,7 @@ public class GPXImport extends App {
 			}
             
 			delta = this.calculateDateDiff(this.starttime, p.time);
-			long days = Math.round(delta / (60.0 * 60.0 * 24.0 * 1000.0));
-			long seconds = (long) (delta / 1000.0);
-			long time = days * 24 * 3600 + seconds;
+			long time = delta / 1000l;
             
 			p.convertedTime = time;
 		}
@@ -747,13 +766,12 @@ public class GPXImport extends App {
 			
 		if (trks.size()>0 || (wps.size()>0 && waypoint == true) || (rtes.size()>0 && route == true)) {
 			long delta = this.calculateDateDiff(this.starttime, this.endtime);
-			long seconds = delta / 1000l;
-			long days = Math.round(delta / (60.0 * 60.0 * 24.0 * 1000.0));
-			if (days < 0) {
+			long duration = delta / 1000l - 1l;
+			
+			if (delta < 0) {
 				System.out.println("Timestamp of the end of simulation is earlier than of its start!");
 				System.exit(0);
 			}
-			long duration = days * 24 * 3600 + seconds - 1;
 		
 			PrintWriter params = App.openPrintWriter(this.fileName + ".params");
 			params.println("model=" + "GPXImport "+ getInfo().getFormattedVersion()); 
@@ -775,6 +793,7 @@ public class GPXImport extends App {
 				nn += rtes.size();
 			}
 			params.println("nn=" + nn);
+			params.println("crs=" + this.projCRSName);
 			params.close();
 			System.out.println("File [" + this.fileName + ".params] created");
 		} 

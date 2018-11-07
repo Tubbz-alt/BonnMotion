@@ -1,3 +1,23 @@
+/*******************************************************************************
+ ** BonnMotion - a mobility scenario generation and analysis tool             **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2016 University of Osnabrueck                          **
+ **                                                                           **
+ ** This program is free software; you can redistribute it and/or modify      **
+ ** it under the terms of the GNU General Public License as published by      **
+ ** the Free Software Foundation; either version 2 of the License, or         **
+ ** (at your option) any later version.                                       **
+ **                                                                           **
+ ** This program is distributed in the hope that it will be useful,           **
+ ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
+ ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
+ ** GNU General Public License for more details.                              **
+ **                                                                           **
+ ** You should have received a copy of the GNU General Public License         **
+ ** along with this program; if not, write to the Free Software               **
+ ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
+ *******************************************************************************/
+
 package edu.bonn.cs.iv.bonnmotion.models;
 
 import java.io.FileNotFoundException;
@@ -27,8 +47,8 @@ public class RPGM extends RandomSpeedBase {
         info.description = "Application to create movement scenarios according to the Reference Point Group Mobility model";
         
         info.major = 1;
-        info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        info.minor = 1;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 650 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("University of Bonn");
@@ -318,7 +338,7 @@ public class RPGM extends RandomSpeedBase {
     public void generateForRandomlyDefinedGroups() {
         preGeneration();
 
-        final GroupNode[] node = new GroupNode[this.node.length];
+        final GroupNode[] node = new GroupNode[this.parameterData.nodes.length];
         final Vector<MobileNode> rpoints = new Vector<MobileNode>();
 
         // groups move in a random waypoint manner:
@@ -335,15 +355,15 @@ public class RPGM extends RandomSpeedBase {
             
             //pick position inside the interval [maxdist; x - maxdist], [maxdist; y - maxdist] 
             //(to ensure that the group area doesn't overflow the borders)
-            Position src = new Position((x - 2 * maxdist) * randomNextDouble() + maxdist, (y - 2 * maxdist) * randomNextDouble() + maxdist);
+            Position src = new Position((parameterData.x - 2 * maxdist) * randomNextDouble() + maxdist, (parameterData.y - 2 * maxdist) * randomNextDouble() + maxdist);
 
             if (!ref.add(0.0, src)) {
                 System.err.println(getInfo().name + ".generate: error while adding group movement (1)");
                 System.exit(-1);
             }
 
-            while (t < duration) {
-                Position dst = new Position((x - 2 * maxdist) * randomNextDouble() + maxdist, (y - 2 * maxdist) * randomNextDouble() + maxdist);
+            while (t < parameterData.duration) {
+                Position dst = new Position((parameterData.x - 2 * maxdist) * randomNextDouble() + maxdist, (parameterData.y - 2 * maxdist) * randomNextDouble() + maxdist);
 
                 double speed = (maxspeed - minspeed) * randomNextDouble() + minspeed;
                 t += src.distance(dst) / speed;
@@ -353,7 +373,7 @@ public class RPGM extends RandomSpeedBase {
                     System.exit(-1);
                 }
 
-                if ((t < duration) && (maxpause > 0.0)) {
+                if ((t < parameterData.duration) && (maxpause > 0.0)) {
                     double pause = maxpause * randomNextDouble();
                     if (pause > 0.0) {
                         t += pause;
@@ -398,7 +418,7 @@ public class RPGM extends RandomSpeedBase {
 
             double t = 0.0;
             MobileNode group = node[i].group();
-            Position src = group.positionAt(t).rndprox(maxdist, randomNextDouble(), randomNextDouble());
+            Position src = group.positionAt(t).rndprox(maxdist, randomNextDouble(), randomNextDouble(), parameterData.calculationDim);
 
 	    System.out.println("src: " + src.toString());
 
@@ -407,7 +427,7 @@ public class RPGM extends RandomSpeedBase {
                 System.exit(-1);
             }
 
-            while (t < duration) {
+            while (t < parameterData.duration) {
                 Position dst;
                 double speed;
                 final double[] groupChangeTimes = group.changeTimes();
@@ -416,7 +436,7 @@ public class RPGM extends RandomSpeedBase {
                 while ((currentGroupChangeTimeIndex < groupChangeTimes.length) && (groupChangeTimes[currentGroupChangeTimeIndex] <= t))
                     currentGroupChangeTimeIndex++;
                 
-                double next = (currentGroupChangeTimeIndex < groupChangeTimes.length) ? groupChangeTimes[currentGroupChangeTimeIndex] : duration;
+                double next = (currentGroupChangeTimeIndex < groupChangeTimes.length) ? groupChangeTimes[currentGroupChangeTimeIndex] : parameterData.duration;
                 boolean pause = (currentGroupChangeTimeIndex == 0);
 
                 if (!pause) {
@@ -425,16 +445,15 @@ public class RPGM extends RandomSpeedBase {
                     pause = pos1.equals(pos2);
                 }
 
-                do {
-                    dst = group.positionAt(next).rndprox(maxdist, randomNextDouble(), randomNextDouble());
-                    speed = src.distance(dst) / (next - t);
-                }
-                while (!pause && (speed > maxspeed));
 
-                if (speed > maxspeed) {
-                    final double c_dst = ((maxspeed - minspeed) * randomNextDouble() + minspeed) / speed;
-                    final double c_src = 1 - c_dst;
-                    dst = new Position(c_src * src.x + c_dst * dst.x, c_src * src.y + c_dst * dst.y);
+                if (!pause) {
+                    do {
+                        dst = group.positionAt(next).rndprox(maxdist, randomNextDouble(), randomNextDouble(), parameterData.calculationDim);
+                        speed = src.distance(dst) / (next - t);
+                    }
+                    while (speed > maxspeed || speed < minspeed);
+                } else {
+                    dst = src;
                 }
 
 	        System.out.println("dst: " + dst.toString());
@@ -456,7 +475,7 @@ public class RPGM extends RandomSpeedBase {
                     // group to change to, null if group is not changed
                     MobileNode nRef = null;
                     // time when the link between ref and dummy gets up
-                    double linkUp = duration;
+                    double linkUp = parameterData.duration;
                     // time when the link between ref and dummy gets down
                     double linkDown = 0.0;
                     // time when the group is changed
@@ -465,7 +484,7 @@ public class RPGM extends RandomSpeedBase {
                     // check all reference points if currently a groupchange should happen
                     for (MobileNode ref : rpoints) {
                         if (ref != group) {
-                            final double[] ct = MobileNode.pairStatistics(dummy, ref, t, next, maxdist, false);
+                            final double[] ct = MobileNode.pairStatistics(dummy, ref, t, next, maxdist, false, parameterData.calculationDim);
                             // check if the link comes up before any other link to a ref by now
                             if (ct.length > 6 && ct[6] < linkUp) {
                                 if (randomNextDouble() < pGroupChange) {
@@ -505,7 +524,7 @@ public class RPGM extends RandomSpeedBase {
         }
 
         // write the nodes into our base
-        this.node = node;
+        this.parameterData.nodes = node;
 
         postGeneration();
     }
@@ -559,7 +578,7 @@ public class RPGM extends RandomSpeedBase {
             return true;
         }
 
-        final double next = (currentGroupChangeTimeIndex < groupChangeTimes.length) ? groupChangeTimes[currentGroupChangeTimeIndex] : duration;
+        final double next = (currentGroupChangeTimeIndex < groupChangeTimes.length) ? groupChangeTimes[currentGroupChangeTimeIndex] : parameterData.duration;
         final double speed = src.distance(nodePos) / (next - time);
         
         // check if the calculated needed speed is <= maxspeed

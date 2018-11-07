@@ -1,3 +1,23 @@
+/*******************************************************************************
+ ** BonnMotion - a mobility scenario generation and analysis tool             **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2016 University of Osnabrueck                          **
+ **                                                                           **
+ ** This program is free software; you can redistribute it and/or modify      **
+ ** it under the terms of the GNU General Public License as published by      **
+ ** the Free Software Foundation; either version 2 of the License, or         **
+ ** (at your option) any later version.                                       **
+ **                                                                           **
+ ** This program is distributed in the hope that it will be useful,           **
+ ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
+ ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
+ ** GNU General Public License for more details.                              **
+ **                                                                           **
+ ** You should have received a copy of the GNU General Public License         **
+ ** along with this program; if not, write to the Free Software               **
+ ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
+ *******************************************************************************/
+
 package edu.bonn.cs.iv.bonnmotion.models.slaw;
 
 import java.io.BufferedReader;
@@ -12,26 +32,7 @@ import java.util.Vector;
 import edu.bonn.cs.iv.bonnmotion.Position;
 import edu.bonn.cs.iv.bonnmotion.Scenario;
 
-public abstract class SLAWBase extends Scenario {
-    protected static String MODEL_NAME = "SLAWBase";
-    protected int noOfWaypoints = 1000;
-    protected int cluster_ratio = 5;
-    protected int waypoint_ratio = 5;
-    protected double minpause = 10;
-    protected double maxpause = 50;
-    protected double beta = 1;
-    protected double hurst = 0.75;
-    protected double dist_weight = 3;
-    protected double cluster_range = 50;
-    protected String waypoints_filename = null;
-    protected Position[] waypoints;
-
-    public SLAWBase() { }
-
-    public SLAWBase(int nodes, double x, double y, double duration, double ignore, long randomSeed) {
-        super(nodes, x, y, duration, ignore, randomSeed);
-    }
-
+public class SLAWBase {
     /**
      * makes the selection of new clusters and waypoints from passed clusters
      * 
@@ -42,7 +43,8 @@ public abstract class SLAWBase extends Scenario {
      *            clusters
      * @return array of selected clusters
      */
-    protected Cluster[] make_selection(Cluster[] clusters, Cluster[] cur_list, boolean change_one) {
+    public static Cluster[] make_selection(Cluster[] clusters, Cluster[] cur_list, boolean change_one,
+    									   int cluster_ratio, int noOfWaypoints, int waypoint_ratio, Scenario s) {
         ArrayList<Integer> cluster_selection;
         
         if (!change_one) {
@@ -54,7 +56,7 @@ public abstract class SLAWBase extends Scenario {
                 cluster_selection.add(i, -1);
             }
             
-            int[] total_list = new int[this.noOfWaypoints];
+            int[] total_list = new int[noOfWaypoints];
             int counter = 0;
             // probability array
             for (int i = 0; i < clusters.length; i++) {
@@ -64,11 +66,11 @@ public abstract class SLAWBase extends Scenario {
             }
 
             // select clusters randomly with weights
-            int t = total_list[(int)Math.floor(this.randomNextDouble() * noOfWaypoints)];
+            int t = total_list[(int)Math.floor(s.randomNextDouble() * noOfWaypoints)];
             
             for (int i = 0; i < cluster_selection.size(); i++) {
                 while (cluster_selection.contains(t)) {
-                    t = total_list[(int)Math.floor(this.randomNextDouble() * noOfWaypoints)];
+                    t = total_list[(int)Math.floor(s.randomNextDouble() * noOfWaypoints)];
                 }
                 cluster_selection.set(i, t);
             }
@@ -81,7 +83,7 @@ public abstract class SLAWBase extends Scenario {
         }
 
         // change one cluster without weight consideration
-        cluster_selection = change_one_random(cluster_selection, clusters.length);
+        cluster_selection = change_one_random(cluster_selection, clusters.length, s);
 
         // select waypoints from selected clusters.
         Cluster[] result = new Cluster[cluster_selection.size()];
@@ -98,16 +100,16 @@ public abstract class SLAWBase extends Scenario {
             }
 
             result[i] = new Cluster(cluster_iterator.index);
-            numberOfWaypoints = (double)cluster_iterator.members.length / (double)this.waypoint_ratio;
+            numberOfWaypoints = (double)cluster_iterator.members.length / (double)waypoint_ratio;
             int[] waypoint_selection;
             
             if (numberOfWaypoints < 1) {
-                waypoint_selection = select_uniformly(cluster_iterator.members.length, 1);
+                waypoint_selection = select_uniformly(cluster_iterator.members.length, 1, s);
             } else {
-                if (this.randomNextDouble() < numberOfWaypoints % 1) {
-                    waypoint_selection = select_uniformly(cluster_iterator.members.length, (int)(Math.floor(numberOfWaypoints) + 1));
+                if (s.randomNextDouble() < numberOfWaypoints % 1) {
+                    waypoint_selection = select_uniformly(cluster_iterator.members.length, (int)(Math.floor(numberOfWaypoints) + 1), s);
                 } else {
-                    waypoint_selection = select_uniformly(cluster_iterator.members.length, (int)Math.floor(numberOfWaypoints));
+                    waypoint_selection = select_uniformly(cluster_iterator.members.length, (int)Math.floor(numberOfWaypoints), s);
                 }
             }
             
@@ -130,17 +132,18 @@ public abstract class SLAWBase extends Scenario {
      *            1: stabrnd 2: reverse computation
      * @return double array of powerlaw_step length
      **/
-    protected double[] random_powerlaw(int powerlaw_step, int levy_scale_factor, int powerlaw_mode) {
+    public static double[] random_powerlaw(int powerlaw_step, int levy_scale_factor, int powerlaw_mode,
+    									   double minpause, double maxpause, double beta, Scenario s) {
         double[] result = new double[powerlaw_step];
 
         for (int xi = 0; xi < powerlaw_step;) {
             if (powerlaw_mode == 1) { // stabrnd
-                double[] stabrnd_result = stabrnd(0, levy_scale_factor, 0, powerlaw_step);
+                double[] stabrnd_result = stabrnd(0, levy_scale_factor, 0, powerlaw_step, beta, s);
 
                 ArrayList<Double> temp = new ArrayList<Double>();
 
                 for (int i = 0; i < stabrnd_result.length; i++) {
-                    if (stabrnd_result[i] > this.minpause && stabrnd_result[i] < this.maxpause) {
+                    if (stabrnd_result[i] > minpause && stabrnd_result[i] < maxpause) {
                         temp.add(new Double(stabrnd_result[i]));
                     }
                 }
@@ -154,8 +157,8 @@ public abstract class SLAWBase extends Scenario {
                 }
             }
             else if (powerlaw_mode == 2) { // reverse computation
-                double temp = Math.pow(randomNextDouble(), 1 / (1 - (this.beta + 1))) * this.minpause;
-                if (temp < this.maxpause) {
+                double temp = Math.pow(s.randomNextDouble(), 1 / (1 - (beta + 1))) * minpause;
+                if (temp < maxpause) {
                     result[xi++] = temp;
                 }
             }
@@ -175,13 +178,14 @@ public abstract class SLAWBase extends Scenario {
      *            count of random numbers to generate
      * @return double array of n length
      */
-    private double[] stabrnd(double b, int levy_scale_factor, double delta, int n) {
-        if (this.beta < .1 || this.beta > 2) {
-            throw new RuntimeException(MODEL_NAME + ".stabrnd(): Beta value must be in [.1,2]");
+    public static double[] stabrnd(double b, int levy_scale_factor, double delta, int n,
+    							   double beta, Scenario s) {
+        if (beta < .1 || beta > 2) {
+            throw new RuntimeException("stabrnd(): Beta value must be in [.1,2]");
         }
 
         if (Math.abs(b) > 1) {
-            throw new RuntimeException(MODEL_NAME + ".stabrnd(): local beta value must be in [-1,1]");
+            throw new RuntimeException("stabrnd(): local beta value must be in [-1,1]");
         }
 
         // Generate exponential w and uniform phi
@@ -189,41 +193,41 @@ public abstract class SLAWBase extends Scenario {
         double[] x = new double[n];
         double[] phi = new double[n];
         for (int i = 0; i < n; i++) {
-            w[i] = -Math.log(randomNextDouble());
-            phi[i] = (randomNextDouble() - 0.5) * Math.PI;
+            w[i] = -Math.log(s.randomNextDouble());
+            phi[i] = (s.randomNextDouble() - 0.5) * Math.PI;
         }
 
         // Gaussian case (Box-Muller)
-        if (this.beta == 2) {
+        if (beta == 2) {
             for (int i = 0; i < n; i++) {
                 x[i] = 2 * Math.sqrt(w[i]) * Math.sin(phi[i]);
                 x[i] = delta + levy_scale_factor * x[i];
             }
         }
         else if (b == 0) { // Symmetrical cases
-            if (this.beta == 1) { // Cauchy case
+            if (beta == 1) { // Cauchy case
                 for (int i = 0; i < n; i++) {
                     x[i] = Math.tan(phi[i]);
                 }
             }
             else {
                 for (int i = 0; i < n; i++) {
-                    x[i] = Math.pow(Math.cos((1 - this.beta) * phi[i]) / w[i], 1 / this.beta - 1) * Math.sin(this.beta * phi[i])
-                            / Math.pow(Math.cos(phi[i]), 1 / this.beta);
+                    x[i] = Math.pow(Math.cos((1 - beta) * phi[i]) / w[i], 1 / beta - 1) * Math.sin(beta * phi[i])
+                            / Math.pow(Math.cos(phi[i]), 1 / beta);
                 }
             }
         }
         else { // General cases
             double cosphi, zeta, aphi, a1phi, bphi;
 
-            if (Math.abs(this.beta - 1) > 0.00000001) {
+            if (Math.abs(beta - 1) > 0.00000001) {
                 for (int i = 0; i < n; i++) {
                     cosphi = Math.cos(phi[i]);
-                    zeta = b * Math.tan(Math.PI * this.beta / 2);
-                    aphi = this.beta * phi[i];
-                    a1phi = (1 - this.beta) * phi[i];
+                    zeta = b * Math.tan(Math.PI * beta / 2);
+                    aphi = beta * phi[i];
+                    a1phi = (1 - beta) * phi[i];
                     x[i] = (Math.sin(aphi) + zeta * Math.cos(aphi)) / cosphi
-                            * Math.pow((Math.cos(a1phi) + zeta * Math.sin(a1phi)) / (w[i] * cosphi), (1 - this.beta) / this.beta);
+                            * Math.pow((Math.cos(a1phi) + zeta * Math.sin(a1phi)) / (w[i] * cosphi), (1 - beta) / beta);
                 }
             }
             else {
@@ -232,9 +236,9 @@ public abstract class SLAWBase extends Scenario {
                     bphi = Math.PI / 2 + b * phi[i];
                     x[i] = 2 / Math.PI * (bphi * Math.tan(phi[i]) - b * Math.log((Math.PI / 2) * w[i] * cosphi / bphi));
                 }
-                if (this.beta != 1) {
+                if (beta != 1) {
                     for (int i = 0; i < n; i++) {
-                        x[i] += b * Math.tan(Math.PI * this.beta / 2);
+                        x[i] += b * Math.tan(Math.PI * beta / 2);
                     }
                 }
             }
@@ -253,7 +257,7 @@ public abstract class SLAWBase extends Scenario {
      *            clusters list
      * @return array of ClusterMember type
      */
-    protected ClusterMember[] get_waypoint_list(Cluster[] clusters) {
+    public static ClusterMember[] get_waypoint_list(Cluster[] clusters) {
         ArrayList<ClusterMember> result = new ArrayList<ClusterMember>();
 
         for (Cluster cluster : clusters) {
@@ -272,9 +276,9 @@ public abstract class SLAWBase extends Scenario {
      * @param k
      * @return array of k integers
      */
-    protected int[] select_uniformly(int n, int k) {
+    public static int[] select_uniformly(int n, int k, Scenario s) {
         if (k > n)
-            throw new RuntimeException(MODEL_NAME + ".select_uniformaly(): value of k must not be larger than n.");
+            throw new RuntimeException("select_uniformly(): value of k must not be larger than n.");
 
         int t;
         int[] list = new int[k];
@@ -285,7 +289,7 @@ public abstract class SLAWBase extends Scenario {
         int count = 0;
         while (count < k) {
             is_in = false;
-            t = (int)Math.floor(this.randomNextDouble() * n);
+            t = (int)Math.floor(s.randomNextDouble() * n);
             for (int i = 0; i < list.length; i++) {
                 if (list[i] == t) {
                     is_in = true;
@@ -306,10 +310,11 @@ public abstract class SLAWBase extends Scenario {
      *            list of waypoint positions
      * @return array of clusters
      */
-    protected Cluster[] generate_clusters(Position[] waypoints) {
-        Vector<Position> all_points = new Vector<Position>();
-        Vector<Position> new_points = new Vector<Position>();
-        Vector<Position> members = new Vector<Position>();
+    public static Cluster[] generate_clusters(PositionInterface[] waypoints,
+    										  double cluster_range) {
+        Vector<PositionInterface> all_points = new Vector<PositionInterface>();
+        Vector<PositionInterface> new_points = new Vector<PositionInterface>();
+        Vector<PositionInterface> members = new Vector<PositionInterface>();
 
         Vector<Cluster> clusters = new Vector<Cluster>();
         Vector<ClusterMember> cluster_members = new Vector<ClusterMember>();
@@ -318,7 +323,7 @@ public abstract class SLAWBase extends Scenario {
             all_points.add(waypoints[i]);
         }
 
-        Position init_pos = null;
+        PositionInterface init_pos = null;
         int cluster_count = 0;
 
         while (!all_points.isEmpty()) {
@@ -329,9 +334,9 @@ public abstract class SLAWBase extends Scenario {
             }
 
             for (int i = 0; i < all_points.size(); i++) {
-                Position new_pos = all_points.elementAt(i);
+            	PositionInterface new_pos = all_points.elementAt(i);
 
-                if (init_pos.distance(new_pos) <= this.cluster_range) {
+                if (init_pos.distance(new_pos) <= cluster_range) {
                     new_points.add(new_pos);
                     members.add(new_pos);
                     all_points.remove(i--);
@@ -369,14 +374,14 @@ public abstract class SLAWBase extends Scenario {
      *            variance
      * @return array of divided waypoints of length four
      */
-    protected int[] devide_waypoints(int wp, double var) {
+    public static int[] divide_waypoints(int wp, double var, Scenario s) {
         double gran = 0.01;
         double Error = 0.03;
         int Thresh = 31;
         int[] num = {0, 0, 0, 0};
 
         if (var > 4) {
-            num[(int)Math.floor(randomNextDouble() * 4)] = wp;
+            num[(int)Math.floor(s.randomNextDouble() * 4)] = wp;
         }
         else if (var <= 0) {
             int i = 0;
@@ -419,8 +424,8 @@ public abstract class SLAWBase extends Scenario {
             }
 
             // pick a random row
-            int row = (int)Math.floor(Thresh * randomNextDouble());
-            double[] rand_arr = {randomNextDouble(), randomNextDouble(), randomNextDouble(), randomNextDouble()};
+            int row = (int)Math.floor(Thresh * s.randomNextDouble());
+            double[] rand_arr = {s.randomNextDouble(), s.randomNextDouble(), s.randomNextDouble(), s.randomNextDouble()};
             double[] rand_arr2 = rand_arr.clone();
             Arrays.sort(rand_arr2);
             double[] row_rand = new double[4];
@@ -444,7 +449,7 @@ public abstract class SLAWBase extends Scenario {
                     System.exit(0);   
             }
             for (int i = 0; i < wp;) {
-                double rand = randomNextDouble();
+                double rand = s.randomNextDouble();
                 for (int j = 0; j < 4; j++) {
                     if (rand <= prob[j]) {
                         num[j]++;
@@ -464,7 +469,7 @@ public abstract class SLAWBase extends Scenario {
      *            double array
      * @return double variance
      */
-    protected double calculate_var(double[] list) {
+    public static double calculate_var(double[] list) {
         double sum = 0;
         double avg = calculate_average(list);
 
@@ -482,7 +487,7 @@ public abstract class SLAWBase extends Scenario {
      *            double array
      * @return double average
      */
-    protected double calculate_average(double[] list) {
+    public static double calculate_average(double[] list) {
         double sum = 0;
 
         for (int i = 0; i < list.length; i++) {
@@ -502,12 +507,12 @@ public abstract class SLAWBase extends Scenario {
      *            range of numbers
      * @return array of integers with one element changed randomly
      */
-    protected ArrayList<Integer> change_one_random(ArrayList<Integer> list, int n) {
-        int index = (int)Math.floor(this.randomNextDouble() * list.size());
-        int value = (int)Math.floor(this.randomNextDouble() * n) + 1;
+    public static ArrayList<Integer> change_one_random(ArrayList<Integer> list, int n, Scenario s) {
+        int index = (int)Math.floor(s.randomNextDouble() * list.size());
+        int value = (int)Math.floor(s.randomNextDouble() * n) + 1;
 
         while (list.contains(value)) {
-            value = (int)Math.floor(this.randomNextDouble() * n) + 1;
+            value = (int)Math.floor(s.randomNextDouble() * n) + 1;
         }
         list.set(index, value);
 
@@ -525,7 +530,7 @@ public abstract class SLAWBase extends Scenario {
      * @param filename
      * @return array of positions
      */
-    protected Position[] readWaypointsFromFile(String filename) {
+    public static Position[] readWaypointsFromFile(String filename) {
         String line = "";
         BufferedReader reader = null;
         List<Position> result = new ArrayList<Position>();

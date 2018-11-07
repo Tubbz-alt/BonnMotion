@@ -1,19 +1,24 @@
 # -*- coding: utf-8 -*-
-#    A validation script for Bonnmotion (http://net.cs.uni-bonn.de/wg/cs/applications/bonnmotion/)
-#    Copyright (C) 2011 University of Bonn
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+################################################################################
+## A validation script for                                                    ##
+## BonnMotion - a mobility scenario generation and analysis tool              ##
+## Copyright (C) 2002-2012 University of Bonn                                 ##
+## Copyright (C) 2012-2016 University of Osnabrueck                           ##
+##                                                                            ##
+## This program is free software; you can redistribute it and/or modify       ##
+## it under the terms of the GNU General Public License as published by       ##
+## the Free Software Foundation; either version 2 of the License, or          ##
+## (at your option) any later version.                                        ##
+##                                                                            ##
+## This program is distributed in the hope that it will be useful,            ##
+## but WITHOUT ANY WARRANTY; without even the implied warranty of             ##
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the              ##
+## GNU General Public License for more details.                               ##
+##                                                                            ##
+## You should have received a copy of the GNU General Public License          ##
+## along with this program; if not, write to the Free Software                ##
+## Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA  ##
+################################################################################
 
 from Config import Config
 
@@ -76,11 +81,9 @@ def readModelnameFromParamsFile(filename):
             
 def runBonnmotionModel(path, i, modelname): 
     outputfilename = os.path.join(path, Config().readConfigEntry('tempoutputname') + str(i))
-    inputfilename = os.path.join(os.getcwd(), Config().readConfigEntry('tempoutputparamsfile').replace('INDEX', str(i)))
-    bmbinarypath = os.path.join(path, 'bin/bm')  
-            
+    inputfilename = os.path.join(path, Config().readConfigEntry('tempoutputparamsfile').replace('INDEX', str(i)))
+    bmbinarypath = os.path.join(Config().readConfigEntry('bonnmotionpath'), 'bin/bm')  
     cmd = [bmbinarypath, '-f', outputfilename, '-I', inputfilename, modelname]
-
     if Config().readConfigEntry('bonnmotionstdout') is OutputPolicy.NONE:
         if Config().readConfigEntry('bonnmotionstderr') is OutputPolicy.ONLYCONSOLE:
             process = Popen(cmd, stdout=PIPE)
@@ -105,13 +108,14 @@ def runBonnmotionModel(path, i, modelname):
         raise Exception("bonnmotion did not run successfully with params file: " + inputfilename)
     
 def runBonnmotionApp(path, i, appname, parameters):
-    bmbinarypath = os.path.join(path, 'bin/bm') 
+    bmbinarypath = os.path.join(Config().readConfigEntry('bonnmotionpath'), 'bin/bm') 
     outputfilename = os.path.join(path, Config().readConfigEntry('tempoutputname') + str(i))
-
     if len(parameters) > 0:
         #build arguments
-        cmd = [bmbinarypath, appname, '-f', outputfilename]
-
+        if appname == 'GPXImport':
+            cmd = [bmbinarypath, appname]
+        else:
+            cmd = [bmbinarypath, appname, '-f', outputfilename]
         for x in parameters.strip().split(' '): cmd.append(x)
 
         #run BM-App with BM-Output

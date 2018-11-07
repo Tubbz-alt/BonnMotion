@@ -1,3 +1,23 @@
+/*******************************************************************************
+ ** BonnMotion - a mobility scenario generation and analysis tool             **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2016 University of Osnabrueck                          **
+ **                                                                           **
+ ** This program is free software; you can redistribute it and/or modify      **
+ ** it under the terms of the GNU General Public License as published by      **
+ ** the Free Software Foundation; either version 2 of the License, or         **
+ ** (at your option) any later version.                                       **
+ **                                                                           **
+ ** This program is distributed in the hope that it will be useful,           **
+ ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
+ ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
+ ** GNU General Public License for more details.                              **
+ **                                                                           **
+ ** You should have received a copy of the GNU General Public License         **
+ ** along with this program; if not, write to the Free Software               **
+ ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
+ *******************************************************************************/
+
 package edu.bonn.cs.iv.bonnmotion.models;
 
 import java.io.FileNotFoundException;
@@ -20,7 +40,7 @@ public class Nomadic extends RandomSpeedBase {
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 252 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 650 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("Chris Walsh");
@@ -62,7 +82,7 @@ public class Nomadic extends RandomSpeedBase {
 	public void generate() {
 		preGeneration();
 
-		GroupNode[] node = new GroupNode[this.node.length];
+		GroupNode[] node = new GroupNode[this.parameterData.nodes.length];
 
 		// groups move in a random waypoint manner:
 		int nodesRemaining = node.length;
@@ -72,15 +92,15 @@ public class Nomadic extends RandomSpeedBase {
 		while (nodesRemaining > 0) {
 			MobileNode ref = new MobileNode();
 			double t = 0.0;
-			Position src = new Position((x - 2 * maxdist) * randomNextDouble() + maxdist, (y - 2 * maxdist) * randomNextDouble() + maxdist);
+			Position src = new Position((parameterData.x - 2 * maxdist) * randomNextDouble() + maxdist, (parameterData.y - 2 * maxdist) * randomNextDouble() + maxdist);
 			
 			if (!ref.add(0.0, src)) {
 				System.out.println(getInfo().name + ".generate: error while adding group movement (1)");
 				System.exit(0);
 			}
 
-			while (t < duration) {
-				Position dst = new Position((x - 2 * maxdist) * randomNextDouble() + maxdist, (y - 2 * maxdist) * randomNextDouble() + maxdist);
+			while (t < parameterData.duration) {
+				Position dst = new Position((parameterData.x - 2 * maxdist) * randomNextDouble() + maxdist, (parameterData.y - 2 * maxdist) * randomNextDouble() + maxdist);
 				double speed = (maxspeed - minspeed) * randomNextDouble() + minspeed;
 				t += src.distance(dst) / speed;
 				
@@ -88,7 +108,7 @@ public class Nomadic extends RandomSpeedBase {
 					System.out.println(getInfo().name + ".generate: error while adding group movement (2)");
 					System.exit(0);
 				}
-				if ((t < duration) && (refmaxpause > 0.0)) {
+				if ((t < parameterData.duration) && (refmaxpause > 0.0)) {
 					double pause = refmaxpause * randomNextDouble();
 					if (pause > 0.0) {
 						t += pause;
@@ -118,7 +138,7 @@ public class Nomadic extends RandomSpeedBase {
 			double t = 0.0;
 			MobileNode group = node[i].group();
 
-			Position src = group.positionAt(t).rndprox(maxdist, randomNextDouble(), randomNextDouble());
+			Position src = group.positionAt(t).rndprox(maxdist, randomNextDouble(), randomNextDouble(), parameterData.calculationDim);
 			
 			if (!node[i].add(0.0, src)) {
 				System.out.println(getInfo().name + ".main: error while adding node movement (1)");
@@ -127,15 +147,15 @@ public class Nomadic extends RandomSpeedBase {
 			
 			double[] gm = group.changeTimes();
 			
-			while (t < duration) {
+			while (t < parameterData.duration) {
 				
 				int gmi = 0;
 				while ((gmi < gm.length) && (gm[gmi] <= t)) gmi++;
 				
 				/* next absolute time a change happens or the simulation time is over */
-				double next = (gmi < gm.length) ? gm[gmi] : duration;
+				double next = (gmi < gm.length) ? gm[gmi] : parameterData.duration;
 
-				Position dst = group.positionAt(next).rndprox(maxdist, randomNextDouble(), randomNextDouble());
+				Position dst = group.positionAt(next).rndprox(maxdist, randomNextDouble(), randomNextDouble(), parameterData.calculationDim);
 				double speed = src.distance(dst) / (next - t);
 
 				if (speed > maxspeed) {
@@ -161,7 +181,7 @@ public class Nomadic extends RandomSpeedBase {
 							System.exit(0);
 						}
 
-						if ((t < duration) && (maxpause > 0.0)) {
+						if ((t < parameterData.duration) && (maxpause > 0.0)) {
 							double nodePause = maxpause * randomNextDouble();
 							
 							if (nodePause > 0.0) {
@@ -186,7 +206,7 @@ public class Nomadic extends RandomSpeedBase {
 						System.exit(0);
 					}
 
-					if ((t < duration) && (maxpause > 0.0)) {
+					if ((t < parameterData.duration) && (maxpause > 0.0)) {
 						double nodePause = maxpause * randomNextDouble();
 						
 						if (nodePause > 0.0) {
@@ -207,7 +227,7 @@ public class Nomadic extends RandomSpeedBase {
 		}
 
 		// write the nodes into our base
-		this.node = node;
+		this.parameterData.nodes = node;
 
 		postGeneration();
 	}

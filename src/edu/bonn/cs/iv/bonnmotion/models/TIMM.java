@@ -1,3 +1,23 @@
+/*******************************************************************************
+ ** BonnMotion - a mobility scenario generation and analysis tool             **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2016 University of Osnabrueck                          **
+ **                                                                           **
+ ** This program is free software; you can redistribute it and/or modify      **
+ ** it under the terms of the GNU General Public License as published by      **
+ ** the Free Software Foundation; either version 2 of the License, or         **
+ ** (at your option) any later version.                                       **
+ **                                                                           **
+ ** This program is distributed in the hope that it will be useful,           **
+ ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
+ ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
+ ** GNU General Public License for more details.                              **
+ **                                                                           **
+ ** You should have received a copy of the GNU General Public License         **
+ ** along with this program; if not, write to the Free Software               **
+ ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
+ *******************************************************************************/
+
 package edu.bonn.cs.iv.bonnmotion.models;
 
 import java.io.FileNotFoundException;
@@ -5,7 +25,7 @@ import java.io.FileNotFoundException;
 import edu.bonn.cs.iv.bonnmotion.MobileNode;
 import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
 import edu.bonn.cs.iv.bonnmotion.Scenario;
-import edu.bonn.cs.iv.bonnmotion.models.TIMM_Tools.*;
+import edu.bonn.cs.iv.bonnmotion.models.timm.*;
 
 import java.util.Arrays;
 import java.util.Vector;
@@ -20,7 +40,7 @@ public class TIMM extends Scenario {
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 650 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("Raphael Ernst");
@@ -50,7 +70,7 @@ public class TIMM extends Scenario {
 
     public void go(String[] args) {
         if (!Arrays.asList(args).contains("-i")) { // if no ignore parameter is provided set it to zero
-            ignore = 0;
+        	parameterData.ignore = 0;
         }
 
         super.go(args);
@@ -61,8 +81,8 @@ public class TIMM extends Scenario {
         preGeneration();
 
         groups = new TIMM_Group[settings.getGroupSizes().length];
-        for (int i = 0; i < node.length; i++) {
-            node[i] = new MobileNode();
+        for (int i = 0; i < parameterData.nodes.length; i++) {
+        	parameterData.nodes[i] = new MobileNode();
         }
 
         TIMM_Graph buildingGraph = new TIMM_Graph(settings, this);
@@ -71,7 +91,7 @@ public class TIMM extends Scenario {
         for (int i = 0; i < settings.getGroupSizes().length; i++) {
             MobileNode[] mn = new MobileNode[settings.getGroupSizes()[i]];
             for (int j = 0; j < settings.getGroupSizes()[i]; j++) {
-                mn[j] = node[cntr];
+                mn[j] = parameterData.nodes[cntr];
                 mn[j].add(0, buildingGraph.getVertexByIdentification("StartVertex").getPosition());
                 cntr++;
             }
@@ -117,7 +137,7 @@ public class TIMM extends Scenario {
         p[9] = "GroupOneRules=" + settings.isEnableGroupOneRules();
         p[10] = "Group_starttimes=" + arrayToString(settings.getStarttime());
 
-        super.write(_name, p);
+        super.writeParametersAndMovement(_name, p);
     }
     
     public double randomNextDouble()
@@ -362,7 +382,7 @@ public class TIMM extends Scenario {
             for (int i = 0; i < settings.getGroupSizes().length; i++) {
                 requiredNodesAccordingToGroupSizes += settings.getGroupSizes()[i];
             }
-            if (requiredNodesAccordingToGroupSizes != node.length) {
+            if (requiredNodesAccordingToGroupSizes != parameterData.nodes.length) {
                 throw new SettingsException("Error: Group sizes does not fit to number of nodes");
             }
     

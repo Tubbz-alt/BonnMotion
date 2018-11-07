@@ -1,3 +1,23 @@
+/*******************************************************************************
+ ** BonnMotion - a mobility scenario generation and analysis tool             **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2016 University of Osnabrueck                          **
+ **                                                                           **
+ ** This program is free software; you can redistribute it and/or modify      **
+ ** it under the terms of the GNU General Public License as published by      **
+ ** the Free Software Foundation; either version 2 of the License, or         **
+ ** (at your option) any later version.                                       **
+ **                                                                           **
+ ** This program is distributed in the hope that it will be useful,           **
+ ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
+ ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
+ ** GNU General Public License for more details.                              **
+ **                                                                           **
+ ** You should have received a copy of the GNU General Public License         **
+ ** along with this program; if not, write to the Free Software               **
+ ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
+ *******************************************************************************/
+
 package edu.bonn.cs.iv.bonnmotion.models;
 
 import java.io.FileNotFoundException;
@@ -27,7 +47,7 @@ public class SteadyStateRandomWaypoint extends Scenario {
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 255 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 650 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("Chris Walsh");
@@ -57,7 +77,7 @@ public class SteadyStateRandomWaypoint extends Scenario {
 
 	public SteadyStateRandomWaypoint(String[] args) {
 		if (!Arrays.asList(args).contains("-i")) 		// if no ignore parameter is provided set it to zero
-			ignore = 0;
+			parameterData.ignore = 0;
 		
 		go(args);
 	}
@@ -108,8 +128,8 @@ public class SteadyStateRandomWaypoint extends Scenario {
 		
 		// calculate the steady-state probability that a node is initially paused
 		expectedPauseTime = pauseMean;
-		a = x;
-		b = y;
+		a = parameterData.x;
+		b = parameterData.y;
 		v0 = speedMean - speedDelta;
 		v1 = speedMean + speedDelta;
 		log1 = b * b / a * Math.log(Math.sqrt((a * a) / (b * b) + 1) + a / b);
@@ -127,8 +147,8 @@ public class SteadyStateRandomWaypoint extends Scenario {
 
 		probabilityPaused = expectedPauseTime / (expectedPauseTime + expectedTravelTime);
 
-		for (int i = 0; i < node.length; i++) {
-			node[i] = new MobileNode();
+		for (int i = 0; i < parameterData.nodes.length; i++) {
+			parameterData.nodes[i] = new MobileNode();
 			double t = 0.0;
 			Position src = null;
 			if (isTransition) {
@@ -144,14 +164,14 @@ public class SteadyStateRandomWaypoint extends Scenario {
 				r = 0;
 				u1 = 1;
 				while (u1 >= r) {
-					x1 = randomNextDouble() * x;
-					x2 = randomNextDouble() * x;
-					y1 = randomNextDouble() * y;
-					y2 = randomNextDouble() * y;
+					x1 = randomNextDouble() * parameterData.x;
+					x2 = randomNextDouble() * parameterData.x;
+					y1 = randomNextDouble() * parameterData.y;
+					y2 = randomNextDouble() * parameterData.y;
 					u1 = randomNextDouble();
 					// r is a ratio of the length of the randomly chosen path
 					// over the length of a diagonal across the simulation area
-					r = Math.sqrt(((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) / (x * x + y * y));
+					r = Math.sqrt(((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) / (parameterData.x * parameterData.x + parameterData.y * parameterData.y));
 					// u1 is a uniform random number between 0 and 1
 				}
 				// initially the node has traveled a proportion u2 of the path
@@ -159,7 +179,7 @@ public class SteadyStateRandomWaypoint extends Scenario {
 				u2 = randomNextDouble();
 				src = new Position((u2 * x1 + (1 - u2) * x2), (u2 * y1 + (1 - u2) * y2));
 
-				if (!node[i].add(t, src))
+				if (!parameterData.nodes[i].add(t, src))
 					throw new RuntimeException(getInfo().name + ".generate: error while adding initial position waypoint (1)");
 			}
 			
@@ -200,31 +220,31 @@ public class SteadyStateRandomWaypoint extends Scenario {
 				Position firstDst = new Position(x2, y2);
 				t += src.distance(firstDst) / speed;
 
-				if (!node[i].add(t, firstDst))
+				if (!parameterData.nodes[i].add(t, firstDst))
 					throw new RuntimeException(getInfo().name + ".generate: error while adding firstDst");
 				
 				//pause after reaching dest
-				if (t < duration) {
+				if (t < parameterData.duration) {
 					pause = pauseRange * randomNextDouble() + pauseMin;
 					t += pause;
 				}
 				src = firstDst;
 			}
 			
-			while (t < duration) {
+			while (t < parameterData.duration) {
 				Position dst;
-				if (!node[i].add(t, src))
+				if (!parameterData.nodes[i].add(t, src))
 					throw new RuntimeException(getInfo().name + ".generate: error while adding waypoint (1)");
 				dst = randomNextPosition();
 				
 				speed = speedRange * randomNextDouble() + speedMin;
 				t += src.distance(dst) / speed;
 				
-				if (!node[i].add(t, dst))
+				if (!parameterData.nodes[i].add(t, dst))
 					throw new RuntimeException(getInfo().name + ".generate: error while adding waypoint (2)");
 
 				//pause after reaching dest
-				if (t < duration) {
+				if (t < parameterData.duration) {
 					pause = pauseRange * randomNextDouble() + pauseMin;
 					t += pause;
 				}
@@ -261,7 +281,7 @@ public class SteadyStateRandomWaypoint extends Scenario {
 		p[1] = "speedDelta=" + speedDelta;
 		p[2] = "pauseMean=" + pauseMean;
 		p[3] = "pauseDelta=" + pauseDelta;
-		super.write(_name, p);
+		super.writeParametersAndMovement(_name, p);
 	}
 
 	protected boolean parseArg(char key, String val) {
@@ -294,12 +314,12 @@ public class SteadyStateRandomWaypoint extends Scenario {
 	}
 
 	protected void postGeneration() {
-		for (int i = 0; i < node.length; i++) {
-			Waypoint l = node[i].getLastWaypoint();
-			if (l.time > duration) {
-				Position p = node[i].positionAt(duration);
-				node[i].removeLastElement();
-				node[i].add(duration, p);
+		for (int i = 0; i < parameterData.nodes.length; i++) {
+			Waypoint l = parameterData.nodes[i].getLastWaypoint();
+			if (l.time > parameterData.duration) {
+				Position p = parameterData.nodes[i].positionAt(parameterData.duration);
+				parameterData.nodes[i].removeLastElement();
+				parameterData.nodes[i].add(parameterData.duration, p);
 			}
 		}
 		super.postGeneration();

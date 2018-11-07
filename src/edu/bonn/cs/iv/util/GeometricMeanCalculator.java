@@ -1,3 +1,23 @@
+/*******************************************************************************
+ ** BonnMotion - a mobility scenario generation and analysis tool             **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2016 University of Osnabrueck                          **
+ **                                                                           **
+ ** This program is free software; you can redistribute it and/or modify      **
+ ** it under the terms of the GNU General Public License as published by      **
+ ** the Free Software Foundation; either version 2 of the License, or         **
+ ** (at your option) any later version.                                       **
+ **                                                                           **
+ ** This program is distributed in the hope that it will be useful,           **
+ ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
+ ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
+ ** GNU General Public License for more details.                              **
+ **                                                                           **
+ ** You should have received a copy of the GNU General Public License         **
+ ** along with this program; if not, write to the Free Software               **
+ ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
+ *******************************************************************************/
+
 package edu.bonn.cs.iv.util;
 
 import java.io.*;
@@ -79,7 +99,7 @@ public class GeometricMeanCalculator {
 			int c = 0;  // number of values multiplied in p
 			double x = 0.; // current exponent
 			for (int i = 0; i < src.size(); i++) {
-				double v = ((Double)src.elementAt(i)).doubleValue();
+				double v = src.elementAt(i).doubleValue();
 				p *= v;
 				c++;
 				if ((n < 0) && (c > 1) && ((p > AGGR_THRESHOLD) || (i == src.size() - 1))) {
@@ -108,7 +128,7 @@ public class GeometricMeanCalculator {
 			}
 			src = t;
 		}
-		double r = ((Double)src.elementAt(0)).doubleValue();
+		double r = src.elementAt(0).doubleValue();
 		r = Math.pow(r, (double)exp1/(double)totalSamples);
 		return r;
 	}

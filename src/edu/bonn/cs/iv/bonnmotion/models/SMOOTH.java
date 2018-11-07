@@ -1,3 +1,23 @@
+/*******************************************************************************
+ ** BonnMotion - a mobility scenario generation and analysis tool             **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2016 University of Osnabrueck                          **
+ **                                                                           **
+ ** This program is free software; you can redistribute it and/or modify      **
+ ** it under the terms of the GNU General Public License as published by      **
+ ** the Free Software Foundation; either version 2 of the License, or         **
+ ** (at your option) any later version.                                       **
+ **                                                                           **
+ ** This program is distributed in the hope that it will be useful,           **
+ ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
+ ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
+ ** GNU General Public License for more details.                              **
+ **                                                                           **
+ ** You should have received a copy of the GNU General Public License         **
+ ** along with this program; if not, write to the Free Software               **
+ ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
+ *******************************************************************************/
+
 package edu.bonn.cs.iv.bonnmotion.models;
 
 import java.io.File;
@@ -39,7 +59,7 @@ public class SMOOTH extends Scenario {
 		info.affiliation = ModuleInfo.TOILERS;
 		info.contacts.add(ModuleInfo.BM_MAILINGLIST);
 		info.authors.add("Michael Coughlin");
-		info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 440 $");
+		info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 650 $");
 	}
 
 	public static ModuleInfo getInfo() {
@@ -332,7 +352,7 @@ public class SMOOTH extends Scenario {
 	public static void main(String[] args) {
 		SMOOTH smooth;
 		smooth = new SMOOTH(true);
-		smooth.mysrand(smooth.randomSeed);
+		smooth.mysrand(smooth.parameterData.randomSeed);
 		smooth.initializeClusterArguments(args);
 		smooth.generate();
 	}
@@ -349,8 +369,8 @@ public class SMOOTH extends Scenario {
 	public void generate() {
 		convertDurationToHours();
 		preGeneration();
-		duration -= ignore;
-		mysrand(randomSeed);
+		parameterData.duration -= parameterData.ignore;
+		mysrand(parameterData.randomSeed);
 		runSmooth();
 		//System.out.println(randomSeed);
 	}
@@ -395,7 +415,7 @@ public class SMOOTH extends Scenario {
 			System.out.println("The maximum number of locations for this scenario has been exceeded.\n" +
 					"Please re-run with a larger maximum number of locations or a shorter duration.\n" +
 					"All data collected to this point has been saved.");
-			locationmapCurrentTime = (long) duration;
+			locationmapCurrentTime = (long) parameterData.duration;
 			printLocationMapResults(true);
 		} catch (SmoothException e) {
 			System.out.println("Encountered unknown exception");
@@ -410,7 +430,7 @@ public class SMOOTH extends Scenario {
 	 * @throws SmoothException 
 	 */
 	private void runLocationmapCode() throws SmoothException {
-		for (locationmapCurrentTime = locationmapStartTime; locationmapCurrentTime <= duration; locationmapCurrentTime += locationmapTimeInterval) {
+		for (locationmapCurrentTime = locationmapStartTime; locationmapCurrentTime <= parameterData.duration; locationmapCurrentTime += locationmapTimeInterval) {
 
 			/* CALL locationmap, EXTRACT DATA, AND SET UP TEMPORARY VALUES */
 			runAndExtractLocationMap();
@@ -425,7 +445,7 @@ public class SMOOTH extends Scenario {
 	 * BEEN CALLED COMPLETELY
 	 */
 	private void printLocationMapResults(boolean forceOutput) {
-		if (locationmapCurrentTime == duration || forceOutput) /*
+		if (locationmapCurrentTime == parameterData.duration || forceOutput) /*
 												 * USE IF NEED TO CALCULATE THE
 												 * CONTACT NUMBER (CNS)
 												 * DISTRIBUTION.
@@ -434,9 +454,9 @@ public class SMOOTH extends Scenario {
 
 			int try1 = 0, try2 = 0;
 
-			for (try1 = 0; try1 < node.length; try1++) {
+			for (try1 = 0; try1 < parameterData.nodes.length; try1++) {
 
-				for (try2 = 0; try2 < node.length; try2++) {
+				for (try2 = 0; try2 < parameterData.nodes.length; try2++) {
 					if (try1 != try2) {
 						/*
 						 * PRINT NUMBER OF CONTACTS MADE BY EVERY PAIR OF MOBILE
@@ -458,7 +478,7 @@ public class SMOOTH extends Scenario {
 	 * @throws WrapperMaximumLengthExceededException 
 	 */
 	private void runAndExtractLocationMap() throws SmoothException {
-		for (locationmapGenIterationCount = 0; locationmapGenIterationCount < node.length; locationmapGenIterationCount++) {
+		for (locationmapGenIterationCount = 0; locationmapGenIterationCount < parameterData.nodes.length; locationmapGenIterationCount++) {
 //			updateCurrentTime(locationmapGenIterationCount);
 			runLocationmap();
 			if (locationmapCurrentTime == locationmapStartTime) {
@@ -545,7 +565,7 @@ public class SMOOTH extends Scenario {
 			IOException {
 		writeOutputFile(basename);
 		for (int j = 0; j < locationHistory.size(); j++) {
-			node[j] = locationHistory.get(j);
+			parameterData.nodes[j] = locationHistory.get(j);
 		}
 		writeParametersFile(basename);
 	}
@@ -577,7 +597,7 @@ public class SMOOTH extends Scenario {
 				"alpha=" + alpha, "f_min=" + f_min, "f_max=" + f_max,
 				"beta=" + beta, "p_min=" + p_min, "p_max=" + p_max,
 				"print=" + print, "max_locations=" + max_locations };
-		super.write(basename, parameters);
+		super.writeParametersAndMovement(basename, parameters);
 	}
 
 	/**
@@ -645,8 +665,8 @@ public class SMOOTH extends Scenario {
 		locationMap = new LocationMap(param, pause_end_time,
 				locationmapGenIterationCount, locationmapCurrentTime, paused,
 				prev_start_time, prev_xy, next_xy, max_locations, locations,
-				(int) x, (int) y, node_location, pause_start_time, crt_xy,
-				speed, node.length, range, status, cn, fct, lct, ict, ct, this);
+				(int) parameterData.x, (int) parameterData.y, node_location, pause_start_time, crt_xy,
+				speed, parameterData.nodes.length, range, status, cn, fct, lct, ict, ct, this);
 		locationMap.locationMap();
 		extractLocationmapFields();
 	}
@@ -693,15 +713,15 @@ public class SMOOTH extends Scenario {
 	 */
 	private void initializeLocationmapArguments() throws WrapperMaximumLengthExceededException {
 		locationmapCurrentTime = 0;
-		status = new TwoDIntWrapper(node.length);
+		status = new TwoDIntWrapper(parameterData.nodes.length);
 		int h1 = 0;
 		int h2 = 0;
-		paused = new OneDIntWrapper(node.length);
-		ict = new TwoDDoubleWrapper(node.length);
-		lct = new TwoDDoubleWrapper(node.length);
-		cn = new TwoDDoubleWrapper(node.length);
-		ct = new TwoDDoubleWrapper(node.length);
-		fct = new TwoDDoubleWrapper(node.length);
+		paused = new OneDIntWrapper(parameterData.nodes.length);
+		ict = new TwoDDoubleWrapper(parameterData.nodes.length);
+		lct = new TwoDDoubleWrapper(parameterData.nodes.length);
+		cn = new TwoDDoubleWrapper(parameterData.nodes.length);
+		ct = new TwoDDoubleWrapper(parameterData.nodes.length);
+		fct = new TwoDDoubleWrapper(parameterData.nodes.length);
 		v_velocity = 1.0;
 		double vel = 0;
 		speed = new OneDDoubleWrapper(1);
@@ -712,10 +732,10 @@ public class SMOOTH extends Scenario {
 											 * LOCATION RETURNED BY
 											 * "locationmap.c"
 											 */
-		tmp_crnt_xy = new TwoDDoubleWrapper(node.length, 2);
-		for (h1 = 0; h1 < node.length; h1++) {
+		tmp_crnt_xy = new TwoDDoubleWrapper(parameterData.nodes.length, 2);
+		for (h1 = 0; h1 < parameterData.nodes.length; h1++) {
 			paused.set(h1, 0);
-			for (h2 = 0; h2 < node.length; h2++) {
+			for (h2 = 0; h2 < parameterData.nodes.length; h2++) {
 				status.set(h1, h2, -1);
 				lct.set(h1, h2, 0); /*
 									 * lct DENOTES THE LAST CONTACT TIME FOR A
@@ -856,28 +876,28 @@ public class SMOOTH extends Scenario {
 		 * CONTAINS START TIME (IN SECONDS) OF THE CURRENT FLIGHT FOR A MOBILE
 		 * NODE
 		 */
-		prev_start_time = new OneDDoubleWrapper(node.length);
+		prev_start_time = new OneDDoubleWrapper(parameterData.nodes.length);
 		/*
 		 * CONTAINS STARTING TIME (IN SECONDS) OF THE CURRENT PAUSE PERIOD
 		 * STARTED FOR A MOBILE NODE
 		 */
-		pause_start_time = new OneDDoubleWrapper(node.length);
+		pause_start_time = new OneDDoubleWrapper(parameterData.nodes.length);
 		/*
 		 * CONTAINS ENDING TIME (IN SECONDS) OF THE CURRENT PAUSE PERIOD FOR A
 		 * MOBILE NODE
 		 */
-		pause_end_time = new OneDDoubleWrapper(node.length);
+		pause_end_time = new OneDDoubleWrapper(parameterData.nodes.length);
 		/* CONTAINS THE PREVIOUS LOCATION VISITED BY A MOBILE NODE */
 //		prev_xy = new Vector<Position>();
-		prev_xy = new TwoDDoubleWrapper(node.length, 2);
+		prev_xy = new TwoDDoubleWrapper(parameterData.nodes.length, 2);
 		
 		/* CONTAINS THE NEW LOCATION TO BE VISITED BY A MOBILE NODE */
 //		next_xy = new Vector<Position>();
-		next_xy = new TwoDDoubleWrapper(node.length, 2);
+		next_xy = new TwoDDoubleWrapper(parameterData.nodes.length, 2);
 		
 		/* CONTAINS THE CURRENT LOCATION OF A MOBILE NODE */
 		//crt_xy = new Vector<Position>();
-		crt_xy = new TwoDDoubleWrapper(node.length, 2);
+		crt_xy = new TwoDDoubleWrapper(parameterData.nodes.length, 2);
 
 		/*
 		 * "locations" STORES THE (X,Y) COORDINATES FOR EVERY LOCATION VISITED
@@ -885,9 +905,9 @@ public class SMOOTH extends Scenario {
 		 */
 		locationHistory = new Vector<MobileNode>();
 		
-		locations = new ThreeDDoubleArrayWrapper(node.length, max_locations, 2);
+		locations = new ThreeDDoubleArrayWrapper(parameterData.nodes.length, max_locations, 2);
 		
-		for (int l = 0; l < node.length; l++) {
+		for (int l = 0; l < parameterData.nodes.length; l++) {
 			MobileNode current = new MobileNode();
 			locationHistory.add(current);
 		}
@@ -896,11 +916,11 @@ public class SMOOTH extends Scenario {
 		 * "node_location" STORES THE NUMBER OF TIMES EACH LOCATION IS VISITED
 		 * BY A MOBILE NODE.
 		 */
-		node_location = new TwoDIntWrapper(node.length, max_locations);
+		node_location = new TwoDIntWrapper(parameterData.nodes.length, max_locations);
 
 		/* INITIALIZE "locations" AND "node_location" */
 		try{
-			for (i = 0; i < node.length; i++) {
+			for (i = 0; i < parameterData.nodes.length; i++) {
 				for (j = 0; j < max_locations; j++) {
 					locations.set(i, j, 0, -1);
 					locations.set(i, j, 1, -1);
@@ -910,7 +930,7 @@ public class SMOOTH extends Scenario {
 //				locationHistory.get(i).add(0, new Position(-1, -1));
 			}
 	
-			for (i = 0; i < node.length; i++) {
+			for (i = 0; i < parameterData.nodes.length; i++) {
 				prev_start_time.set(i, 0);
 				pause_start_time.set(i, 0);
 				pause_end_time.set(i, 0);
@@ -936,7 +956,7 @@ public class SMOOTH extends Scenario {
 //			this.duration = this.duration * 3600;
 			
 			//assuming that duration is specified to SMOOTH in seconds
-			this.duration = this.duration;
+			this.parameterData.duration = this.parameterData.duration;
 		}
 		setDir = true;
 	}
@@ -962,7 +982,7 @@ public class SMOOTH extends Scenario {
 	 * @throws WrapperMaximumLengthExceededException 
 	 */
 	private void runGenCode() throws WrapperMaximumLengthExceededException {
-		for (locationmapGenIterationCount = 0; locationmapGenIterationCount < node.length; locationmapGenIterationCount++) {
+		for (locationmapGenIterationCount = 0; locationmapGenIterationCount < parameterData.nodes.length; locationmapGenIterationCount++) {
 			x_position = new OneDDoubleWrapper(1);
 			y_position = new OneDDoubleWrapper(1);
 
@@ -1025,7 +1045,7 @@ public class SMOOTH extends Scenario {
 	 * @throws WrapperMaximumLengthExceededException 
 	 */
 	private void runGen() throws WrapperMaximumLengthExceededException {
-		init = new Initialize(clusters, n_wps, number, (int) x, (int) y, range,
+		init = new Initialize(clusters, n_wps, number, (int) parameterData.x, (int) parameterData.y, range,
 				p, x_position, y_position, waypoints, this);
 		init.gen();
 		extractInitFields();
@@ -1037,7 +1057,7 @@ public class SMOOTH extends Scenario {
 	 * @throws WrapperMaximumLengthExceededException 
 	 */
 	private void runCluster() throws WrapperMaximumLengthExceededException {
-		init = new Initialize(clusters, n_wps, number, (int) x, (int) y, range,
+		init = new Initialize(clusters, n_wps, number, (int) parameterData.x, (int) parameterData.y, range,
 				p, x_position, y_position, waypoints, this);
 		init.cluster();
 		extractInitFields();

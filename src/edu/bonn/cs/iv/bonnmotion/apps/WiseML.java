@@ -1,10 +1,7 @@
 /*******************************************************************************
- ** WiseML-Exporter for BonnMotion mobility generator                         **
- ** Copyright (C) 2009 Raphael Ernst					      				  **
- ** University of Bonn							                              **
- ** Institute of Computer Science 4					                          **
- ** Communication and Distributed Systems				                      **
- ** Code: Raphael Ernst                                                       **
+ ** BonnMotion - a mobility scenario generation and analysis tool             **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2016 University of Osnabrueck                          **
  **                                                                           **
  ** This program is free software; you can redistribute it and/or modify      **
  ** it under the terms of the GNU General Public License as published by      **
@@ -31,6 +28,7 @@ import java.util.List;
 import java.util.HashMap;
 
 import edu.bonn.cs.iv.bonnmotion.*;
+import edu.bonn.cs.iv.bonnmotion.printer.Dimension;
 
 public class WiseML extends App {
     private static ModuleInfo info;
@@ -41,7 +39,7 @@ public class WiseML extends App {
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 650 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("Matthias Schwamborn");
@@ -144,11 +142,9 @@ public class WiseML extends App {
 		for (int j = 0; j < _nodes.length; j++) {
 			for (int k = j+1; k < _nodes.length; k++) {
 				double[] lsc = null;
-				if (s instanceof Scenario3D) {
-				    lsc = MobileNode3D.pairStatistics(_nodes[j], _nodes[k], 0.0, _duration, transmissionRange, false, ((Scenario3D)s).getBuilding());
-				} else {
-				    lsc = MobileNode.pairStatistics(_nodes[j], _nodes[k], 0.0, _duration, transmissionRange, false, s.getBuilding());
-				}
+				
+			    lsc = MobileNode.pairStatistics(_nodes[j], _nodes[k], 0.0, _duration, transmissionRange, false, s.getBuilding(), s.getScenarioParameters().calculationDim);
+
 				for (int l = 6; l < lsc.length; l += 2) {
 					double linkUp = lsc[l];
 					double linkDown = (l+1 < lsc.length) ? lsc[l+1] : Double.MAX_VALUE ;
@@ -175,12 +171,10 @@ public class WiseML extends App {
 			for (int k = 0; k < _nodes.length; k++) {
 				if (j != k) {	// do not compare node to itself
 	                double[] lsc = null;
-	                if (s instanceof Scenario3D) {
-	                    lsc = MobileNode3D.pairStatistics(_nodes[j], _nodes[k], 0.0, _duration, transmissionRange, false, ((Scenario3D)s).getBuilding());
-	                } else {
-	                    lsc = MobileNode.pairStatistics(_nodes[j], _nodes[k], 0.0, _duration, transmissionRange, false, s.getBuilding());
-	                }
-    				for (int l = 6; l < lsc.length; l += 2) {
+	                
+	                lsc = MobileNode.pairStatistics(_nodes[j], _nodes[k], 0.0, _duration, transmissionRange, false, s.getBuilding(), s.getScenarioParameters().calculationDim);
+    				
+	                for (int l = 6; l < lsc.length; l += 2) {
     					double linkUp = lsc[l];
     					double linkDown = (l+1 < lsc.length) ? lsc[l+1] : Double.MAX_VALUE ;
     					
@@ -225,14 +219,19 @@ public class WiseML extends App {
 	        double t = 0;
 	
 	        printWiseMLTimestamp(t);
-	        printWiseMLAllNodes(_nodes, t);
+	        
+	        // Dependent on calcDim because it uses the actual z-value if 3D=calcDim and a default value otherwise.
+	        // If there are Problems with this behavior, its ok to change that according to the complains!
+	        printWiseMLAllNodes(_nodes, t, s.getScenarioParameters().calculationDim);
 	        
 			t += intervalLength;
 	
 	        while(t < _duration + 1) {
 			    printWiseMLTimestamp(t);
 			    for(int currentNode = 0; currentNode < _nodes.length; currentNode++) {
-					printWiseMLOneNode(_nodes, t, currentNode);
+			    	// Dependent on calcDim because it uses the actual z-value if 3D=calcDim and a default value otherwise.
+			        // If there are Problems with this behavior, its ok to change that according to the complains!
+					printWiseMLOneNode(_nodes, t, currentNode, s.getScenarioParameters().calculationDim);
 			    }
 			    t += intervalLength;
 	        }
@@ -258,8 +257,9 @@ public class WiseML extends App {
                             printWiseMLLinkAction(item.action, getNodeId(item.source), getNodeId(item.target));
                         }
                     }
-                    
-                    printWiseMLAllNodes(_nodes, timestamp);
+                    // Dependent on calcDim because it uses the actual z-value if 3D=calcDim and a default value otherwise.
+        	        // If there are Problems with this behavior, its ok to change that according to the complains!
+                    printWiseMLAllNodes(_nodes, timestamp, s.getScenarioParameters().calculationDim);
                 }
     		} else { // print only affected nodes
         		HashMap<Double, List<ActionItem>> actionsPerTime = new HashMap<Double, List<ActionItem>>();
@@ -282,17 +282,15 @@ public class WiseML extends App {
                     
                     Collections.sort(changedNodes);
                     
-
-                    if (s instanceof Scenario3D) {
-                        for (int i : changedNodes) {
-                            Position3D p = (Position3D)_nodes[i].positionAt(timestamp);
-                            printWiseMLNodePosition(getNodeId(i), p.x, p.y, p.z);
-                        }
-                    } else {
-                        for (int i : changedNodes) {
-                            Position p = _nodes[i].positionAt(timestamp);
-                            printWiseMLNodePosition(getNodeId(i), p.x, p.y, this.defaultAltitude);
-                        }
+                    for (int i : changedNodes) {
+                        Position p = _nodes[i].positionAt(timestamp);
+	                    // Dependent on calcDim because it uses the actual z-value if 3D=calcDim and a default value otherwise.
+	        	        // If there are Problems with this behavior, its ok to change that according to the complains!
+	                    if (s.getScenarioParameters().calculationDim == Dimension.THREED) {
+	                    	printWiseMLNodePosition(getNodeId(i), p.x, p.y, p.z);
+	                    } else {
+	                    	printWiseMLNodePosition(getNodeId(i), p.x, p.y, this.defaultAltitude);
+	                    }
                     }
                 }
             }
@@ -325,7 +323,9 @@ public class WiseML extends App {
         			}
         			
         			if (!printOnlyChangingNodes) {
-        			    printWiseMLAllNodes(_nodes, timestamp);
+        				// Dependent on calcDim because it uses the actual z-value if 3D=calcDim and a default value otherwise.
+	        	        // If there are Problems with this behavior, its ok to change that according to the complains!
+        			    printWiseMLAllNodes(_nodes, timestamp, s.getScenarioParameters().calculationDim);
         			} else {
                         ArrayList<Integer> changedNodes = new ArrayList<Integer>();
                         for (ActionItem item : actionsPerTime.get(timestamp)) {
@@ -335,14 +335,13 @@ public class WiseML extends App {
                         
                         Collections.sort(changedNodes);
                         
-                        if (s instanceof Scenario3D) {
-                            for (int index : changedNodes) {
-                                Position3D p = (Position3D)_nodes[index].positionAt(timestamp);
+                        // Dependent on calcDim because it uses the actual z-value if 3D=calcDim and a default value otherwise.
+	        	        // If there are Problems with this behavior, its ok to change that according to the complains!
+                        for (int index : changedNodes) {
+                            Position p = _nodes[index].positionAt(timestamp);
+                            if (s.getScenarioParameters().calculationDim == Dimension.THREED) {
                                 printWiseMLNodePosition(getNodeId(index), p.x, p.y, p.z);
-                            }
-                        } else {
-                            for (int index : changedNodes) {
-                                Position p = _nodes[index].positionAt(timestamp);
+                        	} else {
                                 printWiseMLNodePosition(getNodeId(index), p.x, p.y, this.defaultAltitude);
                             }
                         }
@@ -354,7 +353,9 @@ public class WiseML extends App {
 	        	
 			    printWiseMLTimestamp(t);
 			    for(int currentNode = 0; currentNode < _nodes.length; currentNode++) {
-					printWiseMLOneNode(_nodes, t, currentNode);
+			    	// Dependent on calcDim because it uses the actual z-value if 3D=calcDim and a default value otherwise.
+        	        // If there are Problems with this behavior, its ok to change that according to the complains!
+					printWiseMLOneNode(_nodes, t, currentNode, s.getScenarioParameters().calculationDim);
 			    }
 			    t += intervalLength;
 	        }
@@ -363,16 +364,15 @@ public class WiseML extends App {
     	}
     }
 
-    protected void printWiseMLOneNode(MobileNode[] _nodes, double t, int nodeIndex) {
+    protected void printWiseMLOneNode(MobileNode[] _nodes, double t, int nodeIndex, Dimension dim) {
         Position p = _nodes[nodeIndex].positionAt(t);
         Position oldPosition = _nodes[nodeIndex].positionAt(t - intervalLength);
         if(oldPosition.equals(p)) {
             System.out.println("Omitting output of node " + getNodeId(nodeIndex) + ". It has not moved since last output at time " + (t-intervalLength) + ".");
         }
         else {
-            if (p instanceof Position3D) {
-                Position3D p2 = (Position3D)p;
-                printWiseMLNodePosition(getNodeId(nodeIndex), p2.x, p2.y, p2.z);
+            if (dim == Dimension.THREED) {
+                printWiseMLNodePosition(getNodeId(nodeIndex), p.x, p.y, p.z);
             } else {
                 printWiseMLNodePosition(getNodeId(nodeIndex), p.x, p.y, this.defaultAltitude);
             }
@@ -384,14 +384,13 @@ public class WiseML extends App {
 		print(String.format("<%s source=\"%s\" target=\"%s\" />", action, source, target), OTHER_LEVEL);
 	}
     
-	protected void printWiseMLAllNodes(MobileNode[] nodes, double time)
+	protected void printWiseMLAllNodes(MobileNode[] nodes, double time, Dimension dim)
 	{
 		for (int i = 0; i < nodes.length; i++)
 		{
 		    Position p = nodes[i].positionAt(time);
-            if (p instanceof Position3D) {
-                Position3D p2 = (Position3D)p;
-                printWiseMLNodePosition(getNodeId(i), p2.x, p2.y, p2.z);
+            if (dim == Dimension.THREED) {
+                printWiseMLNodePosition(getNodeId(i), p.x, p.y, p.z);
             } else {
                 printWiseMLNodePosition(getNodeId(i), p.x, p.y, this.defaultAltitude);
             }
