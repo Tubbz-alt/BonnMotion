@@ -96,6 +96,10 @@ public class Scenario extends App implements Model, ScenarioLink {
 		count_rands = 0;
 	}	
 
+	public static Scenario getScenario(String basename) throws FileNotFoundException, IOException {
+		return new Scenario(basename);
+	}
+
 	protected boolean parseArg(char key, String val) {
 		//System.out.println("parseArg: "+val+"\n");
 		switch (key) {

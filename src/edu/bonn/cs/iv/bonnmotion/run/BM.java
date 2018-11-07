@@ -31,10 +31,11 @@ public class BM {
 			"GlomoFile", "Create scenario files for Glomosim and Qualnet",
 			"SPPXml", "Create motion file according to Horst Hellbruecks XML schema",
 			"Statistics", "Analyse scenario",
-			"Timescale", "internal use only, calculates the timescale of a connected scenario", // PP
+			"Timescale", "Calculates the timescale of a connected scenario", // PP
 			"Visplot", "Visualise node movements",
 			"Dwelltime", "Analyse scenario according to Bettstetter",
-			"IntervalFormat","Convert scenario file in interval format"
+			"IntervalFormat","Convert scenario file in interval format",
+			"WiseML","Convert scenario file in WiseML format"
 		};
 
 	private String fSettings = null;
