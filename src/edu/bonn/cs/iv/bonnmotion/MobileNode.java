@@ -275,7 +275,7 @@ public class MobileNode {
             // if positions of surrounding waypoints are equal => no movement at time
             // just return position
             if (w_i.pos.equals(w_j.pos)) {
-                return new Position(w_i.pos.x, w_i.pos.y);
+                return new Position(w_i.pos.x, w_i.pos.y, w_i.pos.status);
             }
             
             return w_i.pos.getWeightenedPosition(w_j.pos, weight);
