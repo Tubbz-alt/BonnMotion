@@ -21,7 +21,7 @@ public class Column extends RandomSpeedBase {
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 379 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("Chris Walsh");
@@ -101,7 +101,7 @@ public class Column extends RandomSpeedBase {
 					//first refPt of the group. Pick a direction the column should extend. Pick a random location.
 					dir = (Math.PI * 2 * randomNextDouble());
 					refPtSeparationX = refPtSeparation * Math.cos(dir);
-					refPtSeparationX = refPtSeparation * Math.sin(dir);
+					refPtSeparationY = refPtSeparation * Math.sin(dir);
 					src = new Position((x - 2 * maxdist) * randomNextDouble() + maxdist, (y - 2 * maxdist) * randomNextDouble() + maxdist);
 				} else {
 					// All other following refPts in this group. Location based on head refPt + some offset

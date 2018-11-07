@@ -86,8 +86,7 @@ public class HttpMapRequest {
                 double lon = Double.parseDouble(nnm.getNamedItem("lon").getNodeValue());
                 double lat = Double.parseDouble(nnm.getNamedItem("lat").getNodeValue());
                 Point2D.Double src = new Point2D.Double(lon, lat);
-                Point2D.Double dst = new Point2D.Double();
-                bb.proj.transform(src, dst);
+                Point2D.Double dst = bb.transformation.transform(src.x, src.y);                
                 hospital[i] = new Position(dst.x, dst.y);
             }
         } catch (Exception e) {
@@ -426,7 +425,7 @@ public class HttpMapRequest {
 
                 result = 86400*days + 3600*hours + 60*minutes + seconds;
             }
-            else if (pref.equals("Shortest"))
+            else if (pref.equals("Shortest") || pref.equals("Pedestrian"))
             {
                 nl = doc.getElementsByTagName("xls:TotalDistance");
                 NamedNodeMap nnm = nl.item(0).getAttributes();

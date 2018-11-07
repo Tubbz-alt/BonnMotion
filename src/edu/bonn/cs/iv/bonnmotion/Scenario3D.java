@@ -34,7 +34,7 @@ public class Scenario3D extends Scenario {
         this.z = z;
         this.duration = duration;
         this.ignore = ignore;
-        rand = new Random(this.randomSeed = randomSeed);
+        setRand(new Random(this.randomSeed = randomSeed));
         count_rands = 0;
     }
 
@@ -364,7 +364,7 @@ public class Scenario3D extends Scenario {
         s.isTransition = source.isTransition;
         s.modelName = source.modelName + "from2D";
         s.predecessorScenario = source.predecessorScenario;
-        s.rand = source.rand;
+        s.setRand(source.getRand());
         s.randomSeed = source.randomSeed;
         s.transitionMode = source.transitionMode;
         s.x = source.x;
@@ -403,7 +403,7 @@ public class Scenario3D extends Scenario {
         s.isTransition = source.isTransition;
         s.modelName = source.modelName + "to2D";
         s.predecessorScenario = source.predecessorScenario;
-        s.rand = source.rand;
+        s.setRand(source.getRand());
         s.randomSeed = source.randomSeed;
         s.transitionMode = source.transitionMode;
         s.x = source.x;

@@ -32,7 +32,8 @@ import edu.bonn.cs.iv.bonnmotion.Position;
 import edu.bonn.cs.iv.bonnmotion.Scenario;
 import edu.bonn.cs.iv.bonnmotion.Waypoint;
 
-import com.jhlabs.map.proj.*;
+import edu.bonn.cs.iv.util.maps.*;
+import edu.bonn.cs.iv.util.maps.CoordinateTransformation.proj4lib;
 
 /** Application to construct RandomStreet mobility scenarios. */
 
@@ -46,7 +47,7 @@ public class RandomStreet extends Scenario
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 403 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("Matthias Schwamborn");
@@ -64,10 +65,10 @@ public class RandomStreet extends Scenario
     private BoundingBox mapBBox = null;
     /** bounding box for routes (map bbox with margin) */
     private BoundingBox routeBBox = null;
-    /** ORS distance metric ("Fastest" or "Shortest") */
+    /** ORS distance metric ("Fastest" or "Shortest" or "Pedestrian") */
     private String orsDistMetric = "Fastest";
     /** projection of the input positions */
-    private Projection proj = null;
+    private CoordinateTransformation transformation = null;
     /** EPSG code of the projection */
     private int epsgCode = 0;
     /** speed parameters */
@@ -225,8 +226,8 @@ out:    for (int i = 0; i < node.length; i++)
 
         x = routeBBox.width();
         y = routeBBox.height();
-        mapBBox.setProjection(proj);
-        routeBBox.setProjection(proj);
+        mapBBox.setTransformation(transformation);
+        routeBBox.setTransformation(transformation);
     }
 
     protected void postGeneration()
@@ -311,17 +312,17 @@ out:    for (int i = 0; i < node.length; i++)
                 else if (key.equals("ORSDistanceMetric"))
                 {
                     orsDistMetric = value;
-                    if (!orsDistMetric.equals("Fastest") && !orsDistMetric.equals("Shortest"))
+                    if (!orsDistMetric.equals("Fastest") && !orsDistMetric.equals("Shortest") && !orsDistMetric.equals("Pedestrian"))
                     {
-                        System.out.println("Warning: ORSDistanceMetric must be either \"Fastest\" or \"Shortest\"... setting to default: \"Fastest\"");
+                        System.out.println("Warning: ORSDistanceMetric must be either \"Fastest\", \"Shortest\" or \"Pedestrian\"... setting to default: \"Fastest\"");
                         orsDistMetric = "Fastest";
                     }
                 }
                 else if (key.equals("EPSGCode"))
                 {
                     epsgCode = Integer.parseInt(value);
-                    proj = ProjectionFactory.getNamedPROJ4CoordinateSystem("epsg:"+value);
-                    if (DEBUG) System.out.println("DEBUG: Proj4 string = \"" + proj.getPROJ4Description() + "\"");
+                    transformation = new CoordinateTransformation("epsg:"+value, proj4lib.PROJ4J);
+                    if (DEBUG) System.out.println("DEBUG: Proj4 string = \"" + transformation.getProj4Description() + "\"");
                 }
                 else if (key.equals("Speed"))
                 {

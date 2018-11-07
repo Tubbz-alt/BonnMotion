@@ -6,88 +6,120 @@ import java.io.PrintWriter;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Set;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.zip.GZIPOutputStream;
+import java.io.File;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
-import org.xml.sax.Attributes;
-import org.xml.sax.ContentHandler;
-import org.xml.sax.Locator;
-import org.xml.sax.SAXException;
-import org.xml.sax.XMLReader;
-import org.xml.sax.helpers.XMLReaderFactory;
-
-import com.jhlabs.map.proj.Projection;
-import com.jhlabs.map.proj.ProjectionFactory;
+import edu.bonn.cs.iv.util.maps.*;
+import edu.bonn.cs.iv.util.maps.CoordinateTransformation.proj4lib;
 
 import edu.bonn.cs.iv.bonnmotion.App;
 import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
 
 /**
  * Application that converts GPX files to Bonnmotion output.
- * javaproj-1.0.6.jar must be in classpath.
  *
  */
-public class GPXImport extends App implements ContentHandler {
+public class GPXImport extends App {
     private static ModuleInfo info;
     
     static {
         info = new ModuleInfo("GPXImport");
         info.description = "Application that converts GPX files to Bonnmotion format";
         
-        info.major = 1;
+        info.major = 2;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 373 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("University of Bonn");
-		info.affiliation = ModuleInfo.UNIVERSITY_OF_BONN;
+        info.authors.add("Karina Meyer <karimeye@uos.de>");
+        info.authors.add("Matthias Schwamborn");
+		info.affiliation = ModuleInfo.UOS_SYS;
     }
     
     public static ModuleInfo getInfo() {
         return info;
     }
-    
-	private class TrkPoint {
+	
+	private class GpxPoint {
 		public final double x;
 		public final double y;
 		public double z;
 		public Date time;
 		public double convertedTime;
 		
-		public TrkPoint(double x, double y) {
+		public GpxPoint(double x, double y) {
 			this.x = x;
 			this.y = y;
 		}
 	}
 	
+	private class TimePoint {
+		public final String FileName;
+		public final String RteTrkWp;
+		public final int numberOf;
+		public int numberOfSegment;
+		public int numberOfPoint;
+		
+		public TimePoint (String Filename, String RteTrkWp, int numberOf, int numberOfSegment, int numberOfPoint){
+			this.FileName = Filename;
+			this.RteTrkWp = RteTrkWp;
+			this.numberOf = numberOf;
+			this.numberOfSegment = numberOfSegment;
+			this.numberOfPoint = numberOfPoint;
+		}
+		public TimePoint (String Filename, String RteTrkWp, int numberOf){
+			this.FileName = Filename;
+			this.RteTrkWp = RteTrkWp;
+			this.numberOf = numberOf;
+		}
+	}
+	
 	private String fileName = null;
+	private String projCRSName = null;
 
-	private final Projection projection =
-		ProjectionFactory.fromPROJ4Specification(
-				new String[] {
-						"+proj=latlong",
-						"+ellps=WGS84",
-						"+proj=utm",
-						"+zone=32",
-						"+ellps=WGS84"
-				});
-	
+	private CoordinateTransformation transformation = null;
+	private ArrayList <String> filenames = new ArrayList <String>();
 	private HashMap<String, ArrayList<Double>> bounds = new HashMap<String, ArrayList<Double>>();
+	private HashMap<String, ArrayList<GpxPoint>> trks = new HashMap<String, ArrayList<GpxPoint>>();
+	private HashMap<String, ArrayList<GpxPoint>> wps = new HashMap<String, ArrayList<GpxPoint>>();
+	private HashMap<String, ArrayList<GpxPoint>> rtes = new HashMap<String, ArrayList<GpxPoint>>();
 	
-	private boolean inTrkptContent = false;
-	private boolean inTimeContent = false;
-    private boolean inEleContent = false;
+	private boolean waypoint = false;
+	private boolean route = false;
 	private String timestr = "";
 	private boolean compress = false;
-    private boolean importHeight = false;
-    private double defaultHeight = 0;
-    private String invalidHeight = "-99999.000000";
+	private boolean importHeight = false;
+	private double defaultHeight = 0;
+	private String invalidHeight = "-99999.000000";
+	private int lostTrkPointCounter = 0;
+	private int lostWPointCounter = 0;
+	private int lostRtePointCounter = 0;
+	private int TrkNameCounter = 0; 
+	private int WPNameCounter = 0; 
+	private int RteNameCounter = 0; 
+	private Date starttime = null;
+	private Date endtime = null;
 	
-	private TrkPoint currentTrkPoint = null;
-	private ArrayList<TrkPoint> coordlist = new ArrayList<TrkPoint>();
+	
+	private GpxPoint currentWPoint = null;
+	private GpxPoint currentTrkPoint = null;
+	private GpxPoint currentRtePoint = null;
+	private GpxPoint currentPoint = null;
+	private TimePoint currentStart = null;
+	private TimePoint currentEnd = null;
+	//private ArrayList<TrkPoint> coordlist = new ArrayList<TrkPoint>();
 
 	public GPXImport(String[] args) {
 		this.bounds.put("min_x", new ArrayList<Double>());
@@ -99,35 +131,402 @@ public class GPXImport extends App implements ContentHandler {
 	    
 		this.go(args);
 	}
-
+	
 	@Override
 	public void go(String[] args) {
 		parse(args);
 
-		if (this.fileName == null) {
+		if (this.filenames == null) {
 			GPXImport.printHelp();
 			System.exit(0);
 		}
-
-		XMLReader parser = null;
-		try {
-			parser = XMLReaderFactory.createXMLReader();
-		} catch (SAXException e) {
-			App.exceptionHandler("Could not create XML reader ", e);
+		if (projCRSName != null && ((filenames.size() > 1 && (fileName!=null && !fileName.equals(""))) || filenames.size() == 1)){
+			transformation = new CoordinateTransformation(projCRSName, proj4lib.PROJ4J);
+			
+			if (filenames.size() == 1 && (fileName==null || fileName.equals(""))) {
+				fileName = filenames.get(0);
+			}
+			for (int i=0; i<filenames.size(); i++){
+				this.ParseDoc(filenames.get(i));
+			}
+			this.createParams();
+			this.createMovements();
+		} else {
+			if (projCRSName == null) {
+				System.out.println("Error: projected CRS name required (see \"-p\"!");
+			}
+			if ((filenames.size() > 1 && fileName==null)) {
+				System.out.println("Error: No Filename found for result data file!");
+			}
+			
+			this.printHelp();
 		}
+	} //ende go
+		
+		
+	/**
+	* parse the input Files
+	*/
+	private void ParseDoc (String FileName) {
 
-		parser.setContentHandler(this);
+		 try {
+			File file = new File(FileName);
+			System.out.println(" ");
+			System.out.println("Parsing: [" + FileName + "]");
+			RteNameCounter = 0;
+			TrkNameCounter = 0;
+			WPNameCounter = 0;
+			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+			DocumentBuilder db = dbf.newDocumentBuilder();
+			Document doc = db.parse(file);
+			doc.getDocumentElement().normalize();
+			NodeList nodeLst = null;
+			Element rootEl = doc.getDocumentElement();
+			//************ parsing bounds ***************************
+			nodeLst = doc.getElementsByTagName("metadata");
+			if (nodeLst != null && nodeLst.getLength() > 0){
+				for (int s = 0; s < nodeLst.getLength(); s++) {
 
-		try {
-			parser.parse(fileName);
-		} catch (Exception e) {
-			App.exceptionHandler("Could not parse" , e);
+					Node fstNode = nodeLst.item(s); 
+    
+					if (fstNode.getNodeType() == Node.ELEMENT_NODE) { 
+						Element mdata = (Element)fstNode; 
+						NodeList boundList = mdata.getElementsByTagName("bounds");
+						this.parseBound(boundList);
+					} 
+				} 
+			} else {
+				NodeList boundList2 = rootEl.getElementsByTagName("bounds");
+				parseBound(boundList2);
+			}
+		//******************* Parsing Track ***************************
+			nodeLst = doc.getElementsByTagName("trk");
+			if (nodeLst != null){
+				for (int s = 0; s < nodeLst.getLength(); s++) {
+					ArrayList<GpxPoint> coordlist = new ArrayList<GpxPoint>();
+					Node fstNode = nodeLst.item(s); 
+					if (fstNode.getNodeType() == Node.ELEMENT_NODE) {
+						Element srcTag = (Element)fstNode;
+						Element trkseg = (Element)fstNode;
+						NodeList trksegList = trkseg.getElementsByTagName("trkseg");
+						for (int i =0; i<trksegList.getLength(); i++){
+							Node trksegNode = nodeLst.item(i);
+							lostTrkPointCounter=0;
+							if (trksegNode.getNodeType() == Node.ELEMENT_NODE) { 
+								Element trkpt = (Element)fstNode;
+								NodeList trkptList = trkpt.getElementsByTagName("trkpt");
+								for (int j=0; j<trkptList.getLength(); j++) {
+									Element trkpoint = (Element) trkptList.item(j);
+									TimePoint trkTimePoint = new TimePoint(FileName, "trk", s, i, j);
+									parsePoints (trkpoint, coordlist, 1, trkTimePoint);
+								}
+							}
+						}
+						
+						String Name = "";
+						if (coordlist!=null && coordlist.size() > 0){
+							NodeList srcList = srcTag.getElementsByTagName("src");
+							
+							if (srcList != null && srcList.getLength() > 0){ //anfang if 1
+								for (int a = 0; a < srcList.getLength(); a++) {
+									Element srcElement = (Element)srcList.item(0);
+									NodeList srcList2 = srcElement.getChildNodes();
+									String name = ((Node)srcList2.item(0)).getNodeValue().trim();
+									boolean twice = false;
+									Set<String> trkkeys = this.trks.keySet();
+									for (String str : trkkeys){
+										if (Name.equals(str)){
+											ArrayList<GpxPoint> pointlist = trks.get(str);
+											for (int i = 0; i<coordlist.size(); i++){
+												pointlist.add(coordlist.get(i));
+											}
+											trks.remove(str);
+											trks.put(Name, pointlist);
+											twice = true;
+											break;
+										}
+				
+									}
+									if (twice == false){
+										trks.put(Name, coordlist);
+									}
+								}
+							} else {
+								Name = String.valueOf(TrkNameCounter);
+								trks.put(Name,coordlist);
+								System.out.println("Warning: No <src> Tag found for Track " + s);
+								TrkNameCounter++;
+							}
+						}
+						if (lostTrkPointCounter>0){
+							System.out.println("Warning: In Track " + s + " " + lostTrkPointCounter + " TrkPoints ignored (no time found)");
+						}
+					}
+				}
+			} else {
+				System.out.println("Waring: No <trk> Element found");
+			}
+		//****************** Parsing Waypoints ***************************
+			if (waypoint == true){
+				nodeLst = doc.getElementsByTagName("wpt"); 
+				if (nodeLst != null){
+					ArrayList<GpxPoint> wcoordlist = new ArrayList<GpxPoint>();
+				
+					for (int s = 0; s < nodeLst.getLength(); s++) {
+						Node fstNode = nodeLst.item(s); 
+						Element srcTag = (Element)fstNode;
+						if (fstNode.getNodeType() == Node.ELEMENT_NODE) {
+							Element wpoint = (Element) nodeLst.item(s);
+							TimePoint wptTimePoint = new TimePoint(FileName, "wpt", s);
+							parsePoints (wpoint, wcoordlist, 2, wptTimePoint);
+						}	
+
+					}
+					String Name = "";
+					Name = String.valueOf(WPNameCounter);
+					WPNameCounter++;
+					if (wcoordlist.size()>0){
+						wps.put(Name,wcoordlist);
+					}					
+					if (lostWPointCounter>0){
+						System.out.println("Warning: " + lostWPointCounter + " WPoint(s) ignored (no time found)");
+					}
+					
+			}
+			
+		}
+		//************************* Parsing Routes *************************
+		if (route == true) {
+			nodeLst = doc.getElementsByTagName("rte");
+			if (nodeLst != null){
+				for (int s = 0; s < nodeLst.getLength(); s++) {
+					ArrayList<GpxPoint> coordlist = new ArrayList<GpxPoint>();
+					Node fstNode = nodeLst.item(s); 
+					if (fstNode.getNodeType() == Node.ELEMENT_NODE) {
+						Element srcTag1 = (Element)fstNode;
+						Element rtepoint1 = (Element)fstNode;
+						NodeList rtePointList = rtepoint1.getElementsByTagName("rtept");
+						for (int t = 0; t < rtePointList.getLength(); t++) {
+							Element rtepoint = (Element) rtePointList.item(t);
+							TimePoint rteTimePoint = new TimePoint(FileName, "rte", s, 0, t);
+							parsePoints (rtepoint, coordlist, 1, rteTimePoint);		
+							
+						} //end for t
+						if (lostRtePointCounter>0){
+							System.out.println("Warning: in Rte " + s + " " + lostWPointCounter + " RtePoint(s) ignored (no time found)");
+						}
+						if (coordlist!=null && coordlist.size() > 0) {
+							NodeList srcList = srcTag1.getElementsByTagName("src");
+							String Name = "";	
+							if (srcList != null && srcList.getLength() > 0){ 
+								for (int a = 0; a < srcList.getLength(); a++) {
+									Element srcElement = (Element)srcList.item(0);
+									NodeList srcList2 = srcElement.getChildNodes();
+									String name = ((Node)srcList2.item(0)).getNodeValue().trim();
+									boolean twice = false;
+									Set<String> trkkeys = this.trks.keySet();
+									for (String str : trkkeys){
+										if (Name.equals(str)){
+											ArrayList<GpxPoint> pointlist = rtes.get(str);
+											
+											for (int i = 0; i<coordlist.size(); i++){
+												pointlist.add(coordlist.get(i));
+											}
+											rtes.remove(str);
+											rtes.put(Name, pointlist);
+											twice = true;
+											break;
+										}
+				
+									}
+									if (twice == false){
+										rtes.put(Name, coordlist);
+									}
+								}
+							} else {
+								Name = String.valueOf(RteNameCounter);
+								rtes.put(Name,coordlist);
+								RteNameCounter++;
+								System.out.println("Warning: No <src> Tag found for Route " + s);
+							}
+						
+						}
+					}
+				}	
+			}
 		}
 		
-		this.createParams();
-		this.createMovements();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	} //end ParseDoc
+	
+	/**
+	* Parse Gpx points from Files
+	*/
+	private void parsePoints (Element point, ArrayList<GpxPoint> coordlist, int counter, TimePoint p) {
+		double lat = Double.parseDouble(point.getAttribute("lat")); //parses lat and lon from Point
+		double lon = Double.parseDouble(point.getAttribute("lon"));
+
+		Point2D.Double dst = transformation.transform(lon, lat);
+		
+		this.currentPoint = new GpxPoint(dst.x, dst.y);
+								
+		NodeList hightList = point.getElementsByTagName("ele");
+		String ele = "-99999.000000";
+		if (hightList!= null && hightList.getLength() >0 ){  //parse the ele tack if exists otherwise it 
+			Element eleElement = (Element)hightList.item(0); // will be replaced by default height
+			NodeList eleList = eleElement.getChildNodes();
+			ele = ((Node)eleList.item(0)).getNodeValue().trim();
+		} else {
+			ele = "-99999.000000";
+		}
+									
+		double z;
+		if (ele.equals(invalidHeight)) {
+			z = this.defaultHeight;
+		} else {
+			try {
+				z = Double.parseDouble(ele);
+			} catch (NumberFormatException e) {
+				z = this.defaultHeight;
+			}
+		}
+            
+		double maxz = bounds.get("max_z").get(0);
+		if (z > maxz) bounds.get("max_z").set(0, z);
+            
+		this.currentPoint.z = z;
+	
+		// parse time from every point if exists, otherwise the Point will be ignored
+		NodeList timeList = point.getElementsByTagName("time");
+		if (timeList.getLength()!=0){
+			Element timeElement = (Element)timeList.item(0);
+			NodeList timeList2 = timeElement.getChildNodes();
+			this.timestr = "";
+			SimpleDateFormat f = new SimpleDateFormat("y-M-d'T'H:m:s'Z'");
+			timestr = ((Node)timeList2.item(0)).getNodeValue().trim();
+									
+			try {
+				this.currentPoint.time = f.parse(this.timestr);
+			} catch (ParseException e) {
+				App.exceptionHandler("Error parsing Date ", e);
+			}
+			coordlist.add(this.currentPoint);
+			seek0Time(currentPoint, p);
+		} else {
+			if (counter == 1){
+				lostTrkPointCounter++;
+			}
+			if (counter == 2){
+				lostWPointCounter++;
+			}
+			if (counter == 3){
+				lostRtePointCounter++;
+			}
+		}
+	} //end parsePoints
+	
+	
+	/**
+	* Sorts the input ArrayList with bubblesort
+	* sort List beginns with lowest time
+	*/
+	private void bubbleSort(ArrayList<GpxPoint> wcoordlist){
+		boolean bubble;
+		do {
+			bubble = false;
+			for (int i=0; i< wcoordlist.size()-1; i++) {
+				GpxPoint p = wcoordlist.get(i);
+				GpxPoint x = wcoordlist.get(i+1);
+				if ((p.convertedTime) > (x.convertedTime)) {
+					wcoordlist.set(i, x);
+					wcoordlist.set((i+1), p);
+					bubble = true;
+				}
+			}
+		} while (bubble);
 	}
 	
+	/**
+	* seek zero time of all input
+	*/
+	private void seek0Time (GpxPoint p, TimePoint t) {
+		boolean transformedStart = false; 
+		boolean transformedEnd = false; 
+		if (p!=null){
+			if (starttime == null){
+				starttime = p.time;
+				transformedStart = true;
+			} else {
+				if (starttime.after(p.time)) {
+						starttime = p.time;
+						transformedStart = true;
+				}
+			}
+									
+			if (endtime == null){
+				endtime = p.time;
+				transformedEnd = true; 
+			} else {
+				if (endtime.before(p.time)) {
+					endtime = p.time;
+					transformedEnd = true;
+				}
+			}
+		}
+		if (transformedStart == true || currentStart == null){
+			currentStart = t;
+		}
+		if (transformedEnd == true || currentEnd == null){
+			currentEnd = t;
+		}
+	}
+	/**
+	* Parsing the bounds of the Simulation Area from every Input File and write them 
+	* into a HashMap
+	*/
+	private void parseBound(NodeList boundList) {
+		double minlat = 0f;
+		double minlon = 0f;
+		double maxlat = 0f;
+		double maxlon = 0f;
+		Element bound = (Element) boundList.item(0);
+		// parse bounds from file
+		minlat = Double.parseDouble(bound.getAttribute("minlat"));
+		maxlat = Double.parseDouble(bound.getAttribute("maxlat"));
+		minlon = Double.parseDouble(bound.getAttribute("minlon"));
+		maxlon = Double.parseDouble(bound.getAttribute("maxlon"));
+
+		// transform bounds
+		Point2D.Double dst = transformation.transform(minlon, minlat);
+		
+		// add bounds to HashMap
+		bounds.get("min_x").add(dst.x);
+		bounds.get("min_y").add(dst.y);
+
+		dst = transformation.transform(maxlon, maxlat);
+			
+		bounds.get("max_x").add(dst.x);
+		bounds.get("max_y").add(dst.y);
+	}
+	
+	
+	public static void printHelp() {
+        System.out.println(getInfo().toDetailString());
+		System.out.println(getInfo().name);
+		System.out.println("\t-f <GPX file> ... (GPX input file(s))");
+		System.out.println("\t[-c] compress output");
+	    System.out.println("\t[-h] import elevation from input as z-coordinate");
+	    System.out.println("\t[-H] default height (double)");
+		System.out.println("\t[-w] process waypoint entries");
+		System.out.println("\t[-r] process route entries");
+		System.out.println("\t-p <projected CRS name> (Name of the projected CRS for coordinate transformation)");
+		System.out.println("\t-F <output filename> (mandatory if there are multiple input files) ");
+	}
+	/**
+	* calculate differents between starttime and endtime
+	*/
 	private long calculateDateDiff(Date starttime, Date endtime) {
 		GregorianCalendar cal1 = new GregorianCalendar();
 		GregorianCalendar cal2 = new GregorianCalendar();
@@ -140,103 +539,174 @@ public class GPXImport extends App implements ContentHandler {
 		return delta;
 	}
 	
+	/** 
+	* Print finally Start and Endtime
+	*/
+	private void printTime(TimePoint st, TimePoint et){
+		if (starttime != null && endtime != null){
+			if ((st.RteTrkWp).equals("trk")){
+				System.out.println("Starttime: " + starttime+ " found at File " + st.FileName + " Trk " + st.numberOf + " TrkSeg " + st.numberOfSegment + " TrkPoint " + st.numberOfPoint);
+			}
+			if ((st.RteTrkWp).equals("rte")){
+				System.out.println("Starttime: " + starttime + " found at File " + st.FileName + " Rte " + st.numberOf + " RtePoint " + st.numberOfPoint);
+			}
+			if ((st.RteTrkWp).equals("wpt")){
+				System.out.println("Starttime: " + starttime + " found at File " + st.FileName + " Wpt " + st.numberOf);
+			}
+			if ((et.RteTrkWp).equals("wpt")){
+				System.out.println("Endtime: " + endtime + " found at File " + et.FileName + " Wpt " + et.numberOf);
+			}
+			if ((et.RteTrkWp).equals("trk")){
+				System.out.println("Endtime: " + endtime + " found at File " + et.FileName + " Trk " + et.numberOf + " TrkSeg " + et.numberOfSegment + " TrkPoint " + et.numberOfPoint);
+			}
+			if ((et.RteTrkWp).equals("rte")){
+				System.out.println("Endtime: " + endtime + " found at File " + et.FileName + " Rte " + et.numberOf + " RtePoint " + et.numberOfPoint);
+			}
+		}
+
+	}
+	
+	
+	/**
+	* creates Movement File and calls printMovements to print Movements
+	*/
 	private void createMovements() {
+		System.out.println(" ");
+		printTime(currentStart, currentEnd);
+		PrintWriter movements = null;
+		if (trks.size()>0 || (wps.size()>0 && waypoint == true) || (rtes.size()>0 && route == true)) {
+			if (this.compress) {
+				try {
+					movements = 
+						new PrintWriter(
+							new GZIPOutputStream(
+								new FileOutputStream(this.fileName + ".movements.gz")));
+				} catch (Exception e) {
+					App.exceptionHandler("Error opening ", e);
+				}
+			} else {
+				movements = App.openPrintWriter(this.fileName + ".movements");
+			}
+		
+			if (importHeight) {
+				movements.println("#3D");
+			}
+			
+			// if bounds changed this throws a note
+			double result = (this.bounds.get("min_x")).get(0);
+			boolean boundsChanged = false;
+			if ((this.bounds.get("min_x")).size() > 1 ) {
+				Iterator<Double> it = (this.bounds.get("min_x")).iterator();
+				while (it.hasNext()) {
+					double n = it.next();
+					if (n != result) {
+						boundsChanged =  true;
+					}
+				}
+				if (boundsChanged) {
+					System.out.println("Note: bounds changed to contain all movements");
+				}
+			}
+			Set<String> trkkeys = this.trks.keySet();
+			for (String s : trkkeys){
+			
+				ArrayList<GpxPoint> coordlist = trks.get(s);
+				printMovements(coordlist, movements);
+				
+			}
+			Set<String> wpkeys = this.wps.keySet();
+			for (String s : wpkeys){
+			
+				ArrayList<GpxPoint> coordlist = wps.get(s);
+				printMovements(coordlist, movements);
+				
+			}
+			Set<String> rtekeys = this.rtes.keySet();
+			for (String s : rtekeys){
+			
+				ArrayList<GpxPoint> coordlist = rtes.get(s);
+				printMovements(coordlist, movements);
+				
+			}
+			movements.close();
+			if (this.compress) {
+				System.out.println("File [" + this.fileName + ".movements.gz] created.");
+			} else {
+				System.out.println("File [" + this.fileName + ".movements] created.");
+			}
+		} 
+	}
+	
+	/**
+	* Prints movements to File
+	*/
+	private void printMovements(ArrayList<GpxPoint> coordlist, PrintWriter movements){
 		double min_x = this.minFromDoubleList(this.bounds.get("min_x"));
 		double min_y = this.minFromDoubleList(this.bounds.get("min_y"));
-		
-		Date starttime = this.coordlist.get(0).time;
-		Date endtime = this.coordlist.get(this.coordlist.size() - 1).time;
-		long delta = this.calculateDateDiff(starttime, endtime);
-		
-		PrintWriter movements = null;
-		
-		if (this.compress) {
-			try {
-				movements = 
-					new PrintWriter(
-							new GZIPOutputStream(
-									new FileOutputStream(this.fileName + ".movements.gz")));
-			} catch (Exception e) {
-				App.exceptionHandler("Error opening ", e);
+		long delta = this.calculateDateDiff(this.starttime, this.endtime);
+		for (GpxPoint p : coordlist) {
+			// check if this entry is outside duration range
+			if (p.time.after(this.endtime)) {
+				break;
 			}
-		} else {
-			movements =
-				App.openPrintWriter(this.fileName + ".movements");
-		}
-		
-		if (importHeight) {
-		    movements.println("#3D");
-		}
-		
-		for (TrkPoint p : this.coordlist) {
-	        // check if this entry is outside duration range
-            if (p.time.after(endtime)) {
-                break;
-            }
-            // check if this entry is after starttime
-            if (p.time.before(starttime)) {
-                continue;
-            }
+			// check if this entry is after starttime
+			if (p.time.before(this.starttime)) {
+				continue;
+			}
             
-            delta = this.calculateDateDiff(starttime, p.time);
-            long days = Math.round(delta / (60.0 * 60.0 * 24.0 * 1000.0));
-            long seconds = (long) (delta / 1000.0);
-            long time = days * 24 * 3600 + seconds;
+			delta = this.calculateDateDiff(this.starttime, p.time);
+			long days = Math.round(delta / (60.0 * 60.0 * 24.0 * 1000.0));
+			long seconds = (long) (delta / 1000.0);
+			long time = days * 24 * 3600 + seconds;
             
-            p.convertedTime = time;
+			p.convertedTime = time;
 		}
-		
 		// This checks if multiple waypoints occupy the same timestamp and if so
 		// diversifies the positions upon the second.
-        for (int entry = 0; entry < this.coordlist.size(); entry++) {
-            TrkPoint p = this.coordlist.get(entry);
+		for (int entry = 0; entry < coordlist.size()-1; entry++) {
+			GpxPoint p = coordlist.get(entry);
             
-            int occurrences = 0;
-            for (TrkPoint x : this.coordlist) {
-                if (x.convertedTime == p.convertedTime) {
-                    occurrences++;
-                }
-            }
+			int occurrences = 0;
+			for (GpxPoint x : coordlist) {
+				if (x.convertedTime == p.convertedTime) {
+					occurrences++;
+				}
+			}
             
-            if (occurrences > 1) {
-                for (int i = 1; i < occurrences; i++) {
-                    coordlist.get(entry+i).convertedTime += i*(1./occurrences);
-                }
-            }
-        }
+			if (occurrences > 1) {
+				for (int i = 1; i < occurrences; i++) {
+					coordlist.get(entry+i-1).convertedTime += i*(1./occurrences);
+				}
+			}
+		}
         
-        // Probably due to double inaccurateness it can happen that the min_x/min_y shifts 
-        // too little, resulting in negative coordinates. 
-        // This is checked here and the shift is corrected if necessary
-        for (TrkPoint p : this.coordlist) {
-            double x = p.x - min_x;
-            double y = p.y - min_y;
-            if (x < 0) {
-                min_x -= x + 0.001;
-            }
-            if (y < 0) {
-                min_y -= y + 0.001;
-            }
-        }
-		
-		for (TrkPoint p : this.coordlist) {
+		// Probably due to double inaccuracy it can happen that the min_x/min_y shifts 
+		// too little, resulting in negative coordinates. 
+		// This is checked here and the shift is corrected if necessary
+		for (GpxPoint p : coordlist) {
+			double x = p.x - min_x;
+			double y = p.y - min_y;
+			if (x < 0) {
+				min_x -= x + 0.001;
+			}
+			if (y < 0) {
+				min_y -= y + 0.001;
+			}
+		}
+		this.bubbleSort(coordlist);
+		for (GpxPoint p : coordlist) {
 			double x = p.x - min_x;
 			double y = p.y - min_y;
 			if (!importHeight) {
-			    movements.print(p.convertedTime + " " + x + " " + y + " ");
+				movements.print(p.convertedTime + " " + x + " " + y + " ");
 			} else {
-			    movements.print(p.convertedTime + " " + x + " " + y + " " + p.z + " ");
+				movements.print(p.convertedTime + " " + x + " " + y + " " + p.z + " ");
 			}
 		}
 		
 		movements.println();
-		movements.close();
-		if (this.compress) {
-			System.out.println("File [" + this.fileName + ".movements.gz] created.");
-		} else {
-			System.out.println("File [" + this.fileName + ".movements] created.");
-		}
 	}
+
 	
 	private double maxFromDoubleList(ArrayList<Double> arr) {
 		double result = arr.get(0);
@@ -264,6 +734,9 @@ public class GPXImport extends App implements ContentHandler {
 		return result;
 	}
 	
+	/**
+	* Creates the Params File
+	*/
 	private void createParams() {
 		double max_x = 
 			this.maxFromDoubleList(this.bounds.get("max_x")) 
@@ -271,36 +744,54 @@ public class GPXImport extends App implements ContentHandler {
 		double max_y = 
 			this.maxFromDoubleList(this.bounds.get("max_y"))
 			- this.minFromDoubleList(this.bounds.get("min_y"));
-
-		Date starttime = this.coordlist.get(0).time;
-		Date endtime = this.coordlist.get(this.coordlist.size() - 1).time;
+			
+		if (trks.size()>0 || (wps.size()>0 && waypoint == true) || (rtes.size()>0 && route == true)) {
+			long delta = this.calculateDateDiff(this.starttime, this.endtime);
+			long seconds = delta / 1000l;
+			long days = Math.round(delta / (60.0 * 60.0 * 24.0 * 1000.0));
+			if (days < 0) {
+				System.out.println("Timestamp of the end of simulation is earlier than of its start!");
+				System.exit(0);
+			}
+			long duration = days * 24 * 3600 + seconds - 1;
 		
-		long delta = this.calculateDateDiff(starttime, endtime);
-		long seconds = delta / 1000l;
-		long days = Math.round(delta / (60.0 * 60.0 * 24.0 * 1000.0));
-		if (days < 0) {
-			System.out.println("Timestamp of the end of simulation is earlier than of its start!");
-			System.exit(0);
+			PrintWriter params = App.openPrintWriter(this.fileName + ".params");
+			params.println("model=" + "GPXImport "+ getInfo().getFormattedVersion()); 
+			params.println("x=" + max_x);
+			params.println("y=" + max_y);
+			if (importHeight) {
+				params.println("z=" + bounds.get("max_z").get(0)); 
+			}
+			params.println("duration=" + duration);
+			if (duration == -1) {
+				System.out.println("Warning: No more than one different timestamp found!");
+			}
+			int nn = 0;
+			nn = trks.size();
+			if (waypoint) {
+				nn += wps.size();
+			}
+			if (route) {
+				nn += rtes.size();
+			}
+			params.println("nn=" + nn);
+			params.close();
+			System.out.println("File [" + this.fileName + ".params] created");
+		} 
+		if (trks.size() <= 0 || trks == null){
+			System.out.println("Waring: No <trk> Element found");
 		}
-		long duration = days * 24 * 3600 + seconds - 1;
-		
-		PrintWriter params = App.openPrintWriter(this.fileName + ".params");
-		params.println("model=" + "GPXImport "+ getInfo().getFormattedVersion()); 
-		params.println("x=" + max_x);
-		params.println("y=" + max_y);
-	    if (importHeight) {
-	        params.println("z=" + bounds.get("max_z").get(0)); 
-	    }
-		params.println("duration=" + duration);
-		params.println("nn=" + "1");
-		params.close();
-		System.out.println("File [" + this.fileName + ".params] created");
-	}
 
+	}
+	private String[] tmp; 
 	public boolean parseArg(char key, String val) {
 		switch (key) {
 		case 'f':
-			this.fileName = val;
+			tmp = val.split(" ");
+			for (int i=0; i< tmp.length; i++){
+				filenames.add(tmp[i]);
+			}
+			System.out.println(filenames.size() + " files found to parse");
 			return true;
 		case 'c':
 			this.compress = true;
@@ -311,165 +802,20 @@ public class GPXImport extends App implements ContentHandler {
         case 'H':
             this.defaultHeight = Double.parseDouble(val);
             return true;
+		case 'w':
+			this.waypoint = true;
+			return true;
+		case 'r':
+			this.route = true;
+			return true;
+		case 'p':
+			this.projCRSName = val;
+			return true;
+		case 'F':
+			this.fileName = val;
+			return true;
 		}
 
 		return super.parseArg(key, val);
 	}
-
-	public static void printHelp() {
-        System.out.println(getInfo().toDetailString());
-		System.out.println(getInfo().name);
-		System.out.println("\t-f <filename>");
-		System.out.println("\t-c <compress> (true|false)");
-	    System.out.println("\t-h <import height> (true|false)");
-	    System.out.println("\t-H <default height> (double)");
-	}
-
-	@Override
-	public void characters(char[] ch, int start, int length)
-	throws SAXException {
-		if (this.inTimeContent) {
-			for (int i = start; i < start + length; i++) {
-				this.timestr += ch[i];
-			}
-        }
-        else if (this.inEleContent) {
-            String tmp = "";
-            for (int i = start; i < start + length; i++) {
-                tmp += ch[i];
-            }
-            
-            double z;
-            if (tmp.equals(invalidHeight)) {
-                z = this.defaultHeight;
-            } else {
-                try {
-                    z = Double.parseDouble(tmp);
-                }
-                catch (NumberFormatException e) {
-                    z = this.defaultHeight;
-                }
-            }
-            
-            double maxz = bounds.get("max_z").get(0);
-            if (z > maxz) bounds.get("max_z").set(0, z);
-            
-            this.currentTrkPoint.z = z;
-        }
-	}
-
-	@Override
-	public void endDocument() throws SAXException {
-	}
-
-	@Override
-	public void endElement(String uri, String localName, String name)
-	throws SAXException {
-		if (name.equals("trkpt")) {
-			this.inTrkptContent = false;
-		} else if (name.equals("time")) {
-			if (this.inTrkptContent) {
-				this.inTimeContent = false;
-				SimpleDateFormat f = new SimpleDateFormat("y-M-d'T'H:m:s'Z'");
-				try {
-					this.currentTrkPoint.time = f.parse(this.timestr);
-				} catch (ParseException e) {
-					App.exceptionHandler("Error parsing Date ", e);
-				}
-			}
-		} else if (name.equals("ele")) {
-            if (importHeight) {
-                if (this.inTrkptContent) {
-                    this.inEleContent = false;
-                }
-            }
-		}
-	}
-
-	@Override
-	public void endPrefixMapping(String prefix) throws SAXException {
-	}
-
-	@Override
-	public void ignorableWhitespace(char[] ch, int start, int length)
-	throws SAXException {
-	}
-
-	@Override
-	public void processingInstruction(String target, String data)
-	throws SAXException {
-	}
-
-	@Override
-	public void setDocumentLocator(Locator locator) {
-	}
-
-	@Override
-	public void skippedEntity(String name) throws SAXException {
-	}
-
-	@Override
-	public void startDocument() throws SAXException {
-	}
-
-	@Override
-	public void startElement(String uri, String localName, String name,
-			Attributes atts) throws SAXException {
-		double minlat = 0f;
-		double minlon = 0f;
-		double maxlat = 0f;
-		double maxlon = 0f;
-
-		if (name.equals("bounds")) {
-			minlat = Double.parseDouble(atts.getValue("minlat"));
-			minlon = Double.parseDouble(atts.getValue("minlon"));
-			maxlat = Double.parseDouble(atts.getValue("maxlat"));
-			maxlon = Double.parseDouble(atts.getValue("maxlon"));
-			
-			Point2D.Double dst = new Point2D.Double();
-			
-			Point2D.Double src = new Point2D.Double(minlon, minlat);
-			this.projection.transform(src, dst);
-			
-			bounds.get("min_x").add(dst.x);
-			bounds.get("min_y").add(dst.y);
-			
-			src = new Point2D.Double(maxlon, maxlat);
-			this.projection.transform(src, dst);
-			
-			bounds.get("max_x").add(dst.x);
-			bounds.get("max_y").add(dst.y);
-
-		} else if (name.equals("trkpt")) {
-			this.inTrkptContent = true;
-			
-			double lat = Double.parseDouble(atts.getValue("lat"));
-			double lon = Float.parseFloat(atts.getValue("lon"));
-			
-			Point2D.Double src = new Point2D.Double(lon, lat);
-			Point2D.Double dst = new Point2D.Double();
-			
-			this.projection.transform(src, dst);
-			
-			this.currentTrkPoint = new TrkPoint(dst.x, dst.y);
-			
-			this.coordlist.add(this.currentTrkPoint);
-		} else if (name.equals("time")) {
-			if (this.inTrkptContent) {
-				this.inTimeContent = true;
-				this.timestr = "";
-			}
-		} else if (name.equals("ele")) {
-            if (importHeight) {
-                if (this.inTrkptContent) {
-                    this.inEleContent = true;
-                }
-            }
-        }
-	}
-
-	@Override
-	public void startPrefixMapping(String prefix, String uri)
-	throws SAXException {
-	}
-}
+}//end class

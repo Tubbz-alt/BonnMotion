@@ -46,7 +46,7 @@ public class SLAW extends SLAWBase {
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 270 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 408 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("Zia-Ul-Huda");
@@ -61,14 +61,14 @@ public class SLAW extends SLAWBase {
     }
 
     public SLAW(int nodes, double x, double y, double duration, double ignore, long randomSeed, int waypoints, double minpause,
-            double maxpause, double beta, double hurst, double dist_alpha, double cluster_range, int cr, int wr) {
+            double maxpause, double beta, double hurst, double dist_weight, double cluster_range, int cr, int wr) {
         super(nodes, x, y, duration, ignore, randomSeed);
         this.noOfWaypoints = waypoints;
         this.minpause = minpause;
         this.maxpause = maxpause;
         this.beta = beta;
         this.hurst = hurst;
-        this.dist_alpha = dist_alpha;
+        this.dist_weight = dist_weight;
         this.cluster_range = cluster_range;
         this.cluster_ratio = cr;
         this.waypoint_ratio = wr;
@@ -116,118 +116,122 @@ public class SLAW extends SLAWBase {
         final int powerlaw_step = 1;
         final int levy_scale_factor = 1;
         final int powerlaw_mode = 1;
+        if (clusters.length > 1){
+            System.out.println("Trace generation started.\n");
 
-        System.out.println("Trace generation started.\n");
+            for (int user = 0; user < node.length; user++) {
+                node[user] = new MobileNode();
+                double t = 0.0;
+                // get random clusters and waypoints
+                Cluster[] clts = make_selection(clusters, null, false);
+                // total list of waypoints assigned
+                ClusterMember[] wlist = get_waypoint_list(clts);
 
-        for (int user = 0; user < node.length; user++) {
-            node[user] = new MobileNode();
-            double t = 0.0;
-            // get random clusters and waypoints
-            Cluster[] clts = make_selection(clusters, null, false);
-            // total list of waypoints assigned
-            ClusterMember[] wlist = get_waypoint_list(clts);
-
-            // random source node
-            int src = (int)Math.floor(randomNextDouble() * wlist.length);
-            int dst = -1;
-            int count;
-            
-            while (t < duration) {
-                count = 0;
-                Position source = wlist[src].pos;
+                // random source node
+                int src = (int)Math.floor(randomNextDouble() * wlist.length);
+                int dst = -1;
+                int count;
                 
-                if (!node[user].add(t, source)) {
-                    throw new RuntimeException(getInfo().name + ".generate: error while adding waypoint (1)");
-                }
-                wlist[src].is_visited = true;
-                
-                // get list of not visited locations
-                for (int i = 0; i < wlist.length; i++) {
-                    if (!wlist[i].is_visited) {
-                        count++;
+                while (t < duration) {
+                    count = 0;
+                    Position source = wlist[src].pos;
+                    
+                    if (!node[user].add(t, source)) {
+                        throw new RuntimeException(getInfo().name + ".generate: error while adding waypoint (1)");
                     }
-                }
-                
-                // if all waypoints are visited then select new clusters and
-                // waypoints. Destructive mode of original SLAW matlab
-                // implementation by Seongik Hong, NCSU, US (3/10/2009)
-                while (count == 0) {
-                    clts = make_selection(clusters, clts, true);
-                    wlist = get_waypoint_list(clts);
+                    wlist[src].is_visited = true;
+                    
+                    // get list of not visited locations
                     for (int i = 0; i < wlist.length; i++) {
                         if (!wlist[i].is_visited) {
-                            if (source.distance(wlist[i].pos) != 0.0) {
-                                count++;
-                            } else {
-                                wlist[i].is_visited = true;
+                            count++;
+                        }
+                    }
+                    
+                    // if all waypoints are visited then select new clusters and
+                    // waypoints. Destructive mode of original SLAW matlab
+                    // implementation by Seongik Hong, NCSU, US (3/10/2009)
+                    while (count == 0) {
+                        clts = make_selection(clusters, clts, true);
+                        wlist = get_waypoint_list(clts);
+                        for (int i = 0; i < wlist.length; i++) {
+                            if (!wlist[i].is_visited) {
+                                if (source.distance(wlist[i].pos) != 0.0) {
+                                    count++;
+                                } else {
+                                    wlist[i].is_visited = true;
+                                }
                             }
                         }
                     }
-                }
 
-                ClusterMember[] not_visited = new ClusterMember[count];
-                count = 0;
-                for (int i = 0; i < wlist.length; i++) {
-                    if (!wlist[i].is_visited) {
-                        not_visited[count++] = wlist[i];
+                    ClusterMember[] not_visited = new ClusterMember[count];
+                    count = 0;
+                    for (int i = 0; i < wlist.length; i++) {
+                        if (!wlist[i].is_visited) {
+                            not_visited[count++] = wlist[i];
+                        }
                     }
-                }
-                
-                // get distance from source to all remaining waypoints
-                double[] dist = new double[not_visited.length];
-                for (int i = 0; i < not_visited.length; i++) {
-                    dist[i] = source.distance(not_visited[i].pos);
-                }
-
-                double[] weights = new double[not_visited.length];
-                // cumulative sum of distance weights
-                for (int i = 0; i < weights.length; i++) {
-                    weights[i] = 0;
-                    for (int j = 0; j <= i; j++) {
-                        weights[i] += 1 / Math.pow(dist[j], this.dist_alpha);
+                    
+                    // get distance from source to all remaining waypoints
+                    double[] dist = new double[not_visited.length];
+                    for (int i = 0; i < not_visited.length; i++) {
+                        dist[i] = source.distance(not_visited[i].pos);
                     }
-                }
 
-                for (int i = 0; i < weights.length; i++) {
-                    weights[i] /= weights[weights.length - 1];
-                }
-
-                double r = randomNextDouble();
-
-                int index;
-                for (index = 0; index < weights.length; index++) {
-                    if (r < weights[index]) {
-                        break;
+                    double[] weights = new double[not_visited.length];
+                    // cumulative sum of distance weights
+                    for (int i = 0; i < weights.length; i++) {
+                        weights[i] = 0;
+                        for (int j = 0; j <= i; j++) {
+                            weights[i] += 1 / Math.pow(dist[j], this.dist_weight);
+                        }
                     }
-                }
 
-                // select the next destination
-                for (int i = 0; i < wlist.length; i++) {
-                    if (wlist[i].pos.equals(not_visited[index].pos)) {
-                        dst = i;
-                        break;
+                    for (int i = 0; i < weights.length; i++) {
+                        weights[i] /= weights[weights.length - 1];
                     }
-                }
 
-                double distance = source.distance(wlist[dst].pos);
-                t += distance / speed;
+                    double r = randomNextDouble();
 
-                if (!node[user].add(t, wlist[dst].pos)) {
-                    throw new RuntimeException(getInfo().name + ".generate: error while adding waypoint (2)");
+                    int index;
+                    for (index = 0; index < weights.length; index++) {
+                        if (r < weights[index]) {
+                            break;
+                        }
+                    }
+
+                    // select the next destination
+                    for (int i = 0; i < wlist.length; i++) {
+                        if (wlist[i].pos.equals(not_visited[index].pos)) {
+                            dst = i;
+                            break;
+                        }
+                    }
+
+                    double distance = source.distance(wlist[dst].pos);
+                    t += distance / speed;
+
+                    if (!node[user].add(t, wlist[dst].pos)) {
+                        throw new RuntimeException(getInfo().name + ".generate: error while adding waypoint (2)");
+                    }
+                    
+                    // select pause time by power law formula
+                    if ((t < duration) && (this.maxpause > 0.0)) {
+                        t += random_powerlaw(powerlaw_step, levy_scale_factor, powerlaw_mode)[0];
+                    }
+                    // change destination to next source
+                    src = dst;
                 }
-                
-                // select pause time by power law formula
-                if ((t < duration) && (this.maxpause > 0.0)) {
-                    t += random_powerlaw(powerlaw_step, levy_scale_factor, powerlaw_mode)[0];
-                }
-                // change destination to next source
-                src = dst;
+                System.out.println("Trace generation for node " + (user + 1) + " of " + node.length + " done.");
             }
-            System.out.println("Trace generation for node " + (user + 1) + " of " + node.length + " done.");
+            System.out.println("\n");
+            postGeneration();
+            System.out.println("Trace generation done.\n");
+        } else {
+            System.out.println("Error: Too few Clusters to generate Trace!");
+            System.exit(0);
         }
-        System.out.println("\n");
-        postGeneration();
-        System.out.println("Trace generation done.\n");
     }
 
     /**
@@ -361,7 +365,7 @@ public class SLAW extends SLAWBase {
         p[2] = "maxpause=" + this.maxpause;
         p[3] = "beta=" + this.beta;
         p[4] = "hurst=" + this.hurst;
-        p[5] = "dist_alpha=" + this.dist_alpha;
+        p[5] = "dist_weight=" + this.dist_weight;
         p[6] = "cluster_range=" + this.cluster_range;
         p[7] = "cluster_ratio=" + this.cluster_ratio;
         p[8] = "waypoint_ratio=" + this.waypoint_ratio;
@@ -402,8 +406,8 @@ public class SLAW extends SLAWBase {
             hurst = Double.parseDouble(value);
             return true;
         }
-        else if (key.equals("dist_alpha")) {
-            dist_alpha = Double.parseDouble(value);
+        else if (key.equals("dist_weight")) {
+            dist_weight = Double.parseDouble(value);
             return true;
         }
         else if (key.equals("cluster_range")) {
@@ -439,8 +443,8 @@ public class SLAW extends SLAWBase {
             case 'h': // "Hurst value"
                 hurst = Double.parseDouble(val);
                 return true;
-            case 'l': // "Distance alpha value"
-                dist_alpha = Double.parseDouble(val);
+            case 'l': // "Distance weight value"
+                dist_weight = Double.parseDouble(val);
                 return true;
             case 'r': // "Range for cluster"
                 cluster_range = Double.parseDouble(val);
@@ -463,9 +467,15 @@ public class SLAW extends SLAWBase {
         System.out.println(getInfo().toDetailString());
         Scenario.printHelp();
         System.out.println(getInfo().name + ":");
-        System.out.println("\t-w <Number of waypoints to generate>\n" + "\t-p <Minimum pause time>\n" + "\t-P <Maximum pause time>\n"
-                + "\t-b <Levy exponent for pause time>\n" + "\t-h <Hurst parameter for self-similarity of waypoints>\n"
-                + "\t-l <distance alpha>\n" + "\t-r <clustering range (meter)>\n" + "\t-C <Cluster ratio>\n" + "\t-W <waypoint ratio>");
+        System.out.println("\t-w <Number of waypoints to generate>\n" +
+                		   "\t-p <Minimum pause time>\n" +
+                		   "\t-P <Maximum pause time>\n" +
+                		   "\t-b <Levy exponent for pause time>\n" +
+                		   "\t-h <Hurst parameter for self-similarity of waypoints>\n" +
+                		   "\t-l <distance weight>\n" +
+                		   "\t-r <clustering range (meter)>\n" +
+                		   "\t-C <Cluster ratio>\n" +
+        				   "\t-W <waypoint ratio>\n");
     }
     
     protected void preGeneration() {

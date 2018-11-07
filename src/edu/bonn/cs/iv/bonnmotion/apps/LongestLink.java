@@ -20,7 +20,7 @@ public class LongestLink extends App {
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 412 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("Raphael Ernst");
@@ -77,6 +77,7 @@ public class LongestLink extends App {
         System.out.println(getInfo().toDetailString());
 		App.printHelp();
 		System.out.println("Longest Link Metric:");
+		System.out.println("\t-f <scenario name>");
 		System.out.println("\t-i <(double) interval length> (Default: 1.0)");
 		System.out.println("\t-v print version information");
 	}
@@ -85,21 +86,15 @@ public class LongestLink extends App {
 		new LongestLink(args);
 	}
 
-
 	/* Analysis Code */
-
 	protected boolean longestLink() {
-		MobileNode[] node = s.getNode();
-                if(node.length == 1) {
-                        System.err.println("Only one node in the scenario! No links available");
-                        return false;
-                }
+        if(s.getNode().length == 1) {
+                System.err.println("Only one node in the scenario! No links available");
+                return false;
+        }
 
 		double duration = s.getDuration();
 		double time = 0;
-
-		Vector<Position> inTheGraph = new Vector<Position>(node.length,1);
-		Vector<Position> notInTheGraph = new Vector<Position>(node.length,1);	
 
 		PrintWriter o = null;
 		try{
@@ -108,46 +103,53 @@ public class LongestLink extends App {
 			System.err.println("Error when opening file: " + basename);
 		}
 
-
-		double longestEdge = Double.MIN_VALUE;
-		while(time < duration) {
-			longestEdge = Double.MIN_VALUE;
-			
-			inTheGraph.add(node[0].positionAt(time));
-			
-			for(int i=0;i<node.length;i++) {
-				notInTheGraph.add(node[i].positionAt(time));
+		if(duration == 0) {
+			o.println(time + " " + longestLink(0));
+		} else {
+			while(time < duration) {
+				o.println(time + " " + longestLink(time));
+				time += intervalLength;
 			}
-
-			double edgeLength;
-			Position next;
-			double edge;	
-			while(!notInTheGraph.isEmpty()) { //Add edges until graph is fully connected
-				next = null;
-				edgeLength = Double.MAX_VALUE;
-				for(int i=0;i<inTheGraph.size();i++) {
-					for(int j=0;j<notInTheGraph.size();j++) {
-						edge = inTheGraph.elementAt(i).distance(notInTheGraph.elementAt(j));
-						if(edge < edgeLength) {
-							edgeLength = edge;
-							next = notInTheGraph.elementAt(j);
-						}
-					}	
-				}
-
-				inTheGraph.add(next);
-				notInTheGraph.remove(next);
-
-				if(edgeLength > longestEdge) { longestEdge = edgeLength; }
-			}
-			o.println(time + " " + longestEdge);
-			
-			inTheGraph.clear();
-			notInTheGraph.clear();
-			time += intervalLength;
 		}
 		o.close();
-                return true;
+        return true;
+	}
+	
+	protected double longestLink(final double time) {
+		MobileNode[] node = s.getNode();
+		double longestEdge = Double.MIN_VALUE;
+		Vector<Position> inTheGraph = new Vector<Position>(node.length,1);
+		Vector<Position> notInTheGraph = new Vector<Position>(node.length,1);
+		
+		inTheGraph.add(node[0].positionAt(time));
+		
+		for(int i=0;i<node.length;i++) {
+			notInTheGraph.add(node[i].positionAt(time));
+		}
+
+		double edgeLength;
+		Position next;
+		double edge;	
+		while(!notInTheGraph.isEmpty()) { //Add edges until graph is fully connected
+			next = null;
+			edgeLength = Double.MAX_VALUE;
+			for(int i=0;i<inTheGraph.size();i++) {
+				for(int j=0;j<notInTheGraph.size();j++) {
+					edge = inTheGraph.elementAt(i).distance(notInTheGraph.elementAt(j));
+					if(edge < edgeLength) {
+						edgeLength = edge;
+						next = notInTheGraph.elementAt(j);
+					}
+				}	
+			}
+
+			inTheGraph.add(next);
+			notInTheGraph.remove(next);
+
+			if(edgeLength > longestEdge) { longestEdge = edgeLength; }
+		}
+		
+		return longestEdge;
 	}
 }
 

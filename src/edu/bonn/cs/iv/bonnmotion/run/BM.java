@@ -8,16 +8,18 @@ import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
 
 public class BM {
     private final static String PROG_NAME = "BonnMotion";
-    private final static String PROG_VER = "2.0";
+    private final static String PROG_VER = "2.1";
     private final static String MODELS_PACK = "edu.bonn.cs.iv.bonnmotion.models";
     private final static String MODELS[] =
         {
         /* Add new models in alpha-numerical order! */
+        "Boundless",
         "ChainScenario",
         "Column",
         "DisasterArea",
         "GaussMarkov",
         "ManhattanGrid",
+        "MSLAW",
         "Nomadic",
         "OriginalGaussMarkov",
         "ProbRandomWalk",
@@ -29,6 +31,7 @@ public class BM {
         "RandomWaypoint3D",
         "RPGM",
         "SLAW",
+        "SMOOTH",
         "Static",
         "StaticDrift",
         "SteadyStateRandomWaypoint",
@@ -39,6 +42,7 @@ public class BM {
     private final static String APPS[] =
         {
         "Cut",
+        "CSVFile",
         "Dwelltime",
         "GlomoFile",
         "GPXImport",

@@ -1,5 +1,6 @@
 package edu.bonn.cs.iv.bonnmotion;
 import java.awt.geom.Line2D;
+import java.awt.geom.Point2D;
 
 /** Position in 2-dimensional space, which can also be viewed as Vector starting at (0,0) -- therefore functions like "angle" etc. */
 
@@ -150,5 +151,10 @@ public class Position {
         assert !(this instanceof Position3D) : "using 2D method with 3D object";
 	    
 		return new Position(this.x, this.y, status);
+	}
+	
+	/** Get a Point2D.Double representation of the current position. */
+	public Point2D.Double getPoint2D() {
+		return new Point2D.Double(this.x, this.y);
 	}
 }

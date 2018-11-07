@@ -18,7 +18,7 @@ public class Statistics extends App {
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 412 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("University of Bonn");
@@ -525,10 +525,10 @@ public class Statistics extends App {
 		isolation = new boolean[node.length];
 
 		String metrics[] = {"\"tx range\"", "\"avg. degree of spatial dependence\"", "\"avg. degree\"",
-				"\"partitions\"", "\"partitioning degree\"", "\"avg time to link break\"",
-				"\"std deviation of time to link break\"", "\"link breaks\"", "\"avg link duration\"",
-				"\"total links\"", "\"average relative speed\"", "\"average path availability\"",
-				"\"average number of link changes\""};
+				"\"avg. num. of partitions\"", "\"partitioning degree\"", "\"avg. time to link break\"",
+				"\"std. deviation of time to link break\"", "\"link breaks\"", "\"avg. link duration\"",
+				"\"total links\"", "\"avg. relative speed\"", "\"avg. path availability\"",
+				"\"avg. number of link changes\""};
 		String values[][] = new String[radius.length][metrics.length];
 
 		// get temporal dependence
@@ -586,7 +586,7 @@ public class Statistics extends App {
 			on_time = res_help[1];
 
 			if (k == 0) {
-				stats.println("# mobility = " + (mobility / normFact));
+				stats.println("# relative mobility = " + (mobility / normFact));
 				stats.println("# average node speed = " + averageSpeed);
 				stats.println("# average degree of temporal dependence = " + D_temporal);
 
@@ -604,30 +604,6 @@ public class Statistics extends App {
 				done++;
 				double tNew = heap.minLevel();
 				IndexPair idx = (IndexPair)heap.deleteMin();
-
-				// uncomment the following code piece to print messages about nodes becoming
-				// isolated (meaning they have no links at all) and leaving their isolation again:
-
-				/*				if (tNew > tOld)
-									for (int i = 0; i < pSize.length; i++) {
-										if ((pSize[i] == 1) && ((! isolation[i]) || (tOld == 0.0))) {
-											isolation[i] = true;
-											System.out.println("isolation " + i + " at " + tOld);
-											// check if this is working correctly
-											for (int j = 0; j < node.length; j++)
-												if (i < j) {
-													if (ls[i][j - i - 1] >= 0.0)
-														System.out.println("! " + j);
-												} else if (i > j) {
-													if (ls[j][i - j - 1] >= 0.0)
-														System.out.println("! " + j);
-												}
-										} else if (isolation[i] && (pSize[i] != 1)) {
-											isolation[i] = false;
-											if (tOld > 0.0)
-												System.out.println("de-isolation " + i + " at " + tOld);
-										}
-									} */
 
 				// for calculating path availability
 				if (tNew > tOld)
@@ -866,7 +842,7 @@ public class Statistics extends App {
 			case 't':
 				printTime = true;
 				return true;
-			case 'G':
+			case 'G': // Partitioning Degree
 				flags = flags ^ STATS_PARTDEG;
 				if (val.length() != 0)
 					secG = Double.parseDouble(val);
@@ -876,7 +852,7 @@ public class Statistics extends App {
 				if (val.length() != 0)
 					secM = Double.parseDouble(val);
 				return true;
-			case 'N':
+			case 'N': // Node Degree
 				flags = flags ^ STATS_NODEDEG;
 				if (val.length() != 0)
 					secN = Double.parseDouble(val);
@@ -901,7 +877,7 @@ public class Statistics extends App {
 				if (val.length() != 0)
 					secV = Double.parseDouble(val);
 				return true;
-			case 'A': // Velocity
+			case 'A': // Average Node Degree Distribution
 				calc_and_distri = true;
 				secA = App.parseDoubleArray(val);
 				return true;
@@ -919,16 +895,16 @@ public class Statistics extends App {
 		System.out.println("Statistics:");
 		System.out.println("\t-f <scenario name>");
 		System.out.println("\t-r <list of transmission ranges>");
-		System.out.println("\t-t [ print time (in progressive mode) ]");
-		System.out.println("\t-G <sec> Partitioning Degree");
-		System.out.println("\t-M <sec> MinCut");
-		System.out.println("\t-N <sec> Node Degree");
-		System.out.println("\t-P <sec> Partitions");
-		System.out.println("\t-S <sec> Stability");
-		System.out.println("\t-U <sec> Unidirectional");
-		System.out.println("\t-V <sec> Velocity over Time");
-		System.out.println("\t-A [radii] AverageNodeDegreeDistribution");
-		System.out.println("\t-c <sec> Average Temporal Dependence c value");
+		System.out.println("\t-t [print time on stdout (in progressive mode)]");
+		System.out.println("\t-G <sec> Partitioning Degree (progressive mode)");
+		System.out.println("\t-M <sec> MinCut (progressive mode)");
+		System.out.println("\t-N <sec> Node Degree (progressive mode)");
+		System.out.println("\t-P <sec> Partitions (progressive mode)");
+		System.out.println("\t-S <sec> Stability (progressive mode)");
+		System.out.println("\t-U <sec> Unidirectional (progressive mode)");
+		System.out.println("\t-V <sec> Velocity over Time (progressive mode)");
+		System.out.println("\t-A <list of radii> Average Node Degree Distribution");
+		System.out.println("\t-c <sec> Average Temporal Dependence c value (default: 100)");
 	}
 
 	public static void main(String[] args) throws FileNotFoundException, IOException {

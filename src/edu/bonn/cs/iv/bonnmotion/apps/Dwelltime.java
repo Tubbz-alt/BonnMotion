@@ -15,7 +15,7 @@ public class Dwelltime extends App {
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 393 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("Elmar Gerhards-Padilla");
@@ -62,6 +62,13 @@ public class Dwelltime extends App {
     		int columnint = (int)Math.ceil(column);
     		
     		System.out.println("Rows/Columns : "+row+"/"+column+"\n");
+
+//    		System.out.println("DEBUG: rowint * columnint : "+rowint * columnint+"\n");
+    		if (rowint*columnint <= 0) {
+    			System.err.println("Too many square cells (integer overflow), please specify a larger cell length!");
+                System.exit(-1);
+    		}
+    		
     		double[] squares = new double[rowint * columnint];
     		Rectangle2D.Double[] rects = new Rectangle2D.Double[rowint * columnint];
     		int count = 0;
@@ -132,6 +139,8 @@ public class Dwelltime extends App {
 		App.printHelp();
 		System.out.println("Dwelltime:");
 		System.out.println("\t-f <filename>");
+		System.out.println("\t-m cell length (default: 0.5m)");
+		System.out.println("\t-t discrete time step (default: 0.5s)");
 	}
 
 	public static void main(String[] args) throws FileNotFoundException, IOException {

@@ -1,27 +1,8 @@
-/*******************************************************************************
- ** BonnMotion - a mobility scenario generation and analysis tool             **
- ** Copyright (C) 2002-2010 University of Bonn                                **
- ** Code: Matthias Schwamborn                                                 **
- **                                                                           **
- ** This program is free software; you can redistribute it and/or modify      **
- ** it under the terms of the GNU General Public License as published by      **
- ** the Free Software Foundation; either version 2 of the License, or         **
- ** (at your option) any later version.                                       **
- **                                                                           **
- ** This program is distributed in the hope that it will be useful,           **
- ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
- ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
- ** GNU General Public License for more details.                              **
- **                                                                           **
- ** You should have received a copy of the GNU General Public License         **
- ** along with this program; if not, write to the Free Software               **
- ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
- *******************************************************************************/
-
 package edu.bonn.cs.iv.bonnmotion;
 
 import java.awt.geom.Point2D;
-import com.jhlabs.map.proj.*;
+
+import edu.bonn.cs.iv.util.maps.*;
 
 public class BoundingBox
 {
@@ -32,7 +13,7 @@ public class BoundingBox
     protected double width = 0;
     protected double height = 0;
     protected Position origin = null;
-    protected Projection proj = null;
+    protected CoordinateTransformation transformation = null;
 
     public BoundingBox(double left, double bottom, double right, double top)
     {
@@ -60,14 +41,14 @@ public class BoundingBox
         return this.height;
     }
 
-    public Projection proj()
+    public CoordinateTransformation transformation()
     {
-        return this.proj;
+        return this.transformation;
     }
 
-    public void setProjection(Projection proj)
+    public void setTransformation(CoordinateTransformation transformation)
     {
-        this.proj = proj;
+        this.transformation = transformation;
     }
 
     public boolean contains(Position p)
@@ -79,17 +60,27 @@ public class BoundingBox
     {
         BoundingBox result = null;
 
-        if (proj != null) // transform coordinates to lon/lat (WGS84)
+        if (transformation != null) // transform coordinates to lon/lat (WGS84)
         {
             Point2D.Double srclb = new Point2D.Double(left, bottom);
-            Point2D.Double dstlb = new Point2D.Double();
+            Point2D.Double dstlb = transformation.transform_inverse(srclb.x, srclb.y);
             Point2D.Double srcrt = new Point2D.Double(right, top);
-            Point2D.Double dstrt = new Point2D.Double();
-            proj.inverseTransform(srclb, dstlb);
-            proj.inverseTransform(srcrt, dstrt);
+            Point2D.Double dstrt = transformation.transform_inverse(srcrt.x, srcrt.y);
+
             result = new BoundingBox(dstlb.x, dstlb.y, dstrt.x, dstrt.y);
         }
 
         return result;
+    }
+    
+    /** Get a Point2D.Double representation of the current bounding box. */
+    public Point2D.Double[] getPoint2D()
+    {
+    	Point2D.Double[] bbp2d = new Point2D.Double[4];
+    	bbp2d[0] = new Point2D.Double(left, bottom);
+    	bbp2d[1] = new Point2D.Double(left, top);
+    	bbp2d[2] = new Point2D.Double(right, top);
+    	bbp2d[3] = new Point2D.Double(right, bottom);
+    	return bbp2d;
     }
 }

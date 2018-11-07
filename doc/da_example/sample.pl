@@ -2,6 +2,7 @@
 
 my $bm = "../../bin/bm";
 
+my $model       = "DisasterArea";
 my $scenario    = "DA";
 my $nodes       = 150;
 my $x           = "350";
@@ -32,6 +33,9 @@ my $APP1        = "320,5,345,5,345,50,320,50, 5,0,345,0, 325,5,325,50, 4,30,28";
 my $OBST1       = "25,150,100,150,100,200,25,200";
 
 ###################################################################################
+
+my $measures    = "10";
+my $timestep    = "1";
 
 my $params = "-f $scenario DisasterArea -n $nodes -x $x -y $y -p $maxpause -a $groupsize -g $circlevertices -r $dist -q $mindist -d $duration -e $maxareas -i $skip -j $factor -b $TEL -b $CCS1 -b $CCS2 -b $CCS3 -b $CCS4 -b $PWFTA1 -b $IL1 -b $APP1 -o $OBST1 -K -R$seed";
 

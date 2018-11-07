@@ -61,7 +61,7 @@ echo %FILE%
 if exist bin\%FILE% del bin\%FILE%
 echo @echo off >> bin\%FILE%
 echo cd %BONNMOTION% >> bin\%FILE%
-echo %JAVA% -cp %BONNMOTION%\classes;%BONNMOTION%\lib\javaproj-1.0.4.jar %PACKAGE%.run.BM %%1 %%2 %%3 %%4 %%5 %%6 %%7 %%8 %%9 >> bin\%FILE%
+echo %JAVA% -cp %BONNMOTION%\classes;%BONNMOTION%\lib\javaproj-1.0.4.jar;%BONNMOTION%\lib\proj4j-0.1.0.jar;%BONNMOTION%\lib\proj4j-support-0.1.0.jar %PACKAGE%.run.BM %%* >> bin\%FILE%
 echo cd bin >> bin\%FILE%
 
 REM compile
@@ -72,7 +72,7 @@ echo @echo off >> bin\%FILE%
 echo cd %BONNMOTION% >> bin\%FILE%
 echo if not exist classes mkdir classes >> bin\%FILE%
 echo echo on >> bin\%FILE%
-echo for /r %%%%i in (*.java) do %JAVAC% -d classes -sourcepath src -classpath classes;lib\javaproj-1.0.4.jar %%%%i >> bin\%FILE%
+echo for /r %%%%i in (*.java) do %JAVAC% -d classes -sourcepath src -classpath classes;lib\javaproj-1.0.4.jar;lib\proj4j-0.1.0.jar;lib\proj4j-support-0.1.0.jar %%%%i >> bin\%FILE%
 
 REM makedoc
 set FILE=makedoc.bat

@@ -59,7 +59,7 @@ then
 		DOCPATH=`cmd.exe /c cd`
 	fi
 	
-	LIBRARYPATH="$BONNMOTION/lib/javaproj-1.0.4.jar"
+	LIBRARYPATH="$BONNMOTION/lib/javaproj-1.0.4.jar:$BONNMOTION/lib/proj4j-0.1.0.jar:$BONNMOTION/lib/proj4j-support-0.1.0.jar"
 
 	cd "${BONNMOTION}/bin/.tail"
 	APPS=`ls`

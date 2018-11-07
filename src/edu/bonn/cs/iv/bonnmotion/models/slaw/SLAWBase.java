@@ -21,7 +21,7 @@ public abstract class SLAWBase extends Scenario {
     protected double maxpause = 50;
     protected double beta = 1;
     protected double hurst = 0.75;
-    protected double dist_alpha = 3;
+    protected double dist_weight = 3;
     protected double cluster_range = 50;
     protected String waypoints_filename = null;
     protected Position[] waypoints;
@@ -405,7 +405,7 @@ public abstract class SLAWBase extends Scenario {
                             if (++count >= Thresh) {
                                 break;
                             }
-                        }
+                         }
                     }
 
                     if (count >= Thresh) {
@@ -438,6 +438,11 @@ public abstract class SLAWBase extends Scenario {
             // distribute waypoints
             double[] prob = {row_rand[3], row_rand[3] + row_rand[2], row_rand[3] + row_rand[2] + row_rand[1],
                     row_rand[0] + row_rand[1] + row_rand[2] + row_rand[3]};
+                    
+            if (row_rand[0] <= 0 && row_rand[1] <= 0 && row_rand[2] <= 0 && row_rand[3] <= 0) {
+            	    System.out.println("Error: Variance too large, try again!");
+                    System.exit(0);   
+            }
             for (int i = 0; i < wp;) {
                 double rand = randomNextDouble();
                 for (int j = 0; j < 4; j++) {
@@ -453,7 +458,7 @@ public abstract class SLAWBase extends Scenario {
     }
 
     /**
-     * Calculates the normalized variance of passed array
+     * Calculates the variance of passed array
      * 
      * @param list
      *            double array

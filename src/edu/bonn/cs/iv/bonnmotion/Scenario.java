@@ -41,12 +41,12 @@ public class Scenario extends App implements Model, ScenarioLink {
      */
     protected double randomNextDouble() {
             count_rands++;
-            return rand.nextDouble();
+            return getRand().nextDouble();
     }
 
 	protected double randomNextDouble(final double value) {
 		count_rands++;
-		return (rand.nextDouble()*value);
+		return (getRand().nextDouble()*value);
 	}
 
     /**
@@ -55,7 +55,7 @@ public class Scenario extends App implements Model, ScenarioLink {
      */
     protected double randomNextPlusOrMinusOne() {
         count_rands++;
-        if(rand.nextBoolean()) { return 1.0; }
+        if(getRand().nextBoolean()) { return 1.0; }
         else { return -1.0; }
     }
 
@@ -66,8 +66,13 @@ public class Scenario extends App implements Model, ScenarioLink {
      */
     protected int randomNextInt(int n) {
         count_rands++;
-        return rand.nextInt(n);
+        return getRand().nextInt(n);
     }
+	
+	protected int randomNextInt() {
+		count_rands++;
+		return getRand().nextInt();
+	}
 
     /**
      * Returns random Gaussian from the RandomSeed
@@ -75,7 +80,7 @@ public class Scenario extends App implements Model, ScenarioLink {
      */
     protected double randomNextGaussian() {
             count_rands++;
-            return rand.nextGaussian();
+            return getRand().nextGaussian();
     }
 
     /**
@@ -84,7 +89,7 @@ public class Scenario extends App implements Model, ScenarioLink {
      */
     protected double randomNextWeibull(double shape, double scale) {
         count_rands++;
-        return scale * java.lang.Math.pow(-java.lang.Math.log(rand.nextDouble()), 1.0 / shape);
+        return scale * java.lang.Math.pow(-java.lang.Math.log(getRand().nextDouble()), 1.0 / shape);
     }
 
 	public Scenario() {}
@@ -95,7 +100,7 @@ public class Scenario extends App implements Model, ScenarioLink {
 		this.y = y;
 		this.duration = duration;
 		this.ignore = ignore;
-		rand = new Random(this.randomSeed = randomSeed);
+		setRand(new Random(this.randomSeed = randomSeed));
 		count_rands = 0;
 	}
 
@@ -223,7 +228,7 @@ public class Scenario extends App implements Model, ScenarioLink {
 	/** Called by subclasses before they generate node movements. */
 	protected void preGeneration() {
 		duration += ignore;
-		rand = new Random(randomSeed);
+		setRand(new Random(randomSeed));
 
 		if (aFieldParams != null) {
 			aField = new AttractorField(x, y);
@@ -233,13 +238,13 @@ public class Scenario extends App implements Model, ScenarioLink {
 		String myClass = this.getClass().getName();
 		myClass = myClass.substring(myClass.lastIndexOf('.') + 1);
 
-		if (modelName == null)
+		if (modelName == null) {
 			modelName = myClass;
-		else
-			if (! modelName.equals(myClass)) {
-				System.out.println("model mismatch: modelName=" + modelName + " myClass=" + myClass);
-				System.exit(0);
-			}
+		}
+		else if (! modelName.equals(myClass)) {
+			System.out.println("model mismatch: modelName=" + modelName + " myClass=" + myClass);
+			System.exit(0);
+		}
 	}
 
 	/** Called by subclasses after they generate node movements. */
@@ -250,9 +255,9 @@ public class Scenario extends App implements Model, ScenarioLink {
 		if (ignore > 0.0) {
 			cut(ignore, duration);
 		}
-		long next_seed = rand.nextLong();
+		long next_seed = getRand().nextLong();
 		while (Long.signum(next_seed) < 0) {
-		    next_seed = rand.nextLong();
+		    next_seed = getRand().nextLong();
 		}
 		System.out.println("Next RNG-Seed =" + next_seed+ " | #Randoms = "+count_rands);
 	}
@@ -824,5 +829,13 @@ public class Scenario extends App implements Model, ScenarioLink {
 		} else {
 			return new Waypoint( 0.0, _w.pos );
 		}
+	}
+
+	public Random getRand() {
+		return rand;
+	}
+
+	public void setRand(Random rand) {
+		this.rand = rand;
 	}
 }

@@ -20,7 +20,7 @@ public class OriginalGaussMarkov extends Scenario {
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 353 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("University of Bonn");
@@ -39,7 +39,7 @@ public class OriginalGaussMarkov extends Scenario {
 	protected double avgSpeed = 0.;
 	protected double maxSpeed = Double.POSITIVE_INFINITY;
 
-	protected double alpha = 1.;
+	protected double alpha = 1.0;
 	protected double alpha2 = 0.;
 	protected double alpha3 = 0.;
 	
@@ -86,6 +86,7 @@ public class OriginalGaussMarkov extends Scenario {
 	}
 
 	public OriginalGaussMarkov(String[] args) {
+		setAlpha(this.alpha);
 		go(args);
 	}
 
@@ -127,6 +128,7 @@ public class OriginalGaussMarkov extends Scenario {
 		this.alpha = alpha;
 		alpha2 = 1. - alpha;
 		alpha3 = Math.sqrt(1. - alpha * alpha);
+		
 	}
 
 	public void generate() {
