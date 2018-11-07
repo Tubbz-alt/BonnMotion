@@ -1,0 +1,2 @@
+bin/bm -f lukas3 ChainScenario -m 1 -P "RandomWaypoint -d 100 -i 10 -n 5 -x 500 -y 500 -R 101 -o 3" "ManhattanGrid -d 100 -i 0 -n 5 -x 500 -y 500 -R 101 -c 0.5 -e 10 -m 20 -u 10 -v 10"
+

@@ -1,22 +1,3 @@
-/*******************************************************************************
- ** BonnMotion - a mobility scenario generation and analysis tool             **
- ** Copyright (C) 2002-2005 University of Bonn                                **
- **                                                                           **
- ** This program is free software; you can redistribute it and/or modify      **
- ** it under the terms of the GNU General Public License as published by      **
- ** the Free Software Foundation; either version 2 of the License, or         **
- ** (at your option) any later version.                                       **
- **                                                                           **
- ** This program is distributed in the hope that it will be useful,           **
- ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
- ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
- ** GNU General Public License for more details.                              **
- **                                                                           **
- ** You should have received a copy of the GNU General Public License         **
- ** along with this program; if not, write to the Free Software               **
- ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
- *******************************************************************************/
-
 package edu.bonn.cs.iv.bonnmotion.models;
 
 import java.io.FileNotFoundException;
@@ -34,7 +15,7 @@ public class ChainScenario implements Model {
 
 	protected static final String MODEL_NAME = "ChainScenario";
 
-	protected Vector scenarios = new Vector();
+	protected Vector<Scenario> scenarios = new Vector<Scenario>();
 	protected int mode = 0;
 	protected boolean writeParts = false;
 
@@ -132,7 +113,7 @@ public class ChainScenario implements Model {
 	}
 
 	public Scenario makeMixedScenario() {
-		double x=0, y=0; // die Endgültige Größe des Scenarios.
+		double x=0, y=0; // final scenario size
 		Scenario s = (Scenario) scenarios.get(0);
 		MobileNode[] mixedSmn = new MobileNode[s.getNode().length];
 		double duration = 0;

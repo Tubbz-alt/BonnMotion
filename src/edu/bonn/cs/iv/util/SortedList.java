@@ -1,26 +1,11 @@
-/*******************************************************************************
- ** BonnMotion - a mobility scenario generation and analysis tool             **
- ** Copyright (C) 2002-2005 University of Bonn                                **
- **                                                                           **
- ** This program is free software; you can redistribute it and/or modify      **
- ** it under the terms of the GNU General Public License as published by      **
- ** the Free Software Foundation; either version 2 of the License, or         **
- ** (at your option) any later version.                                       **
- **                                                                           **
- ** This program is distributed in the hope that it will be useful,           **
- ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
- ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
- ** GNU General Public License for more details.                              **
- **                                                                           **
- ** You should have received a copy of the GNU General Public License         **
- ** along with this program; if not, write to the Free Software               **
- ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
- *******************************************************************************/
-
 package edu.bonn.cs.iv.util;
 
-/** Diese Klasse dient der effizienten Verwaltung von Objekten, die einen int-Schlüssel besitzen. Sie werden sortiert in einem Array abgespeichert, so daß über die Schlüssel in logarithmischer Zeit auf die Objekte zugegriffen werden kann. Das Hinzufügen und das Löschen eines Elements sind wegen des Verschiebens von Array-Elementen von linearer Komplexität. */
-
+/**
+ * This class serves the efficient management of objects with an integer key.
+ * These objects are stored sorted in an array.
+ * Access is in O(log n)
+ * Add and Delete are in O(n) because of the switching of array-elements.
+ */
 public class SortedList {
     protected Sortable[] list;
     protected int count;
@@ -45,15 +30,24 @@ public class SortedList {
     }
 
 	/** Liefert die Position eines Elements.
- * 	@param key Schlüssel des Elements.
- * 	@return Position des Elements; falls nicht vorhanden, Position, _hinter_ der das Element stehen müßte. */
+ * 	@param key Schlï¿½ssel des Elements.
+ * 	@return Position des Elements; falls nicht vorhanden, Position, _hinter_ der das Element stehen mï¿½ï¿½te. */
+    
+    /**
+     * Gets the position of a element.
+     * @param key The key of the element.
+     * @return The position of the element. 
+     * If the element is nonexistent it returns the element that woud be _behind_ the element with key. 
+     */
     protected int findPos(int key) {
         return findPosHelper(list, 0, count - 1, key);
     }
 	
-	/** Hinzufügen eines Elements.
- * 	@param e Hinzuzufügendes Element.
- * 	@return Position, an der das Element eingefügt wurde, bzw. -1, falls Schlüssel schon vorhanden. */
+    /**
+     * Adds a element.
+     * @param e The element to add.
+     * @return Position, where the element was added. If the key already exists returns -1.
+     */
     public int add(Sortable e) {
         Sortable[] src = list;
 		Sortable[] dst;
@@ -74,8 +68,10 @@ public class SortedList {
 		return p;
     }
 
-	/** Liefert eine Kopie der Liste. Die gespeicherten Objekte werden nicht gecloned; die Referenzen auf diese bleiben die gleichen.
- * 	@return Kopie der Liste. */
+    /**
+     * Gets a copy of the list. Only references are cloned, not the stored objects themselves.
+     * @return Copy of the list.
+     */
 	public Object clone() {
 		SortedList s = new SortedList();
 		s.list = new Sortable[list.length];
@@ -83,10 +79,12 @@ public class SortedList {
 		s.count = count;
 		return s;
 	}
-    
-	/** Löscht ein Element.
- * 	@param key Schlüssel des zu löschenden Elements.
- * 	@return Gelöschtes Element. */
+	
+	/**
+	 * Removes a element.
+	 * @param key The key of the element to remove.
+	 * @return The removed element.
+	 */
     public Sortable delete(int key) {
         int p = indexOf(key);
         if (p == -1)
@@ -94,8 +92,10 @@ public class SortedList {
 		return deleteElementAt(p);
     }
 	
-	/** Löscht eine Liste von Elementen.
- * 	@param l Liste mit Elementen, die gelöscht werden sollen. */
+    /**
+     * Removes a list of elements.
+     * @param l The list of elements to remove.
+     */
 	public void delete(SortedList l) {
 		for (int i = 0; i < l.size(); i++) {
 			Sortable e = l.elementAt(i);
@@ -109,9 +109,15 @@ public class SortedList {
 		count = 0;
 	}
 
-	/** Löscht das Element an einer bestimmten Position.
- * 	@param p Position des zu löschenden Elements.
- * 	@return Gelöschtes Element (oder null, falls Position nicht belegt). */
+	/** Lï¿½scht das Element an einer bestimmten Position.
+ * 	@param p Position des zu lï¿½schenden Elements.
+ * 	@return Gelï¿½schtes Element (oder null, falls Position nicht belegt). */
+	
+	/**
+	 * Removes the element at the given position.
+	 * @param p The position of the element to remove.
+	 * @return The removed element. null, if there was no element at the given position.
+	 */
 	public Sortable deleteElementAt(int p) {
 		if (p >= count)
 			return null;
@@ -129,10 +135,12 @@ public class SortedList {
         count--;
 		return rVal;
 	}
-	
-	/** Liefert Element einer bestimmten Position.
- * 	@param p Position des gesuchten Elements.
- * 	@return Gesuchtes Element. */
+		
+	/**
+	 * Gets the element at a specific position.
+	 * @param p Position of the element.
+	 * @return The element at the position; null if there is no element.
+	 */
 	public Sortable elementAt(int p) {
 		if ((p >= 0) && (p < count))
 			return list[p];
@@ -140,9 +148,11 @@ public class SortedList {
 			return null;
 	}
     
-	/** Liefert ein gespeichertes Elements.
- * 	@param key Schlüssel des gesuchten Elements.
- * 	@return Das gesuchte Element, bzw. null, falls nicht vorhanden. */
+	/**
+	 * Gets a stored element.
+	 * @param key The key of the element
+	 * @return The element with the key. Null, if no element with given key exists.
+	 */
 	public Sortable get(int key) {
 		int p = indexOf(key);
         if (p == -1)
@@ -151,9 +161,11 @@ public class SortedList {
 			return list[p];
 	}
 
-	/** Liefert die Position eines bestimmten Elements.
- * 	@param p Schlüssel des Elements.
- * 	@return Position des Elements, bzw. -1, falls Element nicht vorhanden. */
+	/**
+	 * Gets the position of a element.
+	 * @param key The key of the element.
+	 * @return The position of the element. If the element does not exist -1.
+	 */
 	public int indexOf(int key) {
         int p = findPos(key);
         if ((p == -1) || (list[p].getKey() != key))
@@ -161,9 +173,11 @@ public class SortedList {
 		else
 			return p;
 	}
-	
-	/** Fügt eine Liste von Elementen hinzu.
- * 	@param l Liste mit Elementen, die hinzugefügt werden sollen. */	
+		
+	/**
+	 * Adds a list of elements.
+	 * @param l The list of elements to add.
+	 */
 	public void merge(SortedList l) {
 		int size = list.length;
 		while (size < count + l.count)
@@ -183,8 +197,10 @@ public class SortedList {
 		count += l.count;
 	}
 
-	/** Liefert die Anzahl der gespeicherten Elemente.
- * 	@return Anzahl der gespeicherten Elemente. */
+	/** 
+	 * Gets the number of stored elements.
+	 * @return The number of stored elements.
+	 */
 	public int size() {
 		return count;
 	}

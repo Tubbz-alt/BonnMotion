@@ -24,7 +24,7 @@ PACKAGE=edu.bonn.cs.iv.bonnmotion
 JAVAPATH=`which java 2> /dev/null`
 if [ ! "$JAVAPATH" = "" ]
 then
-	JAVAPATH=`dirname $JAVAPATH`
+	JAVAPATH=`dirname ${JAVAPATH}`
 fi
 echo -n Please enter your Java binary path \[$JAVAPATH\]:\ 
 read KBDENTRY
@@ -32,36 +32,36 @@ if [ ! "$KBDENTRY" = "" ]
 then
 	JAVAPATH=$KBDENTRY
 fi
-if [ -x "$JAVAPATH/java" ]
+if [ -x "${JAVAPATH}/java" ]
 then
 	cd `dirname $0`
 	BONNMOTION=`pwd`
 
-	cd $JAVAPATH
+	cd "${JAVAPATH}"
 	JAVAPATH=`pwd`
-	cd $BONNMOTION
+	cd "${BONNMOTION}"
 
-	CLASSPATH="$BONNMOTION/classes"
-	DOCPATH="$BONNMOTION/javadoc"
-	if [ ! -d "$CLASSPATH" ]
+	CLASSPATH="${BONNMOTION}/classes"
+	DOCPATH="${BONNMOTION}/javadoc"
+	if [ ! -d "${CLASSPATH}" ]
 	then
-		mkdir $CLASSPATH
+		mkdir "${CLASSPATH}"
 	fi
-	if [ ! -d $DOCPATH ]
+	if [ ! -d "${DOCPATH}" ]
 	then
-		mkdir $DOCPATH
+		mkdir "${DOCPATH}"
 	fi
 	if [ $OS = "cygwin" ]
 	then
-		cd $CLASSPATH
+		cd "${CLASSPATH}"
 		CLASSPATH=`cmd.exe /c cd`
-		cd $DOCPATH
+		cd "${DOCPATH}"
 		DOCPATH=`cmd.exe /c cd`
 	fi
 
-	cd $BONNMOTION/bin/.tail
+	cd "${BONNMOTION}/bin/.tail"
 	APPS=`ls`
-	cd $BONNMOTION/bin
+	cd "${BONNMOTION}/bin"
 
 	echo \#\!/bin/bash > .head
 	echo >> .head

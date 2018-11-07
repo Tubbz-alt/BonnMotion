@@ -1,4 +1,6 @@
-if [ ! -d $BONNMOTION/classes ]; then
+#!/bin/bash
+
+if [ ! -d "${BONNMOTION}/classes" ]; then
 	echo "Compile first ..."
 	exit;
 fi

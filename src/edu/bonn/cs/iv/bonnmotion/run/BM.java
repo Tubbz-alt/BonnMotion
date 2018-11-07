@@ -1,22 +1,3 @@
-/*******************************************************************************
- ** BonnMotion - a mobility scenario generation and analysis tool             **
- ** Copyright (C) 2002-2005 University of Bonn                                **
- **                                                                           **
- ** This program is free software; you can redistribute it and/or modify      **
- ** it under the terms of the GNU General Public License as published by      **
- ** the Free Software Foundation; either version 2 of the License, or         **
- ** (at your option) any later version.                                       **
- **                                                                           **
- ** This program is distributed in the hope that it will be useful,           **
- ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
- ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
- ** GNU General Public License for more details.                              **
- **                                                                           **
- ** You should have received a copy of the GNU General Public License         **
- ** along with this program; if not, write to the Free Software               **
- ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
- *******************************************************************************/
-
 package edu.bonn.cs.iv.bonnmotion.run;
 
 import edu.bonn.cs.iv.bonnmotion.App;
@@ -27,7 +8,7 @@ import edu.bonn.cs.iv.bonnmotion.Model;
 public class BM {
 
 	private final static String PROG_NAME = "BonnMotion";
-	private final static String PROG_VER = "1.3a";
+	private final static String PROG_VER = "1.4";
 	private final static String MODELS_PACK = "edu.bonn.cs.iv.bonnmotion.models";
 	private final static String MODELS[] =
 		{
@@ -38,6 +19,7 @@ public class BM {
 			"RPGM", "Reference Point Group Mobility model",
 			"Static", "static network (no movement at all)", 
 			"ChainScenario", "links different scenarios",
+			"DisasterArea", "Extended Catastrophe scenario model",
 		};
 
 	private final static String APPS_PACK = "edu.bonn.cs.iv.bonnmotion.apps";
@@ -47,9 +29,12 @@ public class BM {
 			"LinkDump", "Dump information about links",
 			"NSFile", "Create scenario files for ns-2",
 			"GlomoFile", "Create scenario files for Glomosim and Qualnet",
-			"SPPXml", "Create motion file according to Horst Hellbrücks XML schema",
+			"SPPXml", "Create motion file according to Horst Hellbruecks XML schema",
 			"Statistics", "Analyse scenario",
-			"Visplot", "Visualise node movements"
+			"Timescale", "internal use only, calculates the timescale of a connected scenario", // PP
+			"Visplot", "Visualise node movements",
+			"Dwelltime", "Analyse scenario according to Bettstetter",
+			"IntervalFormat","Convert scenario file in interval format"
 		};
 
 	private String fSettings = null;

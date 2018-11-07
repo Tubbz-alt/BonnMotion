@@ -1,22 +1,3 @@
-/*******************************************************************************
- ** BonnMotion - a mobility scenario generation and analysis tool             **
- ** Copyright (C) 2002-2005 University of Bonn                                **
- **                                                                           **
- ** This program is free software; you can redistribute it and/or modify      **
- ** it under the terms of the GNU General Public License as published by      **
- ** the Free Software Foundation; either version 2 of the License, or         **
- ** (at your option) any later version.                                       **
- **                                                                           **
- ** This program is distributed in the hope that it will be useful,           **
- ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
- ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
- ** GNU General Public License for more details.                              **
- **                                                                           **
- ** You should have received a copy of the GNU General Public License         **
- ** along with this program; if not, write to the Free Software               **
- ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
- *******************************************************************************/
-
 package edu.bonn.cs.iv.bonnmotion.models;
 
 import java.io.FileNotFoundException;
@@ -51,6 +32,11 @@ public class GaussMarkov extends Scenario {
    /** Force uniform speed distribution */	
 	protected boolean uniformSpeed = false;
 	protected double minspeed = 0.0;
+
+   protected double alpha = 0.8;
+   protected double center = 1.;
+   protected double vari = 1.;
+
 
 	protected double inputX=0;
 	protected double inputY=0;
@@ -197,10 +183,15 @@ public class GaussMarkov extends Scenario {
 				}
 			}
 
+         alpha = 0.5;
+         center = (1-alpha)*(maxspeed-minspeed)/2.;
+         vari=Math.sqrt(1-alpha*alpha)*speedStdDev;
+
 			double dir = randomNextDouble() * 2 * Math.PI;
 			double speed = (randomNextDouble() * (maxspeed-minspeed)) + minspeed;
 			if (gaussSpeed) {
 				/* choose gaussian distributed initial speeds */
+				//speed = randomNextGaussian() * gaussSpeed * maxspeed / GS_NN + maxspeed;
             speed = getNewSpeed((maxspeed+minspeed)/2.);
 			}
 			
@@ -309,6 +300,30 @@ public class GaussMarkov extends Scenario {
 		postGeneration();
 	}
 
+//	public double getNewDir(double oldDir, Position pos) {
+//		// move away from the border in case we are getting too close
+//		if (pos.x < 0)
+//			if (pos.y < 0)
+//				oldDir = 0.25 * Math.PI;
+//			else if (pos.y > y)
+//				oldDir = 1.75 * Math.PI;
+//			else
+//				oldDir = 0.0;
+//		else if (pos.x > x)
+//			if (pos.y < 0)
+//				oldDir = 0.75 * Math.PI;
+//			else if (pos.y > y)
+//				oldDir = 1.25 * Math.PI;
+//			else
+//				oldDir = Math.PI;
+//		else if (pos.y < 0)
+//			oldDir = 0.5 * Math.PI;
+//		else if (pos.y > y)
+//			oldDir = 1.5 * Math.PI;
+//
+//		return randomNextGaussian() * angleStdDev + oldDir;
+//	}
+
 	public double getNewDir(double oldDir, Position pos) {
       if (checkBounds) {
 		   double newDir =  (randomNextGaussian() * angleStdDev + oldDir)%twoPi;
@@ -336,14 +351,13 @@ public class GaussMarkov extends Scenario {
             oldDir = 0.5 * Math.PI;
          else if (pos.y > y)
             oldDir = 1.5 * Math.PI;
-
-         return randomNextGaussian() * angleStdDev + oldDir;
+        return randomNextGaussian() * angleStdDev + oldDir;
       }
 	}
 
 	public double getNewSpeed(double oldSpeed) {
 		double speed = oldSpeed + randomNextGaussian() * speedStdDev;
-      if (uniformSpeed) {
+     if (uniformSpeed) {
          while ((speed < minspeed) || (speed > maxspeed)) {
             if (speed < minspeed)
                speed = minspeed + (minspeed - speed);			

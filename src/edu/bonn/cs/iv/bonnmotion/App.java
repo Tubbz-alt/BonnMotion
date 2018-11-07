@@ -1,30 +1,8 @@
-/*******************************************************************************
- ** BonnMotion - a mobility scenario generation and analysis tool             **
- ** Copyright (C) 2002-2005 University of Bonn                                **
- **                                                                           **
- ** This program is free software; you can redistribute it and/or modify      **
- ** it under the terms of the GNU General Public License as published by      **
- ** the Free Software Foundation; either version 2 of the License, or         **
- ** (at your option) any later version.                                       **
- **                                                                           **
- ** This program is distributed in the hope that it will be useful,           **
- ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
- ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
- ** GNU General Public License for more details.                              **
- **                                                                           **
- ** You should have received a copy of the GNU General Public License         **
- ** along with this program; if not, write to the Free Software               **
- ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
- *******************************************************************************/
-
 package edu.bonn.cs.iv.bonnmotion;
-
-import edu.bonn.cs.iv.util.Heap;
 
 import java.io.*;
 import java.util.StringTokenizer;
 import java.util.Vector;
-import java.lang.reflect.*;
 
 /**
  * Base class for all applications and all scenario generators.
@@ -129,7 +107,7 @@ public abstract class App {
 	 */
 	public static int[] parseIntArray(String arg) {
 		StringTokenizer st = new StringTokenizer(arg, ",: ");
-		Vector rs = new Vector();
+		Vector<Integer> rs = new Vector<Integer>();
 		while (st.hasMoreTokens()) {
 			rs.addElement(new Integer(Integer.parseInt(st.nextToken())));
 		}
@@ -145,13 +123,13 @@ public abstract class App {
 	 */
 	public static double[] parseDoubleArray(String arg) {
 		StringTokenizer st = new StringTokenizer(arg, ",: ");
-		Vector rs = new Vector();
+		Vector<Double> rs = new Vector<Double>();
 		while (st.hasMoreTokens()) {
 			rs.addElement(new Double(Double.parseDouble(st.nextToken())));
 		}
 		double[] result = new double[rs.size()];
 		for (int j = 0; j < result.length; j++)
-			result[j] = ((Double) rs.elementAt(j)).doubleValue();
+			result[j] = rs.elementAt(j).doubleValue();
 		return result;
 	}
 
@@ -161,14 +139,11 @@ public abstract class App {
 	 */
 	public static String[] parseStringArray(String arg) {
 		StringTokenizer st = new StringTokenizer(arg, ",: ");
-		Vector rs = new Vector();
+		Vector<String> rs = new Vector<String>();
 		while (st.hasMoreTokens()) {
 			rs.addElement(st.nextToken());
 		}
-		String[] result = new String[rs.size()];
-		for (int j = 0; j < result.length; j++)
-			result[j] = (String)rs.elementAt(j);
-		return result;
+		return rs.toArray(new String[0]);
 	}
 
 	public static void printHelp() {

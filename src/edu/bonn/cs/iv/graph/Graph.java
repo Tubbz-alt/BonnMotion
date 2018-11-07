@@ -1,22 +1,3 @@
-/*******************************************************************************
- ** BonnMotion - a mobility scenario generation and analysis tool             **
- ** Copyright (C) 2002-2005 University of Bonn                                **
- **                                                                           **
- ** This program is free software; you can redistribute it and/or modify      **
- ** it under the terms of the GNU General Public License as published by      **
- ** the Free Software Foundation; either version 2 of the License, or         **
- ** (at your option) any later version.                                       **
- **                                                                           **
- ** This program is distributed in the hope that it will be useful,           **
- ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
- ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
- ** GNU General Public License for more details.                              **
- **                                                                           **
- ** You should have received a copy of the GNU General Public License         **
- ** along with this program; if not, write to the Free Software               **
- ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
- *******************************************************************************/
-
 package edu.bonn.cs.iv.graph;
 
 import edu.bonn.cs.iv.util.*;
@@ -334,7 +315,7 @@ public class Graph {
 	public boolean isTree() {
 		int n = nodeCount();
 		byte[] marker = new byte[n];
-		int dCount = 0;
+		//int dCount = 0;
 		int m1 = 0, m2 = 0;
 		for (int i = 0; i < marker.length; i++)
 			marker[i] = 0;
@@ -448,7 +429,7 @@ public class Graph {
 		return tree;
 	}
 
-	/** Hilfsfunktion für sort, vertauscht in einem Array zwei Elemente. */
+	/** Hilfsfunktion fr sort, vertauscht in einem Array zwei Elemente. */
 	/** Number of connected components (expects undirected graph).
 	@param threshold Only account for edges with a weight of at least this value. */
 	public int partitions(int threshold) {
@@ -457,14 +438,14 @@ public class Graph {
 		s[0] = new SortedList();
 		s[1] = (SortedList)nodeList.clone();
         while (s[1].size() > 0) {
-    		Vector toDo = new Vector();
+    		Vector<Node> toDo = new Vector<Node>();
             Node src = (Node)s[1].deleteElementAt(0);
     		s[0].add(src);
     		toDo.addElement(src);
     		while (toDo.size() > 0) {
     			Node v = (Node)toDo.firstElement();
     			toDo.removeElementAt(0);
-    			int vID = v.getKey();
+    			//int vID = v.getKey();
     			for (int i = 0; i < v.outDeg(); i++) {
     				Edge e = v.succAt(i);
                     if (e.weight >= threshold) {
@@ -493,14 +474,14 @@ public class Graph {
 		s[0] = new SortedList();
 		s[1] = (SortedList)nodeList.clone();
         while (s[1].size() > 0) {
-    		Vector toDo = new Vector();
+    		Vector<Node> toDo = new Vector<Node>();
             Node src = (Node)s[1].deleteElementAt(0);
     		s[0].add(src);
     		toDo.addElement(src);
     		while (toDo.size() > 0) {
     			Node v = (Node)toDo.firstElement();
     			toDo.removeElementAt(0);
-    			int vID = v.getKey();
+    			//int vID = v.getKey();
     			for (int i = 0; i < v.outDeg(); i++) {
     				Edge e = v.succAt(i);
                     if (e.weight >= threshold) {
@@ -535,7 +516,7 @@ public class Graph {
     		while (toDo.size() > 0) {
     			Node v = (Node)toDo.firstElement();
     			toDo.removeElementAt(0);
-    			int vID = v.getKey();
+    			//int vID = v.getKey();
     			for (int i = 0; i < v.outDeg(); i++) {
     				Edge e = v.succAt(i);
                     if (e.weight >= threshold) {
@@ -663,7 +644,7 @@ public class Graph {
 	/** Create the "seperator tree" of a graph (expects undirected graph). */
 	public static Graph buildSeperatorTree(Graph g) {
 		int nodeCount = g.nodeCount();
-		// In folgendem Array wird zu jedem Knoten derjenige Knoten gespeichert, an den er im Seperator Tree angeknüpft werden muß. Genauer: Am Anfang muß jeder Knoten natürlich an den einzigen, bereits im Baum vorhandenen Knoten angefügt werden. Dann bekommt jeder zum Baum hinzugefügte Knoten diejenigen Knoten vom alten "überwiesen", die auf seiner Seite des minimalen Schnittes liegen.
+		// In folgendem Array wird zu jedem Knoten derjenige Knoten gespeichert, an den er im Seperator Tree angeknpft werden mu. Genauer: Am Anfang mu jeder Knoten natrlich an den einzigen, bereits im Baum vorhandenen Knoten angefgt werden. Dann bekommt jeder zum Baum hinzugefgte Knoten diejenigen Knoten vom alten "berwiesen", die auf seiner Seite des minimalen Schnittes liegen.
 		Node[] part = new Node[nodeCount];
 		for (int i = 0; i < nodeCount; i++)
 			part[i] = g.nodeAt(0); // Der erste Knoten, an den wird des Rest des Baums drangebaut
@@ -671,25 +652,25 @@ public class Graph {
 		Graph tree = new Graph();
 
 		for (int i = 1; i < nodeCount; i++) {
-			// Der Knoten n ist noch nicht im Baum enthalten, wird im folgenden hinzugefügt, und zwar muß er an m angefügt werden:
+			// Der Knoten n ist noch nicht im Baum enthalten, wird im folgenden hinzugefgt, und zwar mu er an m angefgt werden:
 			
 			Node n = g.nodeAt(i);
 			int nID = n.getKey();
 			Node m = part[i];
 			int mID = m.getKey();
 
-			// Der Residualgraph zum maximalen Flußgraphen reicht, um den minimalen Schnitt zu bekommen; Knoten auf m's Seite des Schnitts sind im Residualgraph nicht von n aus erreichbar, haben in diesem Array also Distanz -1:
+			// Der Residualgraph zum maximalen Flugraphen reicht, um den minimalen Schnitt zu bekommen; Knoten auf m's Seite des Schnitts sind im Residualgraph nicht von n aus erreichbar, haben in diesem Array also Distanz -1:
 
 			Graph resGraph = maxFlow(g, n, m);
 			int[] rDist = resGraph.labelDist(nID);
 
-			// Alle Knoten, die vorher zu m gehörten, aber auf n's Seite des Schnittes liegen, gehören jetzt zu n:
+			// Alle Knoten, die vorher zu m gehrten, aber auf n's Seite des Schnittes liegen, gehren jetzt zu n:
 
 			for (int j = 0; j < part.length; j++)
 				if ((part[j] == m) && (rDist[j] >= 0))
 					part[j] = n;
 
-			// Der Wert des minimalen Schnitts muß berechnet werden:
+			// Der Wert des minimalen Schnitts mu berechnet werden:
 
 			int cutVal = 0;
 			for (int j = 0; j < part.length; j++)
@@ -736,7 +717,7 @@ public class Graph {
 					}
 				}
 				if (! ok) {
-					System.out.println("[rülps]");
+					System.out.println("[rlps]");
 					System.exit(0);
 				}
 				d--;
@@ -846,7 +827,7 @@ public class Graph {
 						int weight = Integer.parseInt(st.nextToken());
 						adjustWeight(a1, a2, weight);
 					} catch (java.util.NoSuchElementException e1) {
-						return "UNMÖGLICH: " + e1 + loc;
+						return "UNMGLICH: " + e1 + loc;
 					} catch (NumberFormatException e2) {
 						return "Wichtung kein int" + loc;
 					}

@@ -1,28 +1,14 @@
-/*******************************************************************************
- ** BonnMotion - a mobility scenario generation and analysis tool             **
- ** Copyright (C) 2002-2005 University of Bonn                                **
- **                                                                           **
- ** This program is free software; you can redistribute it and/or modify      **
- ** it under the terms of the GNU General Public License as published by      **
- ** the Free Software Foundation; either version 2 of the License, or         **
- ** (at your option) any later version.                                       **
- **                                                                           **
- ** This program is distributed in the hope that it will be useful,           **
- ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
- ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
- ** GNU General Public License for more details.                              **
- **                                                                           **
- ** You should have received a copy of the GNU General Public License         **
- ** along with this program; if not, write to the Free Software               **
- ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
- *******************************************************************************/
-
 package edu.bonn.cs.iv.util;
 
-/** Diese Klasse implementiert einen Heap, der Objekte zusammen mit einer Priorität abspeichert und ein Element mit niedrigster Priorität löschen kann. Sowohl abspeichern als auch Löschen eines Elements sind von logarithmischer Komplexität. */
-
+/**
+ * Implements a heap that stores objects with a priority. 
+ * The element with the lowest priority can be deleted.
+ * Add and delete are in O(log n)
+ */
 public class Heap {
-	/** Diese Klasse dient dazu, die Objekte zusammen mit einer Priorität in dem Heap zu speichern. */
+	/**
+	 * Class helps to store objects with a priority in the heap.
+	 */
 	class Record {
 		Object data;
 		double prio;
@@ -45,37 +31,53 @@ public class Heap {
 		this(true);
 	}
 	
-	/** Ändert die Größe des internen Arrays.
- * 	@param nsize Neue Array-Größe. */
+	/**
+	 * Changes the internal array size
+	 * @param nsize new array size
+	 */
 	protected void resize(int nsize) {
 		Record[] nl = new Record[nsize];
 		System.arraycopy(list, 0, nl, 0, count);
 		list = nl;
 	}
 
-	/** Vertauschen von Elementen des internen Arrays.
- * 	@param i Erste Array-Position.
- * 	@param j Zweite Array-Position. */
+	/**
+	 * swaps two elements of the internal array
+	 * @param i first array position
+	 * @param j second array position
+	 */
 	protected void swap(int i, int j) {
 		Record r = list[i];
 		list[i] = list[j];
 		list[j] = r;
 	}
 
-	/** Position des Vaters eines Array-Elements.
- * 	@param p Position des Array-Elements. */
+	/**
+	 * gets the position of the parent of an array element
+	 * @param p position of the array element
+	 * @return the position of the parent element
+	 */
 	protected static int father(int p) {
 		return ((p + 1) / 2) - 1;
 	}
 	
 	/** Position des linken Nachfolgers eines Array-Elements.
  * 	@param p Position des Array-Elements. */
+	
+	/**
+	 * gets the position of the left child of an array element.
+	 * @param p position of the array element
+	 * @return the position of the left child
+	 */
 	protected static int left(int p) {
 		return (2 * (p + 1)) - 1;
 	}
 	
-	/** Position des rechten Nachfolgers eines Array-Elements.
- * 	@param p Position des Array-Elements. */
+	/**
+	 * gets the position of the right child of an array element.
+	 * @param p position of the array element
+	 * @return the position of the right child
+	 */
 	protected static int right(int p) {
 		return 2 * (p + 1);
 	}
@@ -87,8 +89,10 @@ public class Heap {
 			return a > b;
 	}
 
-	/** Stellt die Heap-Eigenschaft wieder her.
- * 	@param p Position, an der die Heap-Eigenschaft verletzt sein könnte. */
+	/**
+	 * Rebuilds the heap property
+	 * @param p Position where the heap property might not be valid
+	 */
 	protected void reheapify(int p) {
 		while (true) {
 			int l = left(p);
@@ -113,9 +117,11 @@ public class Heap {
 		}
 	}
 
-	/** Hinzufügen eines Elements.
- * 	@param data Hinzuzufügendes Element.
- * 	@param prio Priorität des Elements. */
+	/**
+	 * Adds a element.
+	 * @param data element to add
+	 * @param prio priority of the element
+	 */
 	public void add(Object data, double prio) {
 		if (count == list.length)
 			resize(list.length * 2);
@@ -127,8 +133,10 @@ public class Heap {
 		}
 	}
 	
-	/** Liefert eine Kopie des Heaps. Die gespeicherten Objekte werden nicht gecloned; die Referenzen auf diese bleiben die gleichen.
- * 	@return Kopie des Heaps. */
+	/**
+	 * Copies the heap. The stored objects will not be cloned; only the references are copied.
+	 * @return A copy of the heap.
+	 */
 	public Object clone() {
 		Heap h = new Heap();
 		h.list = new Record[list.length];
@@ -137,14 +145,19 @@ public class Heap {
 		return h;
 	}
 
-	/** Liefert und löscht ein Element mit kleinster Priorität.
- * 	@return Gelöschtes Element. */
+	/**
+	 * Gets and removes the element with the smallest priority from the heap.
+	 * @return the element with the smallest priority.
+	 */
 	public Object deleteMin() {
 		return removeElementAt(0);
 	}
 	
-	/** Liefert das Element an einer bestimmten Position der Liste.
- * 	@param pos Position. */
+	/**
+	 * Gets a element with a specific position in the list.
+	 * @param pos The position in the list.
+	 * @return The element at the given position.
+	 */
 	public Object elementAt(int pos) {
 		return list[pos].data;
 	}
@@ -153,13 +166,18 @@ public class Heap {
 		return list[pos].prio;
 	}
 
-	/** Liefert die kleinste Priorität aller gespeicherten Elemente. */
+	/**
+	 * @return The smallest priority of the stored elements.
+	 */
 	public double minLevel() {
 		return list[0].prio;
 	}
 	
-	/** Entfernt das Element and einer bestimmten Position der Liste.
- * 	@param pos Position. */
+	/**
+	 * Removes the element at a specific position in the list.
+	 * @param pos The position of the element.
+	 * @return The removed element.
+	 */
 	public Object removeElementAt(int pos) {
 		Object rVal = list[pos].data;
 		list[pos] = list[--count];
@@ -167,8 +185,10 @@ public class Heap {
 		return rVal;
 	}
 
-	/** Liefert die Anzahl der gespeicherten Elemente.
- * 	@return Anzahl der gespeicherten Elemente. */
+	/**
+	 * Gets the number of stored elements.
+	 * @return The number of stored elements.
+	 */
 	public int size() {
 		return count;
 	}
