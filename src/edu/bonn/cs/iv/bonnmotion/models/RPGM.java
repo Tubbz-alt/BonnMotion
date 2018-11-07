@@ -188,15 +188,15 @@ public class RPGM extends RandomSpeedBase {
             
             //pick position inside the interval [maxdist; x - maxdist], [maxdist; y - maxdist] 
             //(to ensure that the group area doesn't overflow the borders)
-            Position src = new Position((x - 2 * maxdist) * randomNextDouble() + maxdist, (y - 2 * maxdist) * randomNextDouble() + maxdist);
+            Position src = new Position((parameterData.x - 2 * maxdist) * randomNextDouble() + maxdist, (parameterData.y - 2 * maxdist) * randomNextDouble() + maxdist);
 
             if (!ref.add(0.0, src)) {
                 System.err.println(getInfo().name + ".generate: error while adding group movement (1)");
                 System.exit(-1);
             }
 
-            while (t < duration) {
-                Position dst = new Position((x - 2 * maxdist) * randomNextDouble() + maxdist, (y - 2 * maxdist) * randomNextDouble() + maxdist);
+            while (t < parameterData.duration) {
+                Position dst = new Position((parameterData.x - 2 * maxdist) * randomNextDouble() + maxdist, (parameterData.y - 2 * maxdist) * randomNextDouble() + maxdist);
 
                 double speed = (maxspeed - minspeed) * randomNextDouble() + minspeed;
                 t += src.distance(dst) / speed;
@@ -206,7 +206,7 @@ public class RPGM extends RandomSpeedBase {
                     System.exit(-1);
                 }
 
-                if ((t < duration) && (maxpause > 0.0)) {
+                if ((t < parameterData.duration) && (maxpause > 0.0)) {
                     double pause = maxpause * randomNextDouble();
                     if (pause > 0.0) {
                         t += pause;
@@ -236,7 +236,7 @@ public class RPGM extends RandomSpeedBase {
             
 		double mt = 0.0;
 
-            	Position msrc = group.positionAt(mt).rndprox(maxdist, randomNextDouble(), randomNextDouble());
+            	Position msrc = group.positionAt(mt).rndprox(maxdist, randomNextDouble(), randomNextDouble(), parameterData.calculationDim);
 
 //	    	System.out.println("src: " + msrc.toString());
 
@@ -246,7 +246,7 @@ public class RPGM extends RandomSpeedBase {
 		}
 
 
-	        while (mt < duration) {
+	        while (mt < parameterData.duration) {
    	       		Position mdst = new Position(0.0, 0.0);
    	             	final double[] groupChangeTimes = group.changeTimes();
    	             	int currentGroupChangeTimeIndex = 0;
@@ -256,7 +256,7 @@ public class RPGM extends RandomSpeedBase {
    	             	while ((currentGroupChangeTimeIndex < groupChangeTimes.length) && (groupChangeTimes[currentGroupChangeTimeIndex] <= mt))
                     		currentGroupChangeTimeIndex++;
                 
-   	             	double next = (currentGroupChangeTimeIndex < groupChangeTimes.length) ? groupChangeTimes[currentGroupChangeTimeIndex] : duration;
+   	             	double next = (currentGroupChangeTimeIndex < groupChangeTimes.length) ? groupChangeTimes[currentGroupChangeTimeIndex] : parameterData.duration;
 
    	             	boolean pause = (currentGroupChangeTimeIndex == 0);
 
@@ -297,7 +297,7 @@ public class RPGM extends RandomSpeedBase {
 //					System.out.println("segment: " + segm + ", interimTime: " + interimTime);
 
 					do {
-						mdst = grpSegInterim.rndprox(maxdist, randomNextDouble(), randomNextDouble());
+						mdst = grpSegInterim.rndprox(maxdist, randomNextDouble(), randomNextDouble(), parameterData.calculationDim);
 						speed = prevLoc.distance(mdst) / segTimeDelta;
 					} while (speed > maxspeed*speedScale);
 
@@ -320,15 +320,16 @@ public class RPGM extends RandomSpeedBase {
                 	mt = next;
 
 //			System.out.println("");
-		    } //end of while mt < duration 
+		    } //end of while mt < parameterData.duration 
 
         	} //end of iteration through nodes of a group
 
 
         } //end of iteration through group leaders
 
-        this.node = node;
+        this.parameterData.nodes = node;
 
+        postGeneration();
     }//end of generateForExplicitlyDefinedGroups method
 
 
@@ -345,13 +346,10 @@ public class RPGM extends RandomSpeedBase {
         int nodesRemaining = node.length;
         int offset = 0;
 
-	int groupLeaderId = 0;
-
         while (nodesRemaining > 0) {
             MobileNode ref = new MobileNode();
             rpoints.addElement(ref);
             double t = 0.0;
-
             
             //pick position inside the interval [maxdist; x - maxdist], [maxdist; y - maxdist] 
             //(to ensure that the group area doesn't overflow the borders)
@@ -397,30 +395,16 @@ public class RPGM extends RandomSpeedBase {
             nodesRemaining -= size;
             offset += size;
 
-		
-
-	    System.out.println("\ngroup leader: " + groupLeaderId);	
-	    System.out.println("nodes in the group: ");	
-
             for (int i = offset - size; i < offset; i++) {
                 node[i] = new GroupNode(ref);
-		System.out.println("node: " + i);	
             }
-
-	    groupLeaderId += size;
         }
-
 
         // nodes follow their reference points:
         for (int i = 0; i < node.length; i++) {
-
-	    System.out.println("\nnode " + i);
-
             double t = 0.0;
             MobileNode group = node[i].group();
             Position src = group.positionAt(t).rndprox(maxdist, randomNextDouble(), randomNextDouble(), parameterData.calculationDim);
-
-	    System.out.println("src: " + src.toString());
 
             if (!node[i].add(0.0, src)) {
                 System.err.println(getInfo().name + ".generate: error while adding node movement (1)");
@@ -455,8 +439,6 @@ public class RPGM extends RandomSpeedBase {
                 } else {
                     dst = src;
                 }
-
-	        System.out.println("dst: " + dst.toString());
 
                 if (pGroupChange > 0.0) {
                     // create dummy with current src and dst for easier parameter passing
@@ -602,6 +584,7 @@ public class RPGM extends RandomSpeedBase {
             maxdist = Double.parseDouble(value);
             return true;
         }
+// ACS begin
         else if (key.equals("numSubseg")) {
             numSubseg = Integer.parseInt(value);
             return true;
@@ -610,6 +593,7 @@ public class RPGM extends RandomSpeedBase {
             speedScale = Double.parseDouble(value);
             return true;
         }
+// ACS end
         else
             return super.parseArg(key, value);
     }
@@ -621,8 +605,10 @@ public class RPGM extends RandomSpeedBase {
         p[1] = "groupsize_S=" + groupSizeDeviation;
         p[2] = "pGroupChange=" + pGroupChange;
         p[3] = "maxdist=" + maxdist;
+// ACS begin
         p[4] = "numSubseg=" + numSubseg;
         p[5] = "speedScale=" + speedScale;
+// ACS end
 
         super.write(_name, p);
     }
