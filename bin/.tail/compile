@@ -1,0 +1,13 @@
+cd $BONNMOTION/src
+test ! -d ../classes && mkdir ../classes
+for i in `find . -name "*.java"`; do
+	DIR=`dirname $i`
+	BASE=`basename $i`
+	CLASSFILE=../classes/$DIR/${BASE%%.*}.class
+	if [ \( "$1" = "all" \) -o \( ! -e $CLASSFILE \) -o \( $i -nt $CLASSFILE \) ]
+	then
+		echo -n Compiling $BASE ...
+		$JAVAC -d ../classes -sourcepath . -classpath "$CLASSPATH" $i
+		echo " done."
+	fi
+done
