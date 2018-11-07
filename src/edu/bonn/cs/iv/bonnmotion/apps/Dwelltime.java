@@ -25,13 +25,12 @@ public class Dwelltime extends App {
 		}
 		
 		try {
-			s = new Scenario(name);
+			s = Scenario.getScenario(name);
 		} catch (Exception e) {
 			App.exceptionHandler( "Error reading file", e);
 		}
 		
 		MobileNode[] node = s.getNode();
-		//System.out.println("Rows = "+s.getX()+"/"+measures.doubleValue()+"\n");
 		
 		double row = s.getX() / measures.doubleValue();
 		int rowint = (int)Math.ceil(row);

@@ -20,24 +20,20 @@
 package edu.bonn.cs.iv.util;
 
 import java.util.HashMap;
-import java.util.Map;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.Iterator;
 import java.lang.Integer;
 
 
-/** Diese Klasse implementiert eine HashMap, die beim get die als Schlssel Integer verwendet. */
-
-public class IntegerHashMap extends HashMap {
+public class IntegerHashMap extends HashMap<Integer,Object> {
 	private static final long serialVersionUID = -9179175672760329379L;
 
-	public Object get(Integer key){
-		Iterator it = this.entrySet().iterator();
+	public Object get(Integer key) {
+		Iterator<?> it = this.entrySet().iterator();
 		while(it.hasNext()){
-			Map.Entry entry = (Map.Entry)it.next();
+			Map.Entry<?,?> entry = (Map.Entry<?,?>)it.next();
 			Integer k = ((Integer)entry.getKey());
-			//System.out.println("k " + k.x + " " + k.y);
-			//System.out.println("key " + key.x + " " + key.y);
 			if(key.compareTo(k) == 0){
 				return entry.getValue();
 			}
@@ -45,14 +41,14 @@ public class IntegerHashMap extends HashMap {
 		return super.get(key);
 	}
 	
-	public void print(){
-		Iterator it = this.entrySet().iterator();
-		while(it.hasNext()){
-			Map.Entry entry = (Map.Entry)it.next();
+	public void print() {
+		Iterator<?> it = this.entrySet().iterator();
+		while(it.hasNext()) {
+			Map.Entry<?,?> entry = (Map.Entry<?,?>)it.next();
 			Integer key = ((Integer)entry.getKey());
 			System.out.println("key " + key);
-			LinkedList values = new LinkedList();
-			values = ((LinkedList)entry.getValue());
+			LinkedList<?> values;
+			values = ((LinkedList<?>)entry.getValue());
 			for(int i = 0; i < values.size(); i++){
 				System.out.println("value " + ((Double)values.get(i)));
 			}

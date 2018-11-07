@@ -7,7 +7,6 @@ import edu.bonn.cs.iv.util.*;
 import java.io.*;
 import java.util.Vector;
 
-
 /** Application that calculates various statistics for movement scenarios. */
 
 public class Statistics extends App {
@@ -16,9 +15,10 @@ public class Statistics extends App {
 	public static final int STATS_MINCUT = 0x00000004;
 	public static final int STATS_STABILITY = 0x00000008;
 	public static final int STATS_UNIDIRECTIONAL = 0x00000010;
-	public static final int STATS_PARTDEG = 0x00000020; // to what degree is the network partitioned?
-        protected static boolean calc_velo_over_time = false;
-        protected static boolean calc_and_distri = false;    
+	public static final int STATS_PARTDEG = 0x00000020; // to what degree is the network
+														// partitioned?
+	protected static boolean calc_velo_over_time = false;
+	protected static boolean calc_and_distri = false;
 
 	protected static double secP = 0;
 	protected static double secM = 0;
@@ -26,20 +26,16 @@ public class Statistics extends App {
 	protected static double secS = 0;
 	protected static double secU = 0;
 	protected static double secG = 0;
-        protected static double secV = 0;
-        protected static double[] secA = null;    
+	protected static double secV = 0;
+	protected static double[] secA = null;
 
 	protected static boolean printTime = false;
 
 	protected String name = null;
 	protected double[] radius = null;
 	protected int flags = 0;
-	
-	//remember nodes border entry and exit times
-	protected static IntegerHashMap deadnodes = new IntegerHashMap();
 
-	/*	protected double duration = 0;
-		protected MobileNode node[] = null; */
+	protected static double temporalDependenceC = 100;
 
 	public Statistics(String[] args) throws FileNotFoundException, IOException {
 		go(args);
@@ -47,71 +43,56 @@ public class Statistics extends App {
 
 	public void go(String[] _args) throws FileNotFoundException, IOException {
 		parse(_args);
-		if ((name == null) || ((radius == null)&&!calc_velo_over_time&&!calc_and_distri)) {
+		if ((name == null) || ((radius == null) && !calc_velo_over_time && !calc_and_distri)) {
 			printHelp();
 			System.exit(0);
 		}
 
 		System.out.println("reading scenario data");
-		Scenario s = new Scenario(name);
+		Scenario s = Scenario.getScenario(name);
 		System.out.println("name " + s.getModelName());
 
-		// get my args
-		/*		node = s.getNode();
-				duration = s.getDuration(); */
-
 		if (radius != null) {
-		    if (flags > 0)
-			for (int i = 0; i < radius.length; i++) {
-				Heap sched = new Heap();
-				Heap oosched = new Heap();
-				System.out.println("radius=" + radius[i]);
-	//					System.out.println("scheduling...");
-				schedule(s, sched, radius[i], false, name, oosched);
-	//					System.out.println("calculating...");
-				String basename = name + ".stats_" + radius[i];
-				if (basename.endsWith(".0"))
-					basename = basename.substring(0, basename.length() - 2);
-				progressive(s.nodeCount(s.getModelName(), basename), s.getDuration(), s, sched, true, flags, basename, oosched);
-			} else
+			if (flags > 0)
+				for (int i = 0; i < radius.length; i++) {
+					Heap sched = new Heap();
+					Heap oosched = new Heap();
+					System.out.println("radius=" + radius[i]);
+					schedule(s, sched, radius[i], false, name, oosched);
+					String basename = name + ".stats_" + radius[i];
+					if (basename.endsWith(".0"))
+						basename = basename.substring(0, basename.length() - 2);
+					progressive(s.nodeCount(s.getModelName(), basename), s.getDuration(), s, sched, true, flags, basename, oosched);
+				}
+			else
 				overall(s, radius, name);
 		}
 
 		if (calc_velo_over_time) {
-		    calcVelocity (name, s);
+			calcVelocity(name, s);
 		}
 		if (calc_and_distri) {
-		    calcAverageNodeDegDistri (name, s);
+			calcAverageNodeDegDistri(name, s);
 		}
 	}
 
 	/** Calculates statistics' devolution over time. */
-	public static void progressive(
-		int nodes, double duration,
-		Scenario s,
-		Heap sched,
-		boolean bidirectional,
-		int which,
-		String basename,
-                Heap oosched)
-		throws FileNotFoundException, IOException {
-
-//		MobileNode[] node = s.getNode();
-//		double duration = s.getDuration();
+	public static void progressive(int nodes, double duration, Scenario s, Heap sched, boolean bidirectional,
+			int which, String basename, Heap oosched) throws FileNotFoundException, IOException {
 
 		Graph topo = new Graph();
 		for (int i = 0; i < nodes; i++)
 			topo.checkNode(i);
 
-		// verwalte zweiten Heap fr On/Off-Events der Knoten 
-		// basierend auf dieser wird dann Kopie des Graphen verwaltet, aus dem 
-		// smtliche Off-Nodes jeweils gelscht werden 
+		// verwalte zweiten Heap fr On/Off-Events der Knoten
+		// basierend auf dieser wird dann Kopie des Graphen verwaltet, aus dem
+		// smtliche Off-Nodes jeweils gelscht werden
 		boolean off_nodes_exist = (oosched.size() > 0);
-		Graph topo_complete = (Graph) topo.clone();
-		boolean[] node_off = new boolean[nodes];		
+		Graph topo_complete = (Graph)topo.clone();
+		boolean[] node_off = new boolean[nodes];
 		for (int off_init = 0; off_init < nodes; off_init++)
-		    node_off[off_init] = false;		
-		
+			node_off[off_init] = false;
+
 		double time = 0.0;
 
 		int unicnt = -1;
@@ -129,7 +110,7 @@ public class Statistics extends App {
 		double tNextStability = 0.0;
 		double tNextPartDeg = 0.0;
 		double tNextUni = 0.0;
-		
+
 		// target files for stats output
 		PrintWriter fDeg = null;
 		if ((which & STATS_NODEDEG) > 0)
@@ -158,7 +139,6 @@ public class Statistics extends App {
 			fPartDeg = new PrintWriter(new FileOutputStream(basename + ".partdeg"));
 		}
 
-//		double n1 = (double) (nodes * (nodes - 1));
 		double n1 = (double)(nodes - 1);
 		int[] uni = new int[4];
 		int progress = -1;
@@ -175,6 +155,7 @@ public class Statistics extends App {
 				if (printTime)
 					System.out.println("t=" + time);
 				Graph g;
+
 				if (bidirectional) {
 					g = topo;
 					if (((which & STATS_NODEDEG) > 0) && (time >= tNextDeg)) {
@@ -190,11 +171,11 @@ public class Statistics extends App {
 							fDeg.println(time + " " + ((double)edges / (double)g.nodeCount()));
 						}
 					}
-				} else {
-					g = (Graph) topo.clone();
-					//					double[] hirbel = g.unidirRemove(uni);
+				}
+				else {
+					g = (Graph)topo.clone();
 					g.unidirRemove(uni);
-					if (((which & STATS_UNIDIRECTIONAL) > 0) && (time >= tNextUni) ) {
+					if (((which & STATS_UNIDIRECTIONAL) > 0) && (time >= tNextUni)) {
 						tNextUni += secU;
 
 						if (uni[0] != unicnt) {
@@ -214,12 +195,12 @@ public class Statistics extends App {
 						tNextDeg += secN;
 
 						edges = uni[3];
-						fDeg.println(time + " " + ((double) edges / n1));
+						fDeg.println(time + " " + ((double)edges / n1));
 					}
 				}
 				if (((which & STATS_PARTITIONS) > 0) && (time >= tNextPart)) {
 					tNextPart += secP;
-					
+
 					int npart = g.partitions(0);
 					if (part != npart) {
 						part = npart;
@@ -237,7 +218,7 @@ public class Statistics extends App {
 				}
 				if (((which & STATS_MINCUT) > 0) && (time >= tNextMinCut)) {
 					tNextMinCut += secM;
-					
+
 					Graph h = Graph.buildSeperatorTree(g);
 					Edge minedge = h.findMinEdge();
 					int nmincut = 0;
@@ -248,9 +229,9 @@ public class Statistics extends App {
 						fMinCut.println(time + " " + mincut);
 					}
 				}
-				if (((which & STATS_STABILITY) > 0) && (time >= tNextStability )) {
+				if (((which & STATS_STABILITY) > 0) && (time >= tNextStability)) {
 					tNextStability += secS;
-					
+
 					int nstability = g.stability();
 					if (stability != nstability) {
 						stability = nstability;
@@ -260,40 +241,40 @@ public class Statistics extends App {
 			}
 
 			if (off_nodes_exist)
-			    topo = topo_complete; // complete Graph with nodes that are switched off
+				topo = topo_complete; // complete Graph with nodes that are switched off
 
 			time = ntime;
-			IndexPair idx = (IndexPair) sched.deleteMin();
+
+			IndexPair idx = (IndexPair)sched.deleteMin();
 			if (idx.i >= 0) { // hack: stopper
 				Node src = topo.getNode(idx.i);
 				if (src.getSucc(idx.j) == null) {
-					//				System.out.println("" + time + " +(" + idx.i + ", " + idx.j + ")");
 					Node dst = topo.getNode(idx.j);
-					src.addSucc(dst, 1); //.setLabel("time", new Double(time));
+					src.addSucc(dst, 1);
 					if (bidirectional)
-						dst.addSucc(src, 1); //.setLabel("time", new Double(time));
-				} else {
-					//				System.out.println("" + time + " -(" + idx.i + ", " + idx.j + ")");
+						dst.addSucc(src, 1);
+				}
+				else {
 					src.delSucc(idx.j);
 					if (bidirectional)
 						topo.getNode(idx.j).delSucc(idx.i);
 				}
 			}
-			
+
 			if (off_nodes_exist) {
-			    // update node_off array
-			    while ((oosched.size() > 0) && (oosched.minLevel() <= time)) {
-				Integer off_index = (Integer) oosched.deleteMin();
-				node_off[off_index.intValue()] = !node_off[off_index.intValue()];				
-			    }
-			    // del nodes that are switched off
-			    topo_complete = (Graph) topo.clone();
-			    for (int off_i = nodes-1; off_i >= 0; off_i--) {
-				if (node_off[off_i]) {
-				    Node todell = topo.getNode(off_i);
-				    topo.delNode(todell);
+				// update node_off array
+				while ((oosched.size() > 0) && (oosched.minLevel() <= time)) {
+					Integer off_index = (Integer)oosched.deleteMin();
+					node_off[off_index.intValue()] = !node_off[off_index.intValue()];
 				}
-			    }
+				// del nodes that are switched off
+				topo_complete = (Graph)topo.clone();
+				for (int off_i = nodes - 1; off_i >= 0; off_i--) {
+					if (node_off[off_i]) {
+						Node todell = topo.getNode(off_i);
+						topo.delNode(todell);
+					}
+				}
 			}
 
 		}
@@ -313,129 +294,100 @@ public class Statistics extends App {
 			fPartDeg.close();
 	}
 
-        public static void calcVelocity (String basename, Scenario s) {
-	    
-	    MobileNode[] node = s.getNode();
-	    double duration = s.getDuration();
-	    double [][] velos_over_time = new double[node.length][];
-	    PrintWriter fVelo = null;
-
-	    try {
-		fVelo = new PrintWriter(new FileOutputStream(basename + ".velocity_" + secV));
-	    } catch (IOException ie) {
-		System.err.println("Error when opening file: " + basename);
-	    }
-
-	    for (int i = 0; i < node.length; i++) {
-		//System.out.println("Node: "+i);
-		velos_over_time[i] = MobileNode.getSpeedoverTime(node[i], 0.0, duration, secV);
-	    }
-
-	    int l = (int) ((duration/secV) + 1);
-
-	    for (int j = 0; j < l; j++) {
-
-		// calc t_on and d_on
-		double t_on = 0.0;
-		double d_on = 0.0;
-		for (int i = 0; i < node.length; i++) {
-		    t_on = t_on + velos_over_time[i][(2*j)+1];
-		    d_on = d_on + velos_over_time[i][2*j];
-		}
-
-		double av_speed = d_on / t_on;
-		double time = j * secV;
-
-		fVelo.println(time + " " + av_speed);
-	    }
-	    fVelo.close();
-
-	    /*for (int j = 0; j < l; j++) {
-		System.out.println("147->"+velos_over_time[147][j]+" | 146->"+velos_over_time[146][j]);
-		}*/
-			
-        }
-
-        public static void calcAverageNodeDegDistri (String basename, Scenario s) {
-	    MobileNode[] node = s.getNode();
-	    double duration = s.getDuration();
-	    double [] and_per_node = new double[node.length];
-	    double [] conn_time_help;
-	    PrintWriter fANDDistri = null;
-
-	    for (int r = 0; r < secA.length; r++) {
-		System.out.println("Starting with calculation of Average Node Deg. Distri Radius "+secA[r]);
+	public static void calcVelocity(String basename, Scenario s) {
+		MobileNode[] node = s.getNode();
+		double duration = s.getDuration();
+		double[][] velos_over_time = new double[node.length][];
+		PrintWriter fVelo = null;
 
 		try {
-		    fANDDistri = new PrintWriter(new FileOutputStream(basename + ".and_distri_" + secA[r]));
+			fVelo = new PrintWriter(new FileOutputStream(basename + ".velocity_" + secV));
 		} catch (IOException ie) {
-		    System.err.println("Error when opening file: " + basename);
+			System.err.println("Error when opening file: " + basename);
 		}
 
 		for (int i = 0; i < node.length; i++) {
-		    and_per_node[i] = 0.0;
-		    for (int j = 0; j < node.length; j++) {
-			if (i!=j) {
-			    conn_time_help = MobileNode.get_connection_time(node[i],node[j],0.0,duration,secA[r]);
-			    //System.out.println("Nodes: "+i+"/"+j+ " | ConTime: "+conn_time_help[1]+" | OnTime: "+conn_time_help[0]);
-			    and_per_node[i] = and_per_node[i] + (conn_time_help[1] / conn_time_help[0]);
+			velos_over_time[i] = MobileNode.getSpeedoverTime(node[i], 0.0, duration, secV);
+		}
+
+		int l = (int)((duration / secV) + 1);
+
+		for (int j = 0; j < l; j++) {
+
+			// calc t_on and d_on
+			double t_on = 0.0;
+			double d_on = 0.0;
+			for (int i = 0; i < node.length; i++) {
+				t_on = t_on + velos_over_time[i][(2 * j) + 1];
+				d_on = d_on + velos_over_time[i][2 * j];
 			}
-		    }
-		    fANDDistri.println(i + " " + and_per_node[i]);
-		}	    
-		fANDDistri.close();			
-	    }
-        }
+
+			double av_speed = d_on / t_on;
+			double time = j * secV;
+
+			fVelo.println(time + " " + av_speed);
+		}
+		
+		fVelo.close();
+	}
+
+	public static void calcAverageNodeDegDistri(String basename, Scenario s) {
+		MobileNode[] node = s.getNode();
+		double duration = s.getDuration();
+		double[] and_per_node = new double[node.length];
+		double[] conn_time_help;
+		PrintWriter fANDDistri = null;
+
+		for (int r = 0; r < secA.length; r++) {
+			System.out.println("Starting with calculation of Average Node Deg. Distri Radius " + secA[r]);
+
+			try {
+				fANDDistri = new PrintWriter(new FileOutputStream(basename + ".and_distri_" + secA[r]));
+			}
+			catch (IOException ie) {
+				System.err.println("Error when opening file: " + basename);
+			}
+
+			for (int i = 0; i < node.length; i++) {
+				and_per_node[i] = 0.0;
+				for (int j = 0; j < node.length; j++) {
+					if (i != j) {
+						conn_time_help = MobileNode.get_connection_time(node[i], node[j], 0.0, duration, secA[r]);
+						and_per_node[i] = and_per_node[i] + (conn_time_help[1] / conn_time_help[0]);
+					}
+				}
+				fANDDistri.println(i + " " + and_per_node[i]);
+			}
+			fANDDistri.close();
+		}
+	}
 
 	/** Put LinkStatusChange-events into a heap. */
-	public static double[] schedule(
-		Scenario s,
-		Heap sched,
-		double radius,
-		boolean calculateMobility, 
-		String basename,
-                Heap onoffsched) {
-
+	public static double[] schedule(Scenario s, Heap sched, double radius, boolean calculateMobility, String basename, Heap onoffsched) {
 		MobileNode[] node = s.getNode();
-		//System.out.println("lange orig " + node.length);
-
-		/*
-		if(s.getModelName().equals("ExtendedCatastrophe")){
-			node = s.getNode("ExtendedCatastrophe", basename);
-			System.out.println("lange " + node.length);
-		}
-		*/
-
 		double duration = s.getDuration();
-
-		//int tEdges = (node.length * (node.length - 1)) / 2;
-		//double normFact = (double) tEdges * duration;
-
 		double mobility = 0.0;
-		double on_time = 0.0;  // on time for links
+		double on_time = 0.0; // on time for links
 		double on_time_node = 0.0;
 		double mobility_pairs[][] = new double[node.length][node.length];
 		double on_time_pairs[][] = new double[node.length][node.length];
-		
+		double D_spatial = 0.0;
+		int D_spatial_count = 0;
+		double Relative_speed = 0.0;
+		int Relative_speed_count = 0;
+		int connectedPairs = 0;
 		int total = (node.length - 1) * node.length / 2;
 		int done = 0;
-		
 		int progress = -1;
-		
-		double result[] = new double[2];
-		
-		/*LinkedList start = new LinkedList();
-		LinkedList stop = new LinkedList();*/
+		double result[] = new double[5];
 
 		for (int i = 0; i < node.length; i++) {
-		        //put on off events in a seperate heap
-		        //System.out.println(i);
-                        double[] onoffChanges =	MobileNode.getOnOffChanges(node[i]);
+			// put on off events in a seperate heap
+			double[] onoffChanges = MobileNode.getOnOffChanges(node[i]);
 			Integer ooidx = new Integer(i);
 			for (int m = 0; m < onoffChanges.length; m++) {
-			    onoffsched.add(ooidx, onoffChanges[m]);
-                            //System.out.println(onoffChanges[m]);
-			}			
+				onoffsched.add(ooidx, onoffChanges[m]);
+			}
 			for (int j = i + 1; j < node.length; j++) {
 				int nProg = (int)(100.0 * (double)done / (double)total + 0.5);
 				if (nProg > progress) {
@@ -444,46 +396,45 @@ public class Statistics extends App {
 				}
 				done++;
 				IndexPair idx = new IndexPair(i, j);
-				//System.out.println(i+","+j);
-				double[] linkStatusChanges =
-					MobileNode.pairStatistics(
-						node[i],
-						node[j],
-						0.0,
-						duration,
-						radius,
-						calculateMobility);
-				//if (calculateMobility)
+				double[] linkStatusChanges = MobileNode.pairStatistics(node[i], node[j], 0.0, duration, radius, calculateMobility);
 				mobility_pairs[i][j] = linkStatusChanges[0];
 				on_time_pairs[i][j] = linkStatusChanges[1];
-				for (int l = 2; l < linkStatusChanges.length; l++)
+				D_spatial += linkStatusChanges[2];
+				D_spatial_count += linkStatusChanges[3];
+				Relative_speed += linkStatusChanges[4];
+				Relative_speed_count += linkStatusChanges[5];
+
+				if (linkStatusChanges.length > 6)
+					connectedPairs++;
+
+				for (int l = 6; l < linkStatusChanges.length; l++)
 					sched.add(idx, linkStatusChanges[l]);
 				if ((linkStatusChanges.length & 1) == 0)
 					// explicitely add "disconnect" at the end
 					sched.add(idx, duration);
 			}
+
 		}
 
 		// calc mobility
 		for (int i = 0; i < node.length; i++) {
-		    for (int j = i + 1; j < node.length; j++) {
-			on_time = on_time + on_time_pairs[i][j];
-			mobility = mobility + mobility_pairs[i][j];
-			//System.out.println(i+";"+j+" -> "+mobility_pairs[i][j]+" ("+on_time_pairs[i][j]+")");
-		    }
+			for (int j = i + 1; j < node.length; j++) {
+				on_time = on_time + on_time_pairs[i][j];
+				mobility = mobility + mobility_pairs[i][j];
+			}
 		}
 
 		for (int i = 0; i < node.length; i++) {
-		    on_time_node = on_time_node + MobileNode.getNodesOnTime(node[i], duration);
+			on_time_node = on_time_node + MobileNode.getNodesOnTime(node[i], duration);
 		}
-		//System.out.println("Duration*#nodes"+(duration*node.length)+" on_time:"+on_time_node);
 
+		result[0] = mobility / on_time;
+		result[1] = on_time_node;
+		result[2] = D_spatial / D_spatial_count;
+		result[3] = Relative_speed / Relative_speed_count;
+		result[4] = connectedPairs;
 
-		result[0] =  mobility/on_time;
-		result[1] =  on_time_node;
-		
 		System.out.println();
-		//return (mobility/normFact);
 		return result;
 	}
 
@@ -497,35 +448,29 @@ public class Statistics extends App {
 		size[old] = 0;
 	}
 
-        /** Calc count of nodes that are off at time t **/
-        protected static int count_of_offline_nodes_at_time (Scenario s, double time) {
+	/** Calc count of nodes that are off at time t **/
+	protected static int count_of_offline_nodes_at_time(Scenario s, double time) {
 
-	    int count = 0;
-	    MobileNode[] node = s.getNode();
+		int count = 0;
+		MobileNode[] node = s.getNode();
 
-	    for (int i = 0; i < node.length; i++) {
-		if (MobileNode.isNodeOffAtTime(node[i], time))
-		    count++;
-	    }
-	    return count;
+		for (int i = 0; i < node.length; i++) {
+			if (MobileNode.isNodeOffAtTime(node[i], time))
+				count++;
+		}
+		return count;
 	}
 
 	/** Calculate statistics averaged over the whole simulation time. */
-	public static void overall(Scenario s, double[] radius, String basename)
-		throws FileNotFoundException {
+	public static void overall(Scenario s, double[] radius, String basename) throws FileNotFoundException {
 		MobileNode[] node = s.getNode();
 		System.out.println("calculation of overall stats started");
-		/*
-		if(s.getModelName().equals("ExtendedCatastrophe")){
-			node = s.getNode("ExtendedCatastrophe", basename);
-			}*/
 		double duration = s.getDuration();
-
 		double[][] ls = null;
 		PrintWriter stats = new PrintWriter(new FileOutputStream(basename + ".stats"));
 		// check next two lines for ExtendedCatastrophe
 		int tEdges = (node.length * (node.length - 1)) / 2;
-		double normFact = (double) tEdges * duration;
+		double normFact = (double)tEdges * duration;
 		Heap heap = null;
 		Heap ooheap = null;
 		int[] pIdx = null; // partition index
@@ -536,17 +481,35 @@ public class Statistics extends App {
 		for (int i = 0; i < ls.length; i++)
 			ls[i] = new double[node.length - i - 1];
 		heap = new Heap();
-                ooheap = new Heap();
+		ooheap = new Heap();
 		pIdx = new int[node.length]; // partition index
 		pSize = new int[node.length]; // partition sizes
 		isolation = new boolean[node.length];
+
+		String metrics[] = {"\"tx range\"", "\"avg. degree of spatial dependence\"", "\"avg. degree\"",
+				"\"partitions\"", "\"partitioning degree\"", "\"avg time to link break\"",
+				"\"std deviation of time to link break\"", "\"link breaks\"", "\"avg link duration\"",
+				"\"total links\"", "\"average relative speed\"", "\"average path availability\"",
+				"\"average number of link changes\""};
+		String values[][] = new String[radius.length][metrics.length];
+
+		// get temporal dependence
+		double D_temporal = getAverageDegreeOfTemporalDependence(node, s);
+
+		// calculate average node speed
+		double averageSpeed = 0;
+		for (int i = 0; i < node.length; i++) {
+			averageSpeed += averageSpeed(i, s);
+		}
+		averageSpeed = averageSpeed / node.length;
+
 		for (int k = 0; k < radius.length; k++) {
 			System.out.println("transmission range=" + radius[k]);
 
 			int partitions = node.length;
 			int partitionsOld = node.length;
 			int partitions_corrected = node.length;
-			int partitions_corrected_old = node.length;			
+			int partitions_corrected_old = node.length;
 			double pSince = 0.0;
 			double avgPart = 0.0;
 
@@ -564,7 +527,8 @@ public class Statistics extends App {
 			int connections = 0;
 			Vector<Double> linkDurations = new Vector<Double>();
 
-//			System.out.println("scheduling...");
+			// variables to be used in calculating path availability
+			double available[][] = new double[node.length][];
 
 			for (int i = 0; i < node.length; i++) {
 				pIdx[i] = i;
@@ -572,19 +536,24 @@ public class Statistics extends App {
 				isolation[i] = true;
 				for (int j = i + 1; j < node.length; j++)
 					ls[i][j - i - 1] = -1.0;
+
+				available[i] = new double[node.length];
+				for (int j = 0; j < node.length; j++)
+					available[i][j] = 0.0;
 			}
 
-			double res_help[] = new double[2];
+			double res_help[] = null;
 			res_help = schedule(s, heap, radius[k], (k == 0), basename, ooheap);
 			mobility = res_help[0];
-			on_time  = res_help[1];
+			on_time = res_help[1];
 
 			if (k == 0) {
-				stats.println("# mobility=" + (mobility / normFact));
-				stats.println(
-					"# \"tx range\" \"avg. degree\" \"partitions\" \"partitioning degree\" \"avg time to link break\" \"std deviation of time to link break\" \"link breaks\" \"avg link duration\" \"total links\"");
+				stats.println("# mobility = " + (mobility / normFact));
+				stats.println("# average node speed = " + averageSpeed);
+				stats.println("# average degree of temporal dependence = " + D_temporal);
+
+				stats.println();
 			}
-//			System.out.println("calculating...");
 			double tOld = 0.0;
 			int progress = -1;
 			int done = 0;
@@ -596,10 +565,10 @@ public class Statistics extends App {
 				}
 				done++;
 				double tNew = heap.minLevel();
-//				System.out.println("tNew=" + tNew + " tOld=" + tOld);
-				IndexPair idx = (IndexPair) heap.deleteMin();
+				IndexPair idx = (IndexPair)heap.deleteMin();
 
-				// uncomment the following code piece to print messages about nodes becoming isolated (meaning they have no links at all) and leaving their isolation again:
+				// uncomment the following code piece to print messages about nodes becoming
+				// isolated (meaning they have no links at all) and leaving their isolation again:
 
 				/*				if (tNew > tOld)
 									for (int i = 0; i < pSize.length; i++) {
@@ -622,15 +591,16 @@ public class Statistics extends App {
 										}
 									} */
 
+				// for calculating path availability
+				if (tNew > tOld)
+					pathAvailability(node.length, available, tNew - tOld, pIdx);
+
 				if (((tNew > tOld) && (partitions != partitionsOld)) || (heap.size() == 0)) {
 					if (heap.size() != 0) {
 						avgPart += (double)partitions_corrected_old * (tOld - pSince);
-						//avgPart += (double)partitionsOld * (tOld - pSince);
-						//System.out.println("#1: avgPart += " + partitionsOld + " * (" + tOld + " - " + pSince + ")");
-					} else {
-					        avgPart += (double)partitions_corrected * (tNew - pSince);
-					        //avgPart += (double)partitions * (tNew - pSince);
-						//System.out.println("#2: avgPart += " + partitions + " * (" + tNew + " - " + pSince + ")");
+					}
+					else {
+						avgPart += (double)partitions_corrected * (tNew - pSince);
 					}
 					partitions_corrected_old = partitions_corrected;
 					partitionsOld = partitions;
@@ -639,10 +609,9 @@ public class Statistics extends App {
 				if (((tNew > tOld) && (partDeg != partDegOld)) || (heap.size() == 0)) {
 					if (heap.size() != 0) {
 						avgPartDeg += partDegOld * (tOld - pdSince);
-//						System.out.println("#1: avgPartDeg += " + partDegOld + " * (" + tOld + " - " + pdSince + ")");
-					} else {
+					}
+					else {
 						avgPartDeg += partDeg * (tNew - pdSince);
-//						System.out.println("#2: avgPartDeg += " + partDeg + " * (" + tNew + " - " + pdSince + ")");
 					}
 					partDegOld = partDeg;
 					pdSince = tOld;
@@ -691,8 +660,6 @@ public class Statistics extends App {
 					}
 				}
 
-				// correct partitions 
-				//partitions_corrected_old = partitionsOld - count_of_offline_nodes_at_time(s, tOld);
 				partitions_corrected_old = partitions_corrected;
 				partitions_corrected = partitions - count_of_offline_nodes_at_time(s, tNew);
 
@@ -703,88 +670,203 @@ public class Statistics extends App {
 				tOld = tNew;
 			}
 			System.err.println();
-			double expDuration = timeToLinkBreak / (double) linkbreaks;
+			double expDuration = timeToLinkBreak / (double)linkbreaks;
 			double varDuration = 0.0;
 			for (int i = 0; i < linkbreaks; i++) {
-				double tmp = ((Double) linkDurations.elementAt(i)).doubleValue() - expDuration;
+				double tmp = ((Double)linkDurations.elementAt(i)).doubleValue() - expDuration;
 				varDuration += tmp * tmp;
 			}
-			varDuration = Math.sqrt(varDuration / (double) (linkbreaks - 1));
-			stats.println(
-				radius[k]
-					+ " "
-			                //+ (2. * linkDuration / (duration * (double)node.length))
-				        + (2. * linkDuration / on_time)
-					+ " "
-					+ (avgPart / duration)
-					+ " "
-				        // TODO: correct it for off-line nodes
-					+ (avgPartDeg / (duration * (double)((node.length - 1) * node.length)))
-					+ " "
-					+ expDuration
-					+ " "
-					+ varDuration
-					+ " "
-					+ linkbreaks
-					+ " "
-					+ (linkDuration / (double) links)
-					+ " "
-					+ links);
+			varDuration = Math.sqrt(varDuration / (double)(linkbreaks - 1));
+
+			// get spatial dependence
+			double D_spatial = res_help[2];
+			// get relative speed
+			double R_speed = res_help[3];
+			// get the number of node pairs that were ever linked
+			double connectedPairs = res_help[3];
+			// get path availability
+			double P_availability = getAveragePathAvailability(available, node.length, duration);
+
+			values[k][0] = Double.toString(radius[k]);
+			values[k][1] = Double.toString(D_spatial);
+			values[k][2] = Double.toString((2. * linkDuration / on_time));
+			values[k][3] = Double.toString((avgPart / duration));
+			// TODO: correct it for off-line nodes
+			values[k][4] = Double.toString((avgPartDeg / (duration * (double)((node.length - 1) * node.length))));
+			values[k][5] = Double.toString(expDuration);
+			values[k][6] = Double.toString(varDuration);
+			values[k][7] = Integer.toString(linkbreaks);
+			values[k][8] = Double.toString((linkDuration / (double)links));
+			values[k][9] = Integer.toString(links);
+			values[k][10] = Double.toString(R_speed);
+			values[k][11] = Double.toString(P_availability);
+			values[k][12] = Double.toString(links / connectedPairs);
 		}
+
+		printOverall(metrics, values, stats);
 		stats.close();
+	}
+
+	/***
+	 * Checks if there is a path between each pair of nodes and adds that to the available array.
+	 * 
+	 * @param nodes The number of nodes
+	 * @param available 2D array to be updated with availability time
+	 * @param time_to_next Time between changes in connectivity
+	 * @param pIdx Partitions
+	 * */
+	protected static void pathAvailability(int nodes, double available[][], double time_to_next, int pIdx[]) {
+		for (int i = 0; i < nodes; i++)
+			for (int j = i + 1; j < nodes; j++) {
+				if (pIdx[i] == pIdx[j])
+					available[i][j] += time_to_next;
+			}
+	}
+
+	/*** 
+	 * Calculates the total path availability.
+	 * 
+	 * @param g Graph
+	 * @param available 2D array with availability time
+	 * @param nodes The number of nodes
+	 * @param duration Total simulation time
+	 * @return double containing the total path availability
+	 * */
+	protected static double getAveragePathAvailability(double[][] available, int nodes, double duration) {
+		double total_available = 0.0;
+		int num_pairs = 0;
+		for (int i = 0; i < nodes; i++)
+			for (int j = i + 1; j < nodes; j++) {
+				if (available[i][j] > 0.0) {
+					total_available += available[i][j];
+					num_pairs++;
+				}
+			}
+		return total_available / (num_pairs * duration);
+	}
+
+	/*** 
+	 * Gets the temporal dependence for the simulation.
+	 * 
+	 * @param nodes The mobile nodes in the simulation
+	 * @param s The scenario of the simulation
+	 * @return double of the total temporal dependence
+	 * */
+	protected static double getAverageDegreeOfTemporalDependence(MobileNode nodes[], Scenario s) {
+		double temp[] = new double[2];
+		double D_temporal = 0.0;
+		double D_temporal_count = 0.0;
+		for (int i = 0; i < nodes.length; i++) {
+			temp = MobileNode.getDegreeOfTemporalDependence(nodes[i], 0.0, s.getDuration(), temporalDependenceC);
+			D_temporal += temp[0];
+			D_temporal_count += temp[1];
+		}
+		return D_temporal / D_temporal_count;
+	}
+
+	/**
+	* Calculates average speed of given node
+	*
+	* @param nodeIdx Node index
+	* @param s Scenario to retrieve node from
+	* @return Double containing all changes in average speed 
+	*/
+	protected static double averageSpeed(int nodeIdx, Scenario s) {
+		double distance = 0;
+		double time = 0;
+
+		MobileNode node = s.getNode(nodeIdx);
+		int numWaypoints = node.getNumWaypoints();
+
+		Waypoint last = node.getWaypoint(0);
+		Waypoint actual;
+
+		for (int i = 0; i < numWaypoints; i++) {
+			actual = node.getWaypoint(i);
+			distance += actual.pos.distance(last.pos);
+			time += actual.time - last.time;
+			last = actual;
+		}
+
+		return distance / time;
+	}
+
+	/**
+	 * Prints the calculated metrics
+	 * 
+	 * @param metrics Array with the metric names
+	 * @param values 2D array of calculated values
+	 * @param stats PrintWriter
+	 */
+	protected static void printOverall(String[] metrics, String[][] values, PrintWriter stats) {
+		String temp;
+		for (int i = 0; i < metrics.length; i++) {
+			temp = String.format("%1$-" + 40 + "s", metrics[i]);
+			for (int j = 0; j < values.length; j++) {
+				if (i == 0 && (metrics.length != values[j].length)) {
+					System.err.println("Not the same number of metrics and metric value sets.");
+					return;
+				}
+				temp += String.format("%1$-" + 30 + "s", values[j][i]);
+			}
+			stats.println(temp);
+		}
 	}
 
 	protected boolean parseArg(char key, String val) {
 		switch (key) {
-			case 'f' :
+			case 'f':
 				name = val;
 				return true;
-			case 'r' : // radius
+			case 'r': // radius
 				radius = App.parseDoubleArray(val);
 				return true;
-			case 't' :
+			case 't':
 				printTime = true;
 				return true;
-			case 'G' :
+			case 'G':
 				flags = flags ^ STATS_PARTDEG;
-				if (val.length()!=0)
+				if (val.length() != 0)
 					secG = Double.parseDouble(val);
 				return true;
-			case 'M' : // MinCut
+			case 'M': // MinCut
 				flags = flags ^ STATS_MINCUT;
-				if (val.length()!=0)
+				if (val.length() != 0)
 					secM = Double.parseDouble(val);
 				return true;
-			case 'N' :
+			case 'N':
 				flags = flags ^ STATS_NODEDEG;
-				if (val.length()!=0)
+				if (val.length() != 0)
 					secN = Double.parseDouble(val);
 				return true;
-			case 'P' : // Partitions
+			case 'P': // Partitions
 				flags = flags ^ STATS_PARTITIONS;
-				if (val.length()!=0)
+				if (val.length() != 0)
 					secP = Double.parseDouble(val);
 				return true;
-			case 'S' : // Stability
+			case 'S': // Stability
 				flags = flags ^ STATS_STABILITY;
-				if (val.length()!=0)
+				if (val.length() != 0)
 					secS = Double.parseDouble(val);
 				return true;
-			case 'U' : // Unidirectional
+			case 'U': // Unidirectional
 				flags = flags ^ STATS_UNIDIRECTIONAL;
-				if (val.length()!=0)
+				if (val.length() != 0)
 					secU = Double.parseDouble(val);
 				return true;
-		        case 'V' : // Velocity
-			        calc_velo_over_time = true;
-				if (val.length()!=0)
-				        secV = Double.parseDouble(val);
+			case 'V': // Velocity
+				calc_velo_over_time = true;
+				if (val.length() != 0)
+					secV = Double.parseDouble(val);
 				return true;
-		        case 'A' : // Velocity
-			        calc_and_distri = true;
+			case 'A': // Velocity
+				calc_and_distri = true;
 				secA = App.parseDoubleArray(val);
 				return true;
-			default :
+			case 'c': // c value for temporal dependence
+				temporalDependenceC = Double.parseDouble(val);
+				return true;
+			default:
 				return super.parseArg(key, val);
 		}
 	}
@@ -803,6 +885,7 @@ public class Statistics extends App {
 		System.out.println("\t-U <sec> Unidirectional");
 		System.out.println("\t-V <sec> Velocity over Time");
 		System.out.println("\t-A [radii] AverageNodeDegreeDistribution");
+		System.out.println("\t-c <sec> Average Temporal Dependence c value");
 	}
 
 	public static void main(String[] args) throws FileNotFoundException, IOException {

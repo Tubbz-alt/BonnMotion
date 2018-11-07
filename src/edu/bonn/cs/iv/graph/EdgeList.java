@@ -50,12 +50,12 @@ public class EdgeList {
 	public Edge deleteElementAt(int p) {
 		return unwrap(list.deleteElementAt(p));
 	}
-    
+
 	/** See SortedList. */
 	public Edge elementAt(int p) {
 		return unwrap(list.elementAt(p));
 	}
-    
+
 	/** See SortedList. */
 	public Edge get(int key) {
 		Sortable s = list.get(key);
@@ -66,7 +66,7 @@ public class EdgeList {
 	public int indexOf(int key) {
 		return list.indexOf(key);
 	}
-	
+
 	/** See SortedList. */
 	public int size() {
 		return list.size();

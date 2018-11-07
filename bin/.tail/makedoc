@@ -1,5 +1,3 @@
-#!/bin/bash
-
 PACKAGES="edu.bonn.cs.iv.bonnmotion edu.bonn.cs.iv.bonnmotion.apps edu.bonn.cs.iv.bonnmotion.run edu.bonn.cs.iv.bonnmotion.models"
 
 cd "${BONNMOTION}/src"

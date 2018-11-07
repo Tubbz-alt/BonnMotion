@@ -3,7 +3,7 @@ package edu.bonn.cs.iv.util;
 import java.util.Vector;
 
 public class SampleSet {
-	protected Vector s = new Vector();
+	protected Vector<Double> s = new Vector<Double>();
 	protected double sum = 0.0;
 	protected double min = Double.MAX_VALUE;
 	protected double max = Double.MIN_VALUE;
@@ -17,8 +17,6 @@ public class SampleSet {
 				idxLo = idxTest + 1;
 			else //if (val < tst)
 				idxHi = idxTest - 1;
-//			else
-//				idxLo = idxHi = idxTest;
 		}
 		return idxLo;
 	}
@@ -40,9 +38,8 @@ public class SampleSet {
 		double a = sum / (double)s.size();
 		if (a < min)
 			a = min;
-		else
-			if (a > max)
-				a = max;
+		else if (a > max)
+			a = max;
 		return a;
 	}
 

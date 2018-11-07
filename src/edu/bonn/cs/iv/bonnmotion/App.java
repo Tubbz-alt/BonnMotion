@@ -56,14 +56,10 @@ public abstract class App {
 	 * @param _e the Exception
 	 */
 	public static void exceptionHandler( String _msg, Exception _e ) {
-		//if ( _e.getClass() == InvocationTargetException.class )
-		//	exceptionHandler( _msg, (Exception)((InvocationTargetException)_e).getTargetException() );
-
 		System.out.println();
 		System.out.println( "Error:" );
 		System.out.println( "\t"+_msg );
-//		System.err.println( "DEBUG\t"+_e.toString() );
-
+		
 		if ( _e.getClass() == FileNotFoundException.class )
 			System.out.println( "\t"+((FileNotFoundException)_e).getMessage() );
 

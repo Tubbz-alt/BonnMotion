@@ -100,7 +100,6 @@ public class ManhattanGrid extends Scenario {
 		double init_xr = init_xh / (init_xh + (y * (double)(yblocks+1)));
 
 		for (int i = 0; i < node.length; i++) {
-			//			System.out.println("node " + (i + 1) + "/" + node.length);
 			node[i] = new MobileNode();
 
 			double t = 0.0, st = 0.0;
@@ -114,7 +113,7 @@ public class ManhattanGrid extends Scenario {
 					src = lastW.pos;
 					st = t = lastW.time;
 				
-					if ( src.y >= y ) // Sonst stiehlt sich der Knoten vielleicht aus dem Spielfeld
+					if ( src.y >= y ) // Stop node leaving the simulation area
 						dir = 1;
 
 				} catch (ScenarioLinkException e) {
@@ -122,8 +121,6 @@ public class ManhattanGrid extends Scenario {
 					System.exit(-1);
 				}
 			} else {
-				//				System.out.println("add waypoint (1) " + src + " at 0.0");
-//				src = new Position(0.0, 0.0);
 				if (randomNextDouble() < init_xr) { // move along x-axis
 					src = new Position(randomNextDouble() * x, (double)((int)(randomNextDouble() * (double)(yblocks+1))) * ydim);
 					dir = (int)(randomNextDouble() * 2.) + 2;
@@ -144,15 +141,12 @@ public class ManhattanGrid extends Scenario {
 			}
 			
 			Position pos = src;
-//			double griddist = ydim;
 			double speed = meanSpeed;
 			double dist = updateDist;
 			while (t < duration) {
 				Position dst = getNewPos(pos, dist, dir);
-//				System.out.println("node=" + i + " t=" + t + " pos=" + pos + " dir=" + dir + " dist=" + dist + " griddist=" + griddist + " dst=" + dst);
 				boolean exactHit = false;
 				if (outOfBounds(dst) || (exactHit = mustTurn(dst, dir)) || ((griddist <= dist) && (randomNextDouble() < turnProb))) { // turn
-//					System.out.println("turn outOfBound=" + outOfBounds(dst) + " exactHit=" + exactHit);
 					double mdist;
 					if (exactHit) { // Actually, this shouldn't happen anymore, because of the modified initialisation. But anyway, now it should *really* work.
 						mdist = dist;
@@ -164,11 +158,9 @@ public class ManhattanGrid extends Scenario {
 							dist = updateDist;
 					}
 					t += mdist / speed;
-//					System.out.println("dst=getNewPos("+pos+", "+mdist+", "+dir+")");
 					dst = alignPos(getNewPos(pos, mdist, dir));
 					if (!src.equals(dst)) {
 						// this is of concern when xdim or ydim are multiple of updateDist
-//						System.out.println("add waypoint (2) " + dst + " at " + t);
 						if (outOfBounds(dst)) {
 							System.out.println(MODEL_NAME + ".<init>: out of bounds (2)");
 							System.exit(0);
@@ -201,7 +193,6 @@ public class ManhattanGrid extends Scenario {
 						griddist = ydim;
 					else
 						griddist = xdim;
-//					System.out.println("Newdir: " + dir);
 				} else {
 					t += dist / speed;
 					pos = dst;
@@ -216,7 +207,6 @@ public class ManhattanGrid extends Scenario {
 					if (rnd < pauseProb) {
 						if (!src.equals(dst)) {
 							// this is of concern when xdim or ydim are multiple of updateDist
-//							System.out.println("add waypoint (3) " + dst + " at " + t);
 							if (outOfBounds(dst)) {
 								System.out.println(MODEL_NAME + ".<init>: out of bounds (3)");
 								System.exit(0);
@@ -232,7 +222,6 @@ public class ManhattanGrid extends Scenario {
 							st = t;
 						else {
 							st = t += randomNextDouble() * maxPause;
-//							System.out.println("add waypoint (5) " + dst + " at " + t);
 							if (outOfBounds(dst)) {
 								System.out.println(MODEL_NAME + ".<init>: out of bounds (5)");
 								System.exit(0);
@@ -246,13 +235,11 @@ public class ManhattanGrid extends Scenario {
 						speed = (randomNextGaussian() * speedStdDev) + meanSpeed;
 						if (speed < minSpeed)
 							speed = minSpeed;
-						//						System.out.println("update speed to " + speed);
 					}
 				}
 			}
 			if (st < duration) {
 				Position dst = getNewPos(src, src.distance(pos) * (duration - st) / (t - st), dir);
-//				System.out.println("add waypoint (4) " + dst + " at " + duration);
 				if (outOfBounds(dst)) {
 					System.out.println(MODEL_NAME + ".<init>: out of bounds (4)");
 					System.exit(0);
@@ -314,13 +301,11 @@ public class ManhattanGrid extends Scenario {
 
 	protected boolean mustTurn(Position pos, int dir) {
 		boolean r = (((dir == 0) && (pos.y == y)) || ((dir == 1) && (pos.y == 0.)) || ((dir == 2) && (pos.x == x)) || ((dir == 3) && (pos.x == 0.)));
-//		System.out.println("mustTurn(" + pos + ", " + dir + ")=" + r);
 		return r;
 	}
 
 	public Position alignPos(Position pos) {
 		Position r = new Position((double) ((int) (pos.x / xdim + 0.5)) * xdim, (double) ((int) (pos.y / ydim + 0.5)) * ydim);
-//		System.out.println("alignPos(" + pos + ")=" + r);
 		return r;
 	}
 
@@ -340,7 +325,7 @@ public class ManhattanGrid extends Scenario {
 	}
 
 	public boolean nodeAddErrorHandler(int i, double t, Position dst) {
-		Waypoint last = node[i].lastElement();
+		Waypoint last = node[i].getLastWaypoint();
 		double distance = Math.abs(dst.x - last.pos.x + dst.y - last.pos.y);
 		if ((t == last.time) && (distance < 0.1)) {
 			node[i].removeLastElement();
@@ -362,8 +347,6 @@ public class ManhattanGrid extends Scenario {
 		p[5] = "minSpeed=" + minSpeed;
 		p[6] = "meanSpeed=" + meanSpeed;
 		p[7] = "speedStdDev=" + speedStdDev;
-		// hier muss speedChangeProb abgezogen werden, da es in go
-		// nach parseArgs aufaddiert wird.
 		p[8] = "pauseProb=" + (pauseProb - speedChangeProb);
 		p[9] = "maxPause=" + maxPause;
 		super.write(_name, p);

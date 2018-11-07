@@ -8,34 +8,21 @@ import java.util.zip.GZIPOutputStream;
 import edu.bonn.cs.iv.bonnmotion.models.DisasterArea;
 import edu.bonn.cs.iv.util.IntegerHashMap;
 import edu.bonn.cs.iv.util.IntegerHashSet;
-import java.lang.Integer;
 
 /** Base class for creating new scenarios. */
-
 public class Scenario extends App implements Model, ScenarioLink {
-
-	/** Mobile nodes. */
-	protected MobileNode[] node;
-	/** Area x length [m]. */
-	protected double x = 200.0;
-	/** Area y length [m]. */
-	protected double y = 200.0;
-	/** Duration of scenario [s]. */
-	protected double duration = 600.0;
-	/** Length of initial time span which is to be cut off after scenario generation [s]. */
-	protected double ignore = 3600.0;
-	/** Random seed to initialise RNG. */
-	protected long randomSeed = System.currentTimeMillis(); // this is what the java.util.Random constructor does without parameter, too
-	/** Buildings */
-	protected Building[] buildings = new Building[0];
-
+	protected MobileNode[] node; /* Mobile nodes. */
+	protected double x = 200.0; /** Area x length [m]. */
+	protected double y = 200.0; /** Area y length [m]. */
+	protected double duration = 600.0; /** Duration of scenario [s]. */
+	protected double ignore = 3600.0; /** Length of initial time span which is to be cut off after scenario generation [s]. */
+	protected long randomSeed = System.currentTimeMillis(); /** Random seed to initialise RNG. */ // this is what the java.util.Random constructor does without parameter, too
+	protected Building[] buildings = new Building[0]; /** Buildings */
 	protected Random rand;
-
 	public long count_rands;
 
 	/** Name of the model */
 	protected String modelName = null;
-
 	protected boolean circular = false;
 	protected double[] aFieldParams = null;
 	protected AttractorField aField = null;
@@ -47,8 +34,9 @@ public class Scenario extends App implements Model, ScenarioLink {
 
 	/** caches movements from last read(basename). null if read(basename) was not executed yet */
 	public String movements = null;
+
 	/**
-	 * Returns random double form the RandomSeed.
+	 * Returns random double from the RandomSeed.
 	 * @return double
 	 */
 	protected double randomNextDouble() {
@@ -56,14 +44,29 @@ public class Scenario extends App implements Model, ScenarioLink {
 		return rand.nextDouble(); 
 	}
 
+    protected double randomNextPlusOrMinusOne() {
+        count_rands++;
+        if(rand.nextBoolean()) { return 1.0; }
+        else { return -1.0; }
+    }
+
 	/**
-	 * Returns random Gaussian form the RandomSeed
+	 * Returns random Gaussian from the RandomSeed
 	 * @return double
 	 */
 	protected double randomNextGaussian() {
 		count_rands++;
 		return rand.nextGaussian();
 	}
+
+    /**
+     * Returns random Weibull from the RandomSeed
+     * @return double
+     */
+    protected double randomNextWeibull(double shape, double scale) {
+        count_rands++;
+        return scale * java.lang.Math.pow(-java.lang.Math.log(rand.nextDouble()), 1.0 / shape);
+    }
 
 	public Scenario() {}
 
@@ -77,18 +80,21 @@ public class Scenario extends App implements Model, ScenarioLink {
 		count_rands = 0;
 	}
 
+	public static Scenario getScenario(String basename) throws FileNotFoundException, IOException {
+		return new Scenario(basename);
+	}
 
 
-	public Scenario(String basename) throws FileNotFoundException, IOException {
+	protected Scenario(String basename) throws FileNotFoundException, IOException {
 		read(basename);
 		count_rands = 0;
 	}
 
-	public Scenario(String basename, boolean haveLD) throws FileNotFoundException, IOException {
+	protected Scenario(String basename, boolean haveLD) throws FileNotFoundException, IOException {
 		read(basename, haveLD);
 	}
 
-	public Scenario(String args[], Scenario _pre, Integer _transitionMode) {
+	protected Scenario(String args[], Scenario _pre, Integer _transitionMode) {
 		// we've got a predecessor, so a transtion is needed
 		predecessorScenario = _pre;
 		transitionMode = _transitionMode.intValue();
@@ -96,12 +102,7 @@ public class Scenario extends App implements Model, ScenarioLink {
 		count_rands = 0;
 	}	
 
-	public static Scenario getScenario(String basename) throws FileNotFoundException, IOException {
-		return new Scenario(basename);
-	}
-
 	protected boolean parseArg(char key, String val) {
-		//System.out.println("parseArg: "+val+"\n");
 		switch (key) {
 		case 'a':
 			aFieldParams = parseDoubleArray(val);
@@ -114,7 +115,7 @@ public class Scenario extends App implements Model, ScenarioLink {
 			return true;
 		case 'i' : // "ignore" (Einschwingphase)
 			ignore = Double.parseDouble(val);
-			if ( isTransition && predecessorScenario != null && ignore != 0 ) // Falls ich ein Nachfolgeglied in einem ChainScenario bin
+			if ( isTransition && predecessorScenario != null && ignore != 0 ) // Req. for chainscenarios
 				System.out.println( "warning: Ingore is set to " + ignore + ". Are you sure you want this in a chained Scenario?" );
 			return true;
 		case 'n' : // "nodes"
@@ -126,11 +127,8 @@ public class Scenario extends App implements Model, ScenarioLink {
 		case 'y' : // "y"
 			y = Double.parseDouble(val);
 			return true;
-		case 'R' : // "R"
-			//System.out.println("randomSeed (String):"+val+"\n");
+		case 'R' :
 			randomSeed = Long.parseLong(val);
-			//randomSeed = Long.parseLong(val, 16);
-			//System.out.println("randomSeed (Long):"+randomSeed);
 			return true;
 		default :
 			return super.parseArg(key, val);
@@ -171,7 +169,9 @@ public class Scenario extends App implements Model, ScenarioLink {
 		} else if (key.equals("aFieldParams")) {
 			aFieldParams = parseDoubleArray(val);
 			return true;
-		} else return false;
+		} else {
+			return false;
+		}
 	}
 
 	/** Called by subclasses before they generate node movements. */
@@ -198,24 +198,28 @@ public class Scenario extends App implements Model, ScenarioLink {
 
 	/** Called by subclasses after they generate node movements. */
 	protected void postGeneration() {
-		if (ignore < 600.0 && !isTransition ) // this is a somewhat arbitrary value :)
+		if (ignore < 600.0 && !isTransition ) {// this is a somewhat arbitrary value :)
 			System.out.println("warning: setting the initial phase to be cut off to be too short may result in very weird scenarios");
-		if (ignore > 0.0)
+		}
+		if (ignore > 0.0) {
 			cut(ignore, duration);
+		}
 		long next_seed = rand.nextLong();
+		while (Long.signum(next_seed) < 0) {
+		    next_seed = rand.nextLong();
+		}
 		System.out.println("Next RNG-Seed =" + next_seed+ " | #Randoms = "+count_rands);
 	}
 
 	/** Extract a certain time span from the scenario. */
 	public void cut(double begin, double end) {
 		if ((begin >= 0.0) && (end <= duration) && (begin <= end)) {
-			//System.out.println("normal cut");
-			for (int i = 0; i < node.length; i++)
-				node[i].cut(begin, end);
+			for (int i = 0; i < node.length; i++) {
+			    node[i].cut(begin, end);
+			}
 			duration = end - begin;
 		}
 	}
-
 
 	/**
 	 * @see edu.bonn.cs.iv.bonnmotion.App#go(String[])
@@ -234,7 +238,6 @@ public class Scenario extends App implements Model, ScenarioLink {
 		parse(args);
 		if ( node == null ) {
 			System.out.println("Please define the number of nodes.");
-//			printHelp();
 			System.exit(0);
 		}
 	}
@@ -280,10 +283,10 @@ public class Scenario extends App implements Model, ScenarioLink {
 	public MobileNode[] getNode(String Modelname, String basename){
 		if(Modelname.equals(DisasterArea.MODEL_NAME)){
 			IntegerHashSet VanishingNodes = searchVanishing(basename);
-			Iterator it = VanishingNodes.iterator();
+			/*Iterator<?> it = VanishingNodes.iterator();
 			while(it.hasNext()){
 				System.out.println("drin " + it.next());
-			}
+			}*/
 			int writtenNodes = 0;
 			MobileNode[] r = new MobileNode[node.length - VanishingNodes.size()];
 			for(int i = 0; i < node.length; i++){
@@ -299,43 +302,29 @@ public class Scenario extends App implements Model, ScenarioLink {
 			}
 			return r;
 		}
-		else{
+		/*else{
 			System.out.println("doch nicht");
-		}
+		}*/
 		return null;
 	}
 
 	public IntegerHashSet searchVanishing(String basename){
 
 		IntegerHashSet VanishingNodes = new IntegerHashSet();
-		/*
-		String line;
-		String fromFile;
-		try{
-		BufferedReader in = new BufferedReader( new InputStreamReader( new FileInputStream( basename+".changes" ) ) );
-		while ( (line=in.readLine()) != null ) {
-			StringTokenizer st = new StringTokenizer(line);
-			while(st.hasMoreTokens()){
-				fromFile = st.nextToken();
-				//System.out.println(fromFile);
-				Integer node = new Integer(fromFile);
-				VanishingNodes.add(node);
-			}
-		}
-		in.close();
-		}
-		catch(Exception e){
-			System.out.println("Error in searchVanishing of Scenario.java");
-			System.exit(0);
-		}
-		 */
 		return VanishingNodes;
 	}
 
 	public MobileNode getNode(int n) {
-		if (node[n] == null)
-			node[n] = new MobileNode();
-		return node[n];
+		try {
+		    if (node[n] == null) {
+				node[n] = new MobileNode();
+		    }
+		    return node[n];
+		} catch(ArrayIndexOutOfBoundsException e) {
+		    System.err.println("Fatal error: Requesting non-existing node" + e.getLocalizedMessage());
+		    System.exit(-1);
+		    return null;
+		}
 	}
 
 	public double getX() {
@@ -395,8 +384,9 @@ public class Scenario extends App implements Model, ScenarioLink {
 			StringTokenizer st = new StringTokenizer(line, "=");
 			String key = st.nextToken();
 			String value = st.nextToken();
-			if (! parseArg(key, value) && (_warn) )
+			if (! parseArg(key, value) && (_warn) ) {
 				System.out.println("warning: unknown key \"" + key + "\" while parsing arguments from \"" + _fn + "\"");
+			}
 		}
 		in.close();
 	}
@@ -408,8 +398,7 @@ public class Scenario extends App implements Model, ScenarioLink {
 	 * scenario from a generated file.
 	 * @param basename Basename of the scenario
 	 */
-	//public void read(String basename) throws FileNotFoundException, IOException {
-	public String read(String basename) throws FileNotFoundException, IOException {
+	protected String read(String basename) throws FileNotFoundException, IOException {
 		String help = read(basename, false);
 		return help;
 	}
@@ -422,7 +411,7 @@ public class Scenario extends App implements Model, ScenarioLink {
 	 * @param basename Basename of the scenario
 	 * @param haveLD have pre-computed link dump or read movements.gz
 	 */
-	public String read(String basename, boolean haveLD) throws FileNotFoundException, IOException {
+	protected String read(String basename, boolean hasPrecomputedLinkDump) throws FileNotFoundException, IOException {
 		String line;
 
 		paramFromFile(basename+".params");
@@ -431,36 +420,25 @@ public class Scenario extends App implements Model, ScenarioLink {
 		// read buildings
 		if (buildings.length > 0) {
 			BufferedReader bin =
-				new BufferedReader(
-						new InputStreamReader(
-								new FileInputStream(basename + ".buildings")));
+				new BufferedReader(new InputStreamReader(new FileInputStream(basename + ".buildings")));
 			// XXX: do sanity check that number of lines matches number of buildings
 			while ((line = bin.readLine()) != null) {
 				StringTokenizer st = new StringTokenizer(line);
-				//System.out.println(i+" "+buildings.length+" "+buildings[0].x1);
 				buildings[i] = new Building(Double.parseDouble(st.nextToken()),
 						Double.parseDouble(st.nextToken()),
 						Double.parseDouble(st.nextToken()),
 						Double.parseDouble(st.nextToken()),
 						Double.parseDouble(st.nextToken()),
 						Double.parseDouble(st.nextToken()));
-				//buildings[i].x1 = Double.parseDouble(st.nextToken());
-				//buildings[i].x2 = Double.parseDouble(st.nextToken());
-				//buildings[i].y1 = Double.parseDouble(st.nextToken());
-				//buildings[i].y2 = Double.parseDouble(st.nextToken());
-				//buildings[i].doorx = Double.parseDouble(st.nextToken());
-				//buildings[i].doory = Double.parseDouble(st.nextToken());
 				i++;
 			}
 			bin.close();
 		}
 
 		// read movements
-
-		//String movements = new String();
 		StringBuilder movements = new StringBuilder();
 
-		if (!haveLD) {
+		if (!hasPrecomputedLinkDump) {
 			double extendedtime = 0.0;
 			double xpos = 0.0;
 			double ypos = 0.0;
@@ -468,10 +446,7 @@ public class Scenario extends App implements Model, ScenarioLink {
 			int j = 0;
 			boolean nodestart = false;
 			boolean nodestop = false;
-			BufferedReader in =
-				new BufferedReader(
-						new InputStreamReader(
-								new GZIPInputStream(new FileInputStream(basename + ".movements.gz"))));
+			BufferedReader in = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(basename + ".movements.gz"))));
 			i = 0;
 			j = 0;
 			while ((line = in.readLine()) != null) {
@@ -482,40 +457,41 @@ public class Scenario extends App implements Model, ScenarioLink {
 				while (st.hasMoreTokens()) {
 					if(getModelName().equals(DisasterArea.MODEL_NAME)){
 						switch(i%4) {
-						case 0:		extendedtime = Double.parseDouble(st.nextToken());
-						if(extendedtime == 0.0){
-							nodestart = true;
-						}
-						else{
-							nodestart = false;
-						}
-						if(extendedtime == duration){
-							nodestop = true;
-						}
-						else{
-							nodestop = false;
-						}
-						break;
-						case 1:		xpos = Double.parseDouble(st.nextToken());
-						break;
-						case 2:		ypos = Double.parseDouble(st.nextToken());
-						break;
-						case 3:         status = Double.parseDouble(st.nextToken());
-						if(nodestart){
-							node[j] = new MobileNode();
-						}
-						Position extendedpos = new Position(xpos, ypos, status);
-						if (!node[j].add(extendedtime, extendedpos)) {
-							System.out.println( extendedtime + ": " + extendedpos.x + "/" + extendedpos.y );				
-							throw new RuntimeException("Error while adding waypoint.");
-						}
-						if(nodestop){
-							j++;
-						}
-						/*				break;
-						case 3:		status = Double.parseDouble(st.nextToken());
-						Position pos = new Position(xpos, ypos, status);*/
-						if(duration != extendedtime){
+						case 0:
+							extendedtime = Double.parseDouble(st.nextToken());
+							if(extendedtime == 0.0){
+								nodestart = true;
+							}
+							else{
+								nodestart = false;
+							}
+							if(extendedtime == duration){
+								nodestop = true;
+							}
+							else{
+								nodestop = false;
+							}
+							break;
+						case 1:
+							xpos = Double.parseDouble(st.nextToken());
+							break;
+						case 2:
+							ypos = Double.parseDouble(st.nextToken());
+							break;
+						case 3:
+							status = Double.parseDouble(st.nextToken());
+							if(nodestart){
+								node[j] = new MobileNode();
+							}
+							Position extendedpos = new Position(xpos, ypos, status);
+							if (!node[j].add(extendedtime, extendedpos)) {
+								System.out.println( extendedtime + ": " + extendedpos.x + "/" + extendedpos.y );				
+								throw new RuntimeException("Error while adding waypoint.");
+							}
+							if(nodestop){
+								j++;
+							}
+
 							movements.append(" ");
 							movements.append(extendedtime);
 							movements.append(" ");
@@ -524,30 +500,18 @@ public class Scenario extends App implements Model, ScenarioLink {
 							movements.append(ypos);
 							movements.append(" ");
 							movements.append(status);
-							//movements = movements + " " + extendedtime + " " + xpos + " " + ypos + " " + status;
-						}
-						else{
-							movements.append(" ");
-							movements.append(extendedtime);
-							movements.append(" ");
-							movements.append(xpos);
-							movements.append(" ");
-							movements.append(ypos);
-							movements.append(" ");
-							movements.append(status);
-							movements.append("\n");
-							//movements = movements + " " + extendedtime + " " + xpos + " " + ypos + " " + status + "\n";
-						}
-						break;
-						default: 	break;
+							if(duration == extendedtime){
+							    movements.append("\n");
+							}
+		
+							break;
+						default:
+							break;
 						}
 					}
 					else{
 						double time = Double.parseDouble(st.nextToken());
-						Position pos =
-							new Position(
-									Double.parseDouble(st.nextToken()),
-									Double.parseDouble(st.nextToken()));
+						Position pos = new Position(Double.parseDouble(st.nextToken()),Double.parseDouble(st.nextToken()));
 						if (!node[i].add(time, pos)) {
 							System.out.println( time + ": " + pos.x + "/" + pos.y );				
 							throw new RuntimeException("Error while adding waypoint.");
@@ -575,21 +539,21 @@ public class Scenario extends App implements Model, ScenarioLink {
 	 * parameters to files.
 	 * @param basename Basename of the output files
 	 */
-	public void write(String basename, String[] params)
-	throws FileNotFoundException, IOException {
+	public void write(String basename, String[] params) throws FileNotFoundException, IOException {
 
 		PrintWriter info = new PrintWriter(new FileOutputStream(basename + ".params"));
 		info.println( "model=" + getModelName() );
 		info.println( "ignore=" + ignore );
 		info.println( "randomSeed=" + randomSeed );
-		info.println( "x=" + x );
-		info.println( "y=" + y );
+		this.writeCoordinates(info);
 		info.println( "duration=" + duration );
 		info.println( "nn=" + node.length );
 		info.println( "circular=" + circular );
-		if ( params != null )
-			for (int i = 0; i < params.length; i++)
+		if ( params != null ) {
+			for (int i = 0; i < params.length; i++) {
 				info.println(params[i]);
+			}
+		}
 
 		if (aFieldParams != null) {
 			info.print("aFieldParams=" + aFieldParams[0]);
@@ -599,13 +563,17 @@ public class Scenario extends App implements Model, ScenarioLink {
 		}
 
 		info.close();
-		PrintWriter movements =
-			new PrintWriter(
-					new GZIPOutputStream(new FileOutputStream(basename + ".movements.gz")));
+		PrintWriter movements =	new PrintWriter(new GZIPOutputStream(new FileOutputStream(basename + ".movements.gz")));
+
 		for (int i = 0; i < node.length; i++) {
 			movements.println(node[i].movementString());
 		}
 		movements.close();
+	}
+
+	public void writeCoordinates(PrintWriter info) {
+		info.println("x=" + x);
+		info.println("y=" + y);
 	}
 
 	/**
@@ -613,14 +581,13 @@ public class Scenario extends App implements Model, ScenarioLink {
 	 * parameters to files. Pays attention to status changes.
 	 * @param basename Basename of the output files
 	 */
-	public void write(String basename, String[] params, IntegerHashMap statuschanges)
-	throws FileNotFoundException, IOException {
+	@SuppressWarnings("unchecked")
+	public void write(String basename, String[] params, IntegerHashMap statuschanges) throws FileNotFoundException, IOException {
 		PrintWriter info = new PrintWriter(new FileOutputStream(basename + ".params"));
 		info.println( "model=" + getModelName() );
 		info.println( "ignore=" + ignore );
 		info.println( "randomSeed=" + randomSeed );
-		info.println( "x=" + x );
-		info.println( "y=" + y );
+		this.writeCoordinates(info);
 		info.println( "duration=" + duration );
 		info.println( "nn=" + node.length );
 		info.println( "circular=" + circular );
@@ -636,12 +603,10 @@ public class Scenario extends App implements Model, ScenarioLink {
 		}
 
 		info.close();
-		PrintWriter movements =
-			new PrintWriter(
-					new GZIPOutputStream(new FileOutputStream(basename + ".movements.gz")));
+		PrintWriter movements = new PrintWriter(new GZIPOutputStream(new FileOutputStream(basename + ".movements.gz")));
 		for (int i = 0; i < node.length; i++) {
 			Integer nodeaddress = new Integer(i);
-			LinkedList statuschangetimes = new LinkedList();
+			LinkedList<Double> statuschangetimes = new LinkedList<Double>();
 			String[] splitted = node[i].movementString().split(" ");
 			int waypoints = splitted.length / 3;
 			String[] towrite = new String[waypoints * 3 + waypoints];
@@ -656,7 +621,7 @@ public class Scenario extends App implements Model, ScenarioLink {
 					towrite[4*j+3] = "0";
 				}
 				else{
-					statuschangetimes = ((LinkedList)statuschanges.get(nodeaddress));
+					statuschangetimes = ((LinkedList<Double>)statuschanges.get(nodeaddress));
 					Double time = new Double(towrite[4*j]);
 					double cutignore = time.doubleValue() + ignore;
 					Double realtime = new Double(cutignore);
@@ -722,7 +687,6 @@ public class Scenario extends App implements Model, ScenarioLink {
 
 	public Waypoint transition(Scenario _pre, int _mode, int _nn) throws ScenarioLinkException {
 		if (_pre == null) // No predecessor => We start an 0/0 @ 0.0
-//			return new Waypoint(0, new Position(0, 0));
 			return new Waypoint( 0, randomNextPosition() );
 
 		if (_pre.node.length != node.length)
@@ -732,25 +696,18 @@ public class Scenario extends App implements Model, ScenarioLink {
 		Waypoint w = null, nw = null;
 
 		preNodes = _pre.getNode();
-		w = preNodes[_nn].lastElement();
+		w = preNodes[_nn].getLastWaypoint();
 		switch (_mode) {
-		case LINKMODE_FAST :
-			nw = transitionWaypointFast( w );
-			break;
-		case LINKMODE_MOVE :
-			nw = transitionWaypointMove( w, _nn );
-			break;
-		default :
-			throw new ScenarioLinkException("Unknown Mode");
+			case LINKMODE_FAST :
+				nw = transitionWaypointFast( w );
+				break;
+			case LINKMODE_MOVE :
+				nw = transitionWaypointMove( w, _nn );
+				break;
+			default :
+				throw new ScenarioLinkException("Unknown Mode");
 		}
 		node[_nn].add(nw.time, nw.pos);
-
-		/*
-				System.out.println( "PreNode(t:x,y) -> Node(t:x,y) Mode:"  + _mode );
-				System.out.print( w.time + ":" + w.pos.x + "," + w.pos.y );
-				System.out.println( " - 0:" + nw.pos.x + "," + nw.pos.y );
-		 */
-		//		System.out.println(" done.");
 		return nw;
 	}
 
@@ -781,5 +738,4 @@ public class Scenario extends App implements Model, ScenarioLink {
 			return new Waypoint( 0.0, _w.pos );
 		}
 	}
-
 }

@@ -1,6 +1,6 @@
 package edu.bonn.cs.iv.util;
 
-import java.io.*; // for main()
+import java.io.*;
 import java.util.Vector;
 
 public class GeometricMeanCalculator {
@@ -10,12 +10,12 @@ public class GeometricMeanCalculator {
 	protected static int next_iid = 0;
 	protected int iid;
 
-	protected Vector s = new Vector();
+	protected Vector<Double> s = new Vector<Double>();
 	
 	protected int n = -1; // number of samples aggregated
-	protected double p = 1.; // current product
-	protected int c = 0; // number of samples in p
-	protected int ts = 0; // total samples
+	protected double currentProduct = 1.; // current product
+	protected int numberOfSamplesInP = 0; // number of samples in p
+	protected int totalSamples = 0;
 	
 	protected double x = 0.; // current exponent
 	
@@ -33,46 +33,47 @@ public class GeometricMeanCalculator {
 			System.err.println("GeometricMeanCalculator.add: NaN (1)");
 			System.exit(0);
 		}
-		p *= v;
-		if (Double.isNaN(p)) {
+		currentProduct *= v;
+		if (Double.isNaN(currentProduct)) {
 			System.err.println("GeometricMeanCalculator.add: NaN (2)");
 			System.exit(0);
 		}
-		c++;
-		ts++;
-		if ((n < 0) && (c > 1) && (p > AGGR_THRESHOLD)) {
-			if (debug) System.err.println("GEODEBUG("+iid+") aggregation size " + c);
-			n = c;
+		numberOfSamplesInP++;
+		totalSamples++;
+		if ((n < 0) && (numberOfSamplesInP > 1) && (currentProduct > AGGR_THRESHOLD)) {
+			if (debug) System.err.println("GEODEBUG("+iid+") aggregation size " + numberOfSamplesInP);
+			n = numberOfSamplesInP;
 			x = 1./(double)n;
 		}
-		if ((n > 0) && (c == n)) {
-			double pp = Math.pow(p, x);
+		if ((n > 0) && (numberOfSamplesInP == n)) {
+			double pp = Math.pow(currentProduct, x);
 			if (Double.isNaN(pp)) {
-				System.err.println("GeometricMeanCalculator.add: NaN (3) p="+p+" x="+x);
+				System.err.println("GeometricMeanCalculator.add: NaN (3) p="+currentProduct+" x="+x);
 				System.exit(0);
 			}
 			s.addElement(new Double(pp));
-			c = 0;
-			p = 1.;
+			numberOfSamplesInP = 0;
+			currentProduct = 1.;
 		}
 	}
 
 	public double result() {
-		Vector src = (Vector)s.clone();
+		@SuppressWarnings("unchecked")
+		Vector<Double> src = (Vector<Double>)s.clone();
 		if (x > 0.)
-			src.addElement(new Double(Math.pow(p, x)));
+			src.addElement(new Double(Math.pow(currentProduct, x)));
 		else {
 			if (src.size() > 0) {
 				System.err.println("GeometricMeanCalculator.result: wrong vector size");
 				System.exit(0);
 			}
-			src.addElement(new Double(Math.pow(p, 1./(double)n)));
+			src.addElement(new Double(Math.pow(currentProduct, 1./(double)n)));
 		}
-		Vector t = null;
+		Vector<Double> t = null;
 		int exp1 = n;
 		while (src.size() > 1) {
 			if (debug) System.err.println("GEODEBUG("+iid+") loopstart src.size()="+src.size());
-			t = new Vector();
+			t = new Vector<Double>();
 			double p = 1.;
 			int n = -1; // number of values we aggregate in this run
 			int c = 0;  // number of values multiplied in p
@@ -108,12 +109,12 @@ public class GeometricMeanCalculator {
 			src = t;
 		}
 		double r = ((Double)src.elementAt(0)).doubleValue();
-		r = Math.pow(r, (double)exp1/(double)ts);
+		r = Math.pow(r, (double)exp1/(double)totalSamples);
 		return r;
 	}
 	
 	public int count() {
-		return ts;
+		return totalSamples;
 	}
 	
 	public static void main(String[] args) throws java.io.IOException {

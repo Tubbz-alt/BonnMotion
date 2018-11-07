@@ -12,7 +12,6 @@ public class Obstacle extends Polygon {
 
 	public Obstacle(double[] Vertices) {
 		super();
-		//System.out.println("lange " + Vertices.length);
 		Position[] temp = new Position[Vertices.length/2];
 		for(int i = 0; i < Vertices.length; i = i+2){
 			this.addPoint((int)Vertices[i], (int)Vertices[i+1]);
@@ -67,7 +66,6 @@ public class Obstacle extends Polygon {
 	public boolean throughObstacle(double xstart, double ystart, double xstop, double ystop){
 		Line2D.Double WayOfNode = new Line2D.Double(xstart, ystart, xstop, ystop);
 		boolean valid = false;
-		//double slope = Position.slope(WayOfNode);
 		double xonline = WayOfNode.x1 + ((WayOfNode.x2 - WayOfNode.x1)/2);
 		double yonline = WayOfNode.y1 + ((WayOfNode.y2 - WayOfNode.y1)/2);
 		if(this.contains(xonline, yonline)){
@@ -116,7 +114,7 @@ public class Obstacle extends Polygon {
 		return this.PosVert;
 	}
 
-	public LinkedList getEdges(){
+	public LinkedList<Line2D.Double> getEdges(){
 		return this.Edges;
 	}
 
@@ -158,74 +156,6 @@ public class Obstacle extends Polygon {
 		return obs;
 	}
 
-	public Position[] detClosestNeighbor(Position[] pos){
-		//funktioniert nur fr Rechtecke
-		/*double temp = 999999.0;
-			double min = 999999.0;
-			int minj = 500;
-			int mini = 500;
-			int numnull = 0;
-			for(int i = 0; i < pos.length; i++){
-				//System.out.println("pos " + pos[i].x + " " + pos[i].y);
-				if(this.contains(pos[i].x, pos[i].y)){
-				//	System.out.println("auf null pos " + pos[i].x + " " + pos[i].y);
-					pos[i] = null;
-				}
-			}
-			for(int i = 0; i < 4; i++){
-				if(pos[i] == null){
-					numnull++;
-				}
-				for(int j = 4; j < pos.length; j++){
-					if(pos[i] != null && pos[j] != null){
-						System.out.println("teste " + pos[i].x + " " + pos[i].y + " und " + pos[j].x + " " + pos[j].y);
-						temp = pos[i].distance(pos[j]);
-						System.out.println("dist " + temp);
-						if(temp < min){
-							min = temp;
-							minj = j;
-							mini = i;
-							System.out.println("setze neu");
-						}
-					}
-				}
-			}
-			//Position[] temppos = new Position[mini+1];
-			Position[] temppos = new Position[4-numnull];
-			int next = 0;
-			for(int i = 0; i < 4; i++){
-				if(pos[i] != null){
-					temppos[next] = pos[i];
-					next++;
-				}
-			}
-			for(int i = temppos.length; i > 1; i--){
-				for(int j = 1; j < i; j++){
-					if(temppos[j-1].distance(pos[minj]) < temppos[j].distance(pos[minj])){
-						Position remember = temppos[j-1];
-						temppos[j-1] = temppos[j];
-						temppos[j] = remember;
-					}
-				}
-			}
-			for(int i = 0; i < temppos.length; i++){
-				//System.out.println("temppos " + temppos[i].x + " " + temppos[i].y + " i " + i + " dist " + temppos[i].distance(pos[minj]));
-			}
-			//System.out.println("minj " + pos[minj].x + " " + pos[minj].y);
-
-			for(int i = 0; i < temppos.length; i++){
-				if(temppos[i] != null && temppos[(i+1) % temppos.length] != null){
-					Line2D.Double line = new Line2D.Double(temppos[i].x, temppos[i].y, temppos[(i+1) % temppos.length].x, temppos[(i+1) % temppos.length].y);
-					if(intersectsLine(line.x1, line.y1, line.x2, line.y2)){
-				//		System.out.println("scheie " + temppos[(i+1) % temppos.length].x + " " + temppos[(i+1) % temppos.length].y);
-						temppos[(i+1) % temppos.length] = null;
-					}
-				}
-			}
-			return temppos;*/
-		return null;
-	}
-
 	//compute Minkowski sum for given polygon robotpos
 	public Polygon MinkowskiSum(Polygon robotpos){
 		Polygon newobs = new Polygon();
@@ -250,9 +180,8 @@ public class Obstacle extends Polygon {
 			newobs.addPoint(((int)((Position)positions.get(i)).x), ((int)((Position)positions.get(i)).y));
 		}
 		for(int i = 3; i < positions.size(); i++){
-			LinkedList temp = new LinkedList();
+			LinkedList<Line2D.Double> temp = new LinkedList<Line2D.Double>();
 			boolean startset = false;
-			//boolean isNewObsVertex = false;
 			int start = 0;
 			int stop = 0;
 			double startposx = 0.0;
@@ -264,7 +193,7 @@ public class Obstacle extends Polygon {
 			if(!newobs.contains(((Position)positions.get(i)).x, ((Position)positions.get(i)).y)){
 				temp = computeTangents(((Position)positions.get(i)), newobs);
 				if(temp.size() != 2){
-					System.out.println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+					System.out.println("Error");
 					System.exit(0);
 				}
 				for(int j = 0; j < newobs.npoints; j++){
@@ -365,7 +294,7 @@ public class Obstacle extends Polygon {
 	}
 
 	//comupte tangents for given point p and polygon newobs
-	public LinkedList computeTangents(Position p, Polygon newobs){
+	public LinkedList<Line2D.Double> computeTangents(Position p, Polygon newobs){
 		LinkedList<Line2D.Double> newobsedges = new LinkedList<Line2D.Double>();
 		LinkedList<Line2D.Double> tangents = new LinkedList<Line2D.Double>();
 		LinkedList<Line2D.Double> collinearpoints = new LinkedList<Line2D.Double>();

@@ -5,7 +5,6 @@ import java.io.*;
 import edu.bonn.cs.iv.bonnmotion.*;
 
 /** Application that creates a movement file for Glomosim (2.0.3) and Qualnet (3.5.1). */
-
 public class GlomoFile extends App {
 
 	protected String name = null;
@@ -25,7 +24,7 @@ public class GlomoFile extends App {
 		}
 		
 		try {
-			s = new Scenario(name);
+			s = Scenario.getScenario(name);
 		} catch (Exception e) {
 			App.exceptionHandler( "Error reading file", e);
 		}

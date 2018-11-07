@@ -46,8 +46,6 @@ public class RPGM extends RandomSpeedBase {
 		generate();
 	}
 
-
-
 	public void generate() {
 		preGeneration();
 
@@ -55,11 +53,9 @@ public class RPGM extends RandomSpeedBase {
 		Vector<MobileNode> rpoints = new Vector<MobileNode>();
 
 		// groups move in a random waypoint manner:
-
 		int nodesRemaining = node.length;
 		int offset = 0;
 		while (nodesRemaining > 0) {
-			//			System.out.println("go: reference points. nodes remaining: " + nodesRemaining);
 			MobileNode ref = new MobileNode();
 			rpoints.addElement(ref);
 			double t = 0.0;
@@ -91,10 +87,8 @@ public class RPGM extends RandomSpeedBase {
 
 			// define group size:
 
-			//			System.out.println("go: group size?");
 			int size;
 			while ((size = (int)Math.round(randomNextGaussian() * groupSizeDeviation + avgMobileNodesPerGroup)) < 1);
-			//			System.out.println("go: group size: " + size);
 			if (size > nodesRemaining)
 				size = nodesRemaining;
 			if (size > maxGroupSize)
@@ -109,7 +103,6 @@ public class RPGM extends RandomSpeedBase {
 		// nodes follow their reference points:
 
 		for (int i = 0; i < node.length; i++) {
-			//			System.out.println("go: node " + (i + 1) + "/" + node.length);
 			double t = 0.0;
 			MobileNode group = node[i].group();
 
@@ -138,7 +131,6 @@ public class RPGM extends RandomSpeedBase {
 				if (speed > maxspeed) {
 					double c_dst = ((maxspeed - minspeed) * randomNextDouble() + minspeed) / speed;
 					double c_src = 1 - c_dst;
-					//Position xdst = dst;
 					dst = new Position(c_src * src.x + c_dst * dst.x, c_src * src.y + c_dst * dst.y);
 				}
 				if (pGroupChange > 0.0) {
@@ -167,7 +159,6 @@ public class RPGM extends RandomSpeedBase {
 							// create pairStatistics
 							double[] ct = MobileNode.pairStatistics(dummy, ref, t, next, maxdist, false);
 							// check if the link comes up before any other link to a ref by now
-							//if (ct[1] < linkUp) {
 							if (ct.length > 2 && ct[2] < linkUp) {
 								if (randomNextDouble() < pGroupChange) {
 									linkDown = next;
@@ -177,7 +168,6 @@ public class RPGM extends RandomSpeedBase {
 									}
 									// change group at time tmpnext
 									double tmpnext = nLinkUp + randomNextDouble() * (linkDown - nLinkUp);
-									//double tmpnext = t + randomNextDouble() * (next - t);
 									
 									// check if group change is possible at this time
 									if (this.groupChangePossible(tmpnext, ref, dummy)) {
@@ -277,7 +267,7 @@ public class RPGM extends RandomSpeedBase {
 	}
 
 	protected boolean parseArg(String key, String value) {
-		if (	key.equals("groupsize_E") ) {
+		if (key.equals("groupsize_E") ) {
 			avgMobileNodesPerGroup = Double.parseDouble(value);
 			return true;
 		} else if (	key.equals("groupsize_S") ) {

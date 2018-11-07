@@ -1,9 +1,9 @@
 /*******************************************************************************
  ** WiseML-Exporter for BonnMotion mobility generator                         **
- ** Copyright (C) 2009 Raphael Ernst					      **
- ** University of Bonn							      **
- ** Institute of Computer Science 4					      **
- ** Communication and Distributed Systems				      **
+ ** Copyright (C) 2009 Raphael Ernst					      				  **
+ ** University of Bonn							                              **
+ ** Institute of Computer Science 4					                          **
+ ** Communication and Distributed Systems				                      **
  ** Code: Raphael Ernst                                                       **
  **                                                                           **
  ** This program is free software; you can redistribute it and/or modify      **
@@ -72,7 +72,7 @@ public class WiseML extends App {
         printWiseMLHead();
 
         final double duration = Math.ceil(s.getDuration());
-	printWiseMLNodeMovement(node, duration);
+        printWiseMLNodeMovement(node, duration);
 
         printWiseMLTail();
 
@@ -107,56 +107,56 @@ public class WiseML extends App {
     protected void printWiseMLNodeMovement(MobileNode[] _nodes, final double _duration) {
         double t = 0;
 
-	printWiseMLTimestamp(t);
-	for(int currentNode=0;currentNode<_nodes.length;currentNode++) {
-	    Position p = _nodes[currentNode].positionAt(t);
-	    printWiseMLNodePosition(getNodeId(currentNode),p.x,p.y,this.defaultAltitude);
-	}
-	t += intervalLength;
-
-        while(t<_duration+1) {
-	    printWiseMLTimestamp(t);
-	    for(int currentNode=0;currentNode<_nodes.length;currentNode++) {
-		Position p = _nodes[currentNode].positionAt(t);
-		Position oldPosition = _nodes[currentNode].positionAt(t-intervalLength);
-		if(oldPosition.equals(p)) {
-		    System.out.println("Omitting output of node " + getNodeId(currentNode) + ". It has not moved since last output at time " + (t-intervalLength) + ".");
-		}
-		else {
+		printWiseMLTimestamp(t);
+		for(int currentNode=0;currentNode<_nodes.length;currentNode++) {
+		    Position p = _nodes[currentNode].positionAt(t);
 		    printWiseMLNodePosition(getNodeId(currentNode),p.x,p.y,this.defaultAltitude);
 		}
-	    }
-	    t += intervalLength;
+		t += intervalLength;
+
+        while(t<_duration+1) {
+		    printWiseMLTimestamp(t);
+		    for(int currentNode=0;currentNode<_nodes.length;currentNode++) {
+				Position p = _nodes[currentNode].positionAt(t);
+				Position oldPosition = _nodes[currentNode].positionAt(t-intervalLength);
+				if(oldPosition.equals(p)) {
+				    System.out.println("Omitting output of node " + getNodeId(currentNode) + ". It has not moved since last output at time " + (t-intervalLength) + ".");
+				}
+				else {
+				    printWiseMLNodePosition(getNodeId(currentNode),p.x,p.y,this.defaultAltitude);
+				}
+		    }
+		    t += intervalLength;
         }
     }
 
     protected void printWiseMLTimestamp(final double _value) {
-	print("<timestamp>",OTHER_LEVEL);
-	String timeToPrint;
-	if(this.useIntegerTimes) {
-	    final int value = new Double(_value).intValue();
-	    timeToPrint = Integer.toString(value);
-	}
-	else {
-	    timeToPrint = Double.toString(_value);
-	}
-	print(timeToPrint,OTHER_LEVEL+1);
-	print("</timestamp>",OTHER_LEVEL);
+		print("<timestamp>",OTHER_LEVEL);
+		String timeToPrint;
+		if(this.useIntegerTimes) {
+		    final int value = new Double(_value).intValue();
+		    timeToPrint = Integer.toString(value);
+		}
+		else {
+		    timeToPrint = Double.toString(_value);
+		}
+		print(timeToPrint,OTHER_LEVEL+1);
+		print("</timestamp>",OTHER_LEVEL);
     }
 
     protected void printWiseMLNodePosition(final String _nodeId, final double _posX, final double _posY, final double _posZ) {
-	final String nodeId = "<node id=\"" + _nodeId + "\">";
-	final String posX = "<x>" + _posX + "</x>";
-	final String posY = "<y>" + _posY + "</y>";
-	final String posZ = "<z>" + _posZ + "</z>";
-
-	print(nodeId,OTHER_LEVEL);
-	print("<position>",OTHER_LEVEL+1);
-	print(posX,OTHER_LEVEL+2);
-	print(posY,OTHER_LEVEL+2);
-	print(posZ,OTHER_LEVEL+2);
-	print("</position>",OTHER_LEVEL+1);
-	print("</node>",OTHER_LEVEL);
+		final String nodeId = "<node id=\"" + _nodeId + "\">";
+		final String posX = "<x>" + _posX + "</x>";
+		final String posY = "<y>" + _posY + "</y>";
+		final String posZ = "<z>" + _posZ + "</z>";
+	
+		print(nodeId,OTHER_LEVEL);
+		print("<position>",OTHER_LEVEL+1);
+		print(posX,OTHER_LEVEL+2);
+		print(posY,OTHER_LEVEL+2);
+		print(posZ,OTHER_LEVEL+2);
+		print("</position>",OTHER_LEVEL+1);
+		print("</node>",OTHER_LEVEL);
     }
 
     protected String getNodeId(final int _nodeNumber) {
@@ -216,7 +216,7 @@ public class WiseML extends App {
     
     protected boolean parseArg(char key, String val) {
         switch (key) {
-            case 'f':
+        	case 'f':
                 this.name = val;
                 return true;
             case 'c':
@@ -229,19 +229,19 @@ public class WiseML extends App {
             case 'a':
                 this.defaultAltitude = Double.parseDouble(val);
                 return true;
-	    case 'F':
+        	case 'F':
                 this.path_footer = val;
                 return true;
-	    case 'H':
+        	case 'H':
                 this.path_header = val;
                 return true;
-	    case 'I':
-		this.useIntegerTimes = true;
-		System.out.println("Warning: This (-I) will convert all printed times into integers!");
-		return true;
-	    case 'L':
-		this.intervalLength = Double.parseDouble(val);
-		return true;
+        	case 'I':
+				this.useIntegerTimes = true;
+				System.out.println("Warning: This (-I) will convert all printed times into integers!");
+				return true;
+        	case 'L':
+				this.intervalLength = Double.parseDouble(val);
+				return true;
             case 'N':
                 this.path_nodeId = val;
                 return true;
@@ -260,8 +260,8 @@ public class WiseML extends App {
         System.out.println("\t-f <filename>\tScenario");
         System.out.println("\t[-F <path to file>]\tWiseML footer");
         System.out.println("\t[-H <path to file>]\tWiseML header");
-	System.out.println("\t[-I]\tConvert times to integer values");
-	System.out.println("\t[-L <double>]\tTime between two outputs (default 1.0)");
+        System.out.println("\t[-I]\t\t\tConvert times to integer values");
+        System.out.println("\t[-L <double>]\t\tTime between two outputs (default 1.0)");
         System.out.println("\t[-N <path to file>]\tWiseML node ids");
     }
 

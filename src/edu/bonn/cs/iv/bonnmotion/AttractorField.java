@@ -46,24 +46,15 @@ public class AttractorField {
 		lTotal += level;
 	}
 
-	/*	
-	public void add(double[] param) {
-		for (int p = 0; p < param.length; p += 4)
-			if (param.length - p >= 4)
-				add(new Position(param[p], param[p+1]), param[p+2], param[p+3]);
-			else
-				System.out.println("warning: attraction field argument list has wrong number of elements!");
-	}
-	 */
-
 	public void add(double[] param) {
 		for (int p = 0; p < param.length; p += 5)
+		{
 			if (param.length - p >= 5)
 				add(new Position(param[p], param[p+1]), param[p+2], param[p+3], param[p+4]);
 			else
 				System.out.println("warning: attraction field argument list has wrong number of elements!");
+		}
 	}
-
 
 	public Position getPosJunk(double rndUniform1, double rndUniform2, double rndGaussian) {
 		double r = rndUniform1 * lTotal;

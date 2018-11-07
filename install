@@ -58,6 +58,8 @@ then
 		cd "${DOCPATH}"
 		DOCPATH=`cmd.exe /c cd`
 	fi
+	
+	LIBRARYPATH="$BONNMOTION/lib/javaproj-1.0.4.jar"
 
 	cd "${BONNMOTION}/bin/.tail"
 	APPS=`ls`
@@ -67,7 +69,7 @@ then
 	echo >> .head
 	echo BONNMOTION=\"$BONNMOTION\" >> .head
 	echo PACKAGE=\"$PACKAGE\" >> .head
-	echo CLASSPATH=\"$CLASSPATH\" >> .head
+	echo CLASSPATH=\"$CLASSPATH:$LIBRARYPATH\" >> .head
 	echo JAVAPATH=\"$JAVAPATH\" >> .head
 	echo DOCPATH=\"$DOCPATH\" >> .head
 	echo JAVA=\"\$JAVAPATH/java\" >> .head

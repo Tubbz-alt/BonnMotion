@@ -8,34 +8,41 @@ import edu.bonn.cs.iv.bonnmotion.Model;
 public class BM {
 
 	private final static String PROG_NAME = "BonnMotion";
-	private final static String PROG_VER = "1.4";
+	private final static String PROG_VER = "1.5";
 	private final static String MODELS_PACK = "edu.bonn.cs.iv.bonnmotion.models";
 	private final static String MODELS[] =
 		{
+			"ChainScenario", "Links different scenarios",
+			"Column", "Column mobility model",
+			"DisasterArea", "Extended Catastrophe scenario model",
 			"GaussMarkov", "Gauss-Markov model",
-			"OriginalGaussMarkov", "The original Gauss-Markov model",
 			"ManhattanGrid", "Manhattan Grid model",
+			"Nomadic","Nomadic community model",
+			"OriginalGaussMarkov", "The original Gauss-Markov model",
+            "ProbRandomWalk","Probabilistic random walk",
+            "Pursue", "Pursue mobility model",
+            "RandomDirection","Random direction model",
+            "RandomStreet", "Random Street model",
+            "RandomWalk","Random walk model",
 			"RandomWaypoint", "Random Waypoint model",
 			"RPGM", "Reference Point Group Mobility model",
-			"Static", "static network (no movement at all)", 
-			"ChainScenario", "links different scenarios",
-			"DisasterArea", "Extended Catastrophe scenario model",
+			"Static", "Static network (no movement at all)" 
 		};
 
 	private final static String APPS_PACK = "edu.bonn.cs.iv.bonnmotion.apps";
 	private final static String APPS[] =
 		{
-			"Cut", "extract certain time span from scenario",
+			"Cut", "Extract certain time span from scenario",
+			"Dwelltime", "Analyse scenario according to Bettstetter",
+			"GlomoFile", "Create scenario files for Glomosim and Qualnet",
+			"IntervalFormat","Convert scenario file in interval format",
 			"LinkDump", "Dump information about links",
 			"NSFile", "Create scenario files for ns-2",
-			"GlomoFile", "Create scenario files for Glomosim and Qualnet",
 			"SPPXml", "Create motion file according to Horst Hellbruecks XML schema",
 			"Statistics", "Analyse scenario",
-			"Timescale", "Calculates the timescale of a connected scenario", // PP
+			"TheONEFile", "Create scenario files for The ONE simulator",
 			"Visplot", "Visualise node movements",
-			"Dwelltime", "Analyse scenario according to Bettstetter",
-			"IntervalFormat","Convert scenario file in interval format",
-			"WiseML","Convert scenario file in WiseML format"
+			"WiseML", "Converts Bonnmotion format to WiseML"
 		};
 
 	private String fSettings = null;
@@ -45,20 +52,24 @@ public class BM {
 	 * Converts a classname into a Class object
 	 * @return class object
 	 */
-	public static Class str2class(String _class) {
+	public static Class<?> str2class(String _class) {
+		Class<?> result = null;
+		
 		try {
 			for (int i = 0; i < MODELS.length; i += 2)
-				if (MODELS[i].equals(_class))
-					return Class.forName(MODELS_PACK + "." + _class);
+				if (MODELS[i].equals(_class)) 
+					result = Class.forName(MODELS_PACK + "." + _class);
 			for (int i = 0; i < APPS.length; i += 2)
 				if (APPS[i].equals(_class))
-					return Class.forName(APPS_PACK + "." + _class);
-			throw new RuntimeException("Unknown Module " + _class);
+					result = Class.forName(APPS_PACK + "." + _class);
+			
+			if (result == null) 
+				throw new RuntimeException("Unknown Module " + _class);
 		} catch (Exception e) {
 			App.exceptionHandler("Error in BM ", e);
-//			System.out.println("Could not execute \"" + _class + "\": " + e);
 		}
-		return null; // should never be reached
+		
+		return result;
 	}
 
 	private void printHeader() {
@@ -78,16 +89,12 @@ public class BM {
 	}
 
 	private void printSpecificHelp(String _m) {
-		Class c = str2class(_m);
-		if (c == null) {
-			System.out.println(_m + ": unknown");
-			printModules();
-		} else {
-			try {
-				c.getMethod("printHelp", null).invoke(null, null);
-			} catch (Exception e) {
-				App.exceptionHandler( "could not print help to "+c, e);
-			}
+		Class<?> c = str2class(_m);
+		
+		try {
+			c.getMethod("printHelp", (Class[])null).invoke(null, (Object[])null);
+		} catch (Exception e) {
+			App.exceptionHandler( "could not print help to "+c, e);
 		}
 	}
 
@@ -154,7 +161,7 @@ public class BM {
 						value = _args[pos].substring(2);
 					else
 						value = _args[++pos];
-					if (! parseArg(key, value)) {
+					if (!parseArg(key, value)) {
 						System.out.println("warning: ignoring unknown key " + key);
 					}
 					pos++;
@@ -162,44 +169,33 @@ public class BM {
 
 				System.out.println("Starting " + _args[pos] + " ...");
 				
-				Class c;
+				Class<?> c = str2class(_args[pos]);
 				
-				if ((c = str2class(_args[pos])) != null) {
-					try {
-						if (c.getPackage().getName().equals(MODELS_PACK)) {
-							if (fSaveScenario == null) {
-								System.out.println("Refusing to create a scenario which will not be saved anyhow. (Use -f.)");
-								System.exit(0);
-							}
-							String[] args = removeFirstElements(_args, pos);
-							args[0] = fSettings;
-							Class[] cType = {String[].class};
-							Object[] cParam = {args};
-							((Model)c.getConstructor(cType).newInstance(cParam)).write(fSaveScenario);
-						} else {
-							String[] args = removeFirstElements(_args, pos + 1);
-							Class[] cType = {String[].class};
-/*							System.out.print("Launching \"" + c + "\", args: ");
-							for (int i = 0; i < args.length; i++) {
-								System.out.print("[" + args[i] + "]");
-							}
-							System.out.println(""); */
-							Object[] cParam = {args};
-								c.getConstructor(cType).newInstance(cParam);
+				try {
+					if (c.getPackage().getName().startsWith(MODELS_PACK)) {
+						if (fSaveScenario == null) {
+							System.out.println("Refusing to create a scenario which will not be saved anyhow. (Use -f.)");
+							System.exit(0);
 						}
-//						System.out.println( " done." );	
-					} catch (ClassCastException e1) {
-						System.out.println("ClassCastException");
-					} catch (Exception e) {
-							e.printStackTrace();
-							App.exceptionHandler( "Error in "+_args[pos], e );
+						String[] args = removeFirstElements(_args, pos);
+						args[0] = fSettings;
+						Class<?>[] cType = {String[].class};
+						Object[] cParam = {args};
+						((Model)c.getConstructor(cType).newInstance(cParam)).write(fSaveScenario);
+					} else {
+						String[] args = removeFirstElements(_args, pos + 1);
+						Class<?>[] cType = {String[].class};
+						Object[] cParam = {args};
+						c.getConstructor(cType).newInstance(cParam);
 					}
-				} else {
-					System.out.println("unknown");
-					printHelp();
-				}
+				} catch (ClassCastException e1) {
+					System.out.println("ClassCastException");
+				} catch (Exception e) {
+						e.printStackTrace();
+						App.exceptionHandler("Error in "+_args[pos], e );
+				} 
 
-				System.out.println( _args[pos] + " done.");
+				System.out.println(_args[pos] + " done.");
 			}
 		}
 	}

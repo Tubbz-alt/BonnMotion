@@ -13,7 +13,7 @@ import edu.bonn.cs.iv.bonnmotion.Waypoint;
 
 public class GaussMarkov extends Scenario {
 
-	private static final double twoPi = 2.*Math.PI;
+	private static final double twoPi = 2. * Math.PI;
 
 	private static final String MODEL_NAME = "GaussMarkov";
 
@@ -27,19 +27,14 @@ public class GaussMarkov extends Scenario {
 	protected double speedStdDev = 0.5;
 	/** prevent nodes from running out of the simulation are? */
 	protected boolean checkBounds = false;
-   /** Initialize speed with gaussian distribution */	
+	/** Initialize speed with gaussian distribution */
 	protected boolean gaussSpeed = false;
-   /** Force uniform speed distribution */	
+	/** Force uniform speed distribution */
 	protected boolean uniformSpeed = false;
 	protected double minspeed = 0.0;
 
-   protected double alpha = 0.8;
-   protected double center = 1.;
-   protected double vari = 1.;
-
-
-	protected double inputX=0;
-	protected double inputY=0;
+	protected double inputX = 0;
+	protected double inputY = 0;
 
 	protected boolean parseArg(String key, String value) {
 		if (key.equals("updateFrequency")) {
@@ -82,33 +77,33 @@ public class GaussMarkov extends Scenario {
 
 	protected boolean parseArg(char key, String val) {
 		switch (key) {
-			case 'a' :
+			case 'a':
 				angleStdDev = Double.parseDouble(val);
 				return true;
-			case 'h' :
+			case 'h':
 				maxspeed = Double.parseDouble(val);
 				return true;
-			case 'q' :
+			case 'q':
 				updateFrequency = Double.parseDouble(val);
 				return true;
-			case 's' :
+			case 's':
 				speedStdDev = Double.parseDouble(val);
 				return true;
-			case 'b' :
+			case 'b':
 				checkBounds = true;
 				return true;
-			case 'm' :			
+			case 'm':
 				minspeed = Double.parseDouble(val);
 				if (minspeed < 0.)
 					minspeed = 0.;
 				return true;
-			case 'g' :
+			case 'g':
 				gaussSpeed = true;
-				return true;				
-			case 'u' :
+				return true;
+			case 'u':
 				uniformSpeed = true;
-				return true;				
-			default :
+				return true;
+			default:
 				return super.parseArg(key, val);
 		}
 	}
@@ -117,17 +112,8 @@ public class GaussMarkov extends Scenario {
 		go(args);
 	}
 
-	public GaussMarkov(
-		int nodes,
-		double x,
-		double y,
-		double duration,
-		double ignore,
-		long randomSeed,
-		double updateFrequency,
-		double maxspeed,
-		double angleStdDev,
-		double speedStdDev) {
+	public GaussMarkov(int nodes, double x, double y, double duration, double ignore, long randomSeed,
+			double updateFrequency, double maxspeed, double angleStdDev, double speedStdDev) {
 		super(nodes, x, y, duration, ignore, randomSeed);
 		this.updateFrequency = updateFrequency;
 		this.maxspeed = maxspeed;
@@ -140,7 +126,7 @@ public class GaussMarkov extends Scenario {
 
 	public GaussMarkov(String args[], Scenario _pre, Integer _transitionMode) {
 		// we've got a predecessor, so a transtion is needed
-		super( args, _pre, _transitionMode  );
+		super(args, _pre, _transitionMode);
 		go(args);
 	}
 
@@ -156,13 +142,13 @@ public class GaussMarkov extends Scenario {
 		double maxY = y;
 		double minX = 0;
 		double minY = 0;
-		
+
 		if (maxspeed < minspeed) {
 			double tempspeed = minspeed;
 			minspeed = maxspeed;
 			maxspeed = tempspeed;
 		}
-		
+
 		for (int i = 0; i < node.length; i++) {
 			node[i] = new MobileNode();
 			double t = 0.0;
@@ -172,10 +158,12 @@ public class GaussMarkov extends Scenario {
 					Waypoint lastW = transition(predecessorScenario, transitionMode, i);
 					src = lastW.pos;
 					t = lastW.time;
-				} catch (ScenarioLinkException e) {
+				}
+				catch (ScenarioLinkException e) {
 					e.printStackTrace();
 				}
-			} else {
+			}
+			else {
 				src = new Position(x * randomNextDouble(), y * randomNextDouble());
 				if (!node[i].add(0.0, src)) {
 					System.out.println(MODEL_NAME + ".<init>: error while adding node movement (1)");
@@ -183,20 +171,14 @@ public class GaussMarkov extends Scenario {
 				}
 			}
 
-         alpha = 0.5;
-         center = (1-alpha)*(maxspeed-minspeed)/2.;
-         vari=Math.sqrt(1-alpha*alpha)*speedStdDev;
-
 			double dir = randomNextDouble() * 2 * Math.PI;
-			double speed = (randomNextDouble() * (maxspeed-minspeed)) + minspeed;
+			double speed = (randomNextDouble() * (maxspeed - minspeed)) + minspeed;
 			if (gaussSpeed) {
-				/* choose gaussian distributed initial speeds */
-				//speed = randomNextGaussian() * gaussSpeed * maxspeed / GS_NN + maxspeed;
-            speed = getNewSpeed((maxspeed+minspeed)/2.);
+				speed = getNewSpeed((maxspeed + minspeed) / 2.);
 			}
-			
+
 			boolean intervalShortened = false;
-			
+
 			while (t < duration) {
 				double t1 = t + updateFrequency;
 
@@ -210,7 +192,7 @@ public class GaussMarkov extends Scenario {
 					}
 					else {
 						dir = getNewDir(dir, src);
-    					}
+					}
 				}
 
 				speed = getNewSpeed(speed);
@@ -218,39 +200,53 @@ public class GaussMarkov extends Scenario {
 					Position dst = new Position(src.x + Math.cos(dir) * updateFrequency * speed, src.y + Math.sin(dir) * updateFrequency * speed);
 
 					if (checkBounds) {
-					/* check if node will leave the simulation area */
-						if ((dst.x<0)||(dst.x>x)||(dst.y<0)||(dst.y>y)) {
-							/* calculate intersection  with boundarys */
-							double yR,yL,xU,xL,ratio;
-							ratio = (dst.y-src.y)/(dst.x-src.x);
+						/* check if node will leave the simulation area */
+						if ((dst.x < 0) || (dst.x > x) || (dst.y < 0) || (dst.y > y)) {
+							/* calculate intersection with boundarys */
+							double yR, yL, xU, xL, ratio;
+							ratio = (dst.y - src.y) / (dst.x - src.x);
 
 							/* right boundary */
-								/* get y for dst on boundary
-								ratio = (yR-src.y)/x-src.x
-								<=>
-								ratio * (x-src.x) + src.y = yr*/
-								yR = ratio * (x-src.x) + src.y;
+							/*
+							 * get y for dst on boundary ratio = (yR-src.y)/x-src.x <=> ratio *
+							 * (x-src.x) + src.y = yr
+							 */
+							yR = ratio * (x - src.x) + src.y;
 							/* left boundary */
-								/* get y for dst on boundary */
-								yL = ratio * (-src.x) + src.y;
+							/* get y for dst on boundary */
+							yL = ratio * (-src.x) + src.y;
 							/* upper boundary */
-								/* get x for  dst on boundary */
-								/*
-								ratio = (0-src.y)/(xU-src.x)
-								<=>
-								 (-src.y)/ratio +src.x = xU
-								*/
-								xU = (-src.y)/ratio + src.x;
+							/* get x for dst on boundary */
+							/*
+							 * ratio = (0-src.y)/(xU-src.x) <=> (-src.y)/ratio +src.x = xU
+							 */
+							xU = (-src.y) / ratio + src.x;
 							/* lower boundary */
-								/* get x for dst on boundary */
-								xL = (y-src.y)/ratio + src.x;
+							/* get x for dst on boundary */
+							xL = (y - src.y) / ratio + src.x;
 
 							double newX = 0.0, newY = 0.0;
-							if ((yL>=0)&&(yL<=y)&&(dir>0.5*Math.PI)&&(dir<1.5*Math.PI)) { newY = yL; newX = 0;dir = (twoPi+Math.PI-dir)%twoPi;}
-							else if ((yR>=0)&&(yR<=y)&&((dir>1.5*Math.PI)||(dir<0.5*Math.PI))) { newY = yR; newX = y; dir = (twoPi+Math.PI-dir)%twoPi;}
+							if ((yL >= 0) && (yL <= y) && (dir > 0.5 * Math.PI) && (dir < 1.5 * Math.PI)) {
+								newY = yL;
+								newX = 0;
+								dir = (twoPi + Math.PI - dir) % twoPi;
+							}
+							else if ((yR >= 0) && (yR <= y) && ((dir > 1.5 * Math.PI) || (dir < 0.5 * Math.PI))) {
+								newY = yR;
+								newX = y;
+								dir = (twoPi + Math.PI - dir) % twoPi;
+							}
 
-							if ((xU>=0)&&(xU<=x)&&(dir>Math.PI)&&(dir<2.0*Math.PI)) { newX = xU; newY = 0; dir = (twoPi + twoPi - dir)%twoPi;}
-							else if ((xL>=0)&&(xL<=x)&&(dir>0.0*Math.PI)&&(dir<Math.PI)) { newX = xL; newY = y; dir = (twoPi + twoPi - dir)%twoPi;}
+							if ((xU >= 0) && (xU <= x) && (dir > Math.PI) && (dir < 2.0 * Math.PI)) {
+								newX = xU;
+								newY = 0;
+								dir = (twoPi + twoPi - dir) % twoPi;
+							}
+							else if ((xL >= 0) && (xL <= x) && (dir > 0.0 * Math.PI) && (dir < Math.PI)) {
+								newX = xL;
+								newY = y;
+								dir = (twoPi + twoPi - dir) % twoPi;
+							}
 
 							Position newdst = new Position(newX, newY);
 
@@ -258,15 +254,16 @@ public class GaussMarkov extends Scenario {
 							// length of the new vector / length of the old vector =
 							// new interval / old interval
 							// =>
-							double vl1 = Math.sqrt((newdst.y-src.y)*(newdst.y-src.y)+(newdst.x-src.x)*(newdst.x-src.x));
-							double vl2 = Math.sqrt((dst.y-src.y)*(dst.y-src.y)+(dst.x-src.x)*(dst.x-src.x));
+							double vl1 = Math.sqrt((newdst.y - src.y) * (newdst.y - src.y) + (newdst.x - src.x) * (newdst.x - src.x));
+							double vl2 = Math.sqrt((dst.y - src.y) * (dst.y - src.y) + (dst.x - src.x) * (dst.x - src.x));
 							double newInterv = vl1 / vl2 * updateFrequency;
 							t1 = t + newInterv;
 							// memorize the shortening of the interval
 							intervalShortened = true;
 							dst = newdst;
-						} 
-					} else {
+						}
+					}
+					else {
 						if (dst.x < minX)
 							minX = dst.x;
 						else if (dst.x > maxX)
@@ -300,76 +297,55 @@ public class GaussMarkov extends Scenario {
 		postGeneration();
 	}
 
-//	public double getNewDir(double oldDir, Position pos) {
-//		// move away from the border in case we are getting too close
-//		if (pos.x < 0)
-//			if (pos.y < 0)
-//				oldDir = 0.25 * Math.PI;
-//			else if (pos.y > y)
-//				oldDir = 1.75 * Math.PI;
-//			else
-//				oldDir = 0.0;
-//		else if (pos.x > x)
-//			if (pos.y < 0)
-//				oldDir = 0.75 * Math.PI;
-//			else if (pos.y > y)
-//				oldDir = 1.25 * Math.PI;
-//			else
-//				oldDir = Math.PI;
-//		else if (pos.y < 0)
-//			oldDir = 0.5 * Math.PI;
-//		else if (pos.y > y)
-//			oldDir = 1.5 * Math.PI;
-//
-//		return randomNextGaussian() * angleStdDev + oldDir;
-//	}
-
 	public double getNewDir(double oldDir, Position pos) {
-      if (checkBounds) {
-		   double newDir =  (randomNextGaussian() * angleStdDev + oldDir)%twoPi;
-         while (newDir < 0) newDir += twoPi;
-         System.out.println("Dir " + newDir);
-         return newDir;
-      }
-      else {
-         // move away from the border in case we are getting too close
-         if (pos.x < 0)
-            if (pos.y < 0)
-               oldDir = 0.25 * Math.PI;
-            else if (pos.y > y)
-               oldDir = 1.75 * Math.PI;
-            else
-               oldDir = 0.0;
-         else if (pos.x > x)
-            if (pos.y < 0)
-               oldDir = 0.75 * Math.PI;
-            else if (pos.y > y)
-               oldDir = 1.25 * Math.PI;
-            else
-               oldDir = Math.PI;
-         else if (pos.y < 0)
-            oldDir = 0.5 * Math.PI;
-         else if (pos.y > y)
-            oldDir = 1.5 * Math.PI;
-        return randomNextGaussian() * angleStdDev + oldDir;
-      }
+		if (checkBounds) {
+			double newDir = (randomNextGaussian() * angleStdDev + oldDir) % twoPi;
+			while (newDir < 0)
+				newDir += twoPi;
+			System.out.println("Dir " + newDir);
+			return newDir;
+		}
+		else {
+			// move away from the border in case we are getting too close
+			if (pos.x < 0)
+				if (pos.y < 0)
+					oldDir = 0.25 * Math.PI;
+				else if (pos.y > y)
+					oldDir = 1.75 * Math.PI;
+				else
+					oldDir = 0.0;
+			else if (pos.x > x)
+				if (pos.y < 0)
+					oldDir = 0.75 * Math.PI;
+				else if (pos.y > y)
+					oldDir = 1.25 * Math.PI;
+				else
+					oldDir = Math.PI;
+			else if (pos.y < 0)
+				oldDir = 0.5 * Math.PI;
+			else if (pos.y > y)
+				oldDir = 1.5 * Math.PI;
+			return randomNextGaussian() * angleStdDev + oldDir;
+		}
 	}
 
 	public double getNewSpeed(double oldSpeed) {
 		double speed = oldSpeed + randomNextGaussian() * speedStdDev;
-     if (uniformSpeed) {
-         while ((speed < minspeed) || (speed > maxspeed)) {
-            if (speed < minspeed)
-               speed = minspeed + (minspeed - speed);			
-            else if (speed > maxspeed)
-               speed = maxspeed - (speed - maxspeed);		
-         }
-      }
-      else {
-         if (speed < minspeed) speed = minspeed;
-         else if (speed > maxspeed) speed = maxspeed;
-      }
-		return speed;		
+		if (uniformSpeed) {
+			while ((speed < minspeed) || (speed > maxspeed)) {
+				if (speed < minspeed)
+					speed = minspeed + (minspeed - speed);
+				else if (speed > maxspeed)
+					speed = maxspeed - (speed - maxspeed);
+			}
+		}
+		else {
+			if (speed < minspeed)
+				speed = minspeed;
+			else if (speed > maxspeed)
+				speed = maxspeed;
+		}
+		return speed;
 	}
 
 	public void write(String _name) throws FileNotFoundException, IOException {
@@ -382,23 +358,23 @@ public class GaussMarkov extends Scenario {
 		p[4] = "inputX=" + inputX;
 		p[5] = "inputY=" + inputY;
 		p[6] = "bounce=" + checkBounds;
-      p[7] = "initGauss=" + gaussSpeed;
-      p[8] = "uniformSpeed=" + uniformSpeed;
-		
+		p[7] = "initGauss=" + gaussSpeed;
+		p[8] = "uniformSpeed=" + uniformSpeed;
+
 		super.write(_name, p);
 	}
 
 	public static void printHelp() {
 		Scenario.printHelp();
-		System.out.println( MODEL_NAME + ":" );
+		System.out.println(MODEL_NAME + ":");
 		System.out.println("\t-a <angle standard deviation>");
 		System.out.println("\t-h <max. speed>");
 		System.out.println("\t-q <speed, angle update frequency>");
 		System.out.println("\t-s <speed standard deviation>");
 		System.out.println("\t-b bounce nodes at area boundaries");
-		System.out.println("\t-m <min. speed (default = 0)>");		
+		System.out.println("\t-m <min. speed (default = 0)>");
 		System.out.println("\t-g gauss distribution of initial node speeds\n\t    centered around (minspeed + maxspeed)/2");
 		System.out.println("\t-u force uniform speed distribution");
 	}
-	
+
 }

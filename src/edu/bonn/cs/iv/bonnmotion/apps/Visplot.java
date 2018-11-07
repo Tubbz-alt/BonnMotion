@@ -21,8 +21,7 @@ public class Visplot extends App {
 			System.exit(0);
 		}
 
-		Scenario s = new Scenario(name);
-		// get my args
+		Scenario s = Scenario.getScenario(name);
 		double duration = s.getDuration();
 		MobileNode node = s.getNode(idx);
 

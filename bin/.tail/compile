@@ -1,5 +1,3 @@
-#!/bin/bash
-
 cd "${BONNMOTION}/src"
 test ! -d ../classes && mkdir ../classes
 for i in `find . -name "*.java"`; do

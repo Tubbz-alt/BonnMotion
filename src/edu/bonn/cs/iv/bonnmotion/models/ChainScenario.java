@@ -71,10 +71,10 @@ public class ChainScenario implements Model {
 		for (int i = 0; i < args.length; i++) {
 			String[] sArgs = args[i].split(" ");
 			System.out.println("  Starting Model(" + i + "): " + sArgs[0]);
-			Class c = BM.str2class(sArgs[0]);
+			Class<?> c = BM.str2class(sArgs[0]);
 
 			sArgs[0] = null;
-			Class[] cType = { String[].class, Scenario.class, Integer.class };
+			Class<?>[] cType = { String[].class, Scenario.class, Integer.class };
 			Object[] cParam = { sArgs, s_old, new Integer(mode)};
 			try {
 				s = (Scenario) c.getConstructor(cType).newInstance(cParam);
@@ -128,7 +128,7 @@ public class ChainScenario implements Model {
 			duration += s.getDuration();
 			MobileNode[] mn = s.getNode();
 			for (int j = 0; j < mn.length; j++) {
-				mixedSmn[j].add(mn[j]);
+				mixedSmn[j].addWaypointsOfOtherNode(mn[j]);
 			}
 		}
 

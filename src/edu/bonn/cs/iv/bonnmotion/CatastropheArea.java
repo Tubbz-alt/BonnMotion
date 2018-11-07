@@ -3,6 +3,7 @@ import java.util.LinkedList;
 import java.awt.Polygon;
 
 public abstract class CatastropheArea extends Polygon {
+	private static final long serialVersionUID = 1524633469689511126L;
 
 	protected static boolean debug = false;
 
@@ -21,8 +22,7 @@ public abstract class CatastropheArea extends Polygon {
 	public int numtransportgroups;
 	public int assignedtransportgroups;
 	public Integer neighborAreaPos = null;
-	public LinkedList waytoneighbor;
-	public LinkedList allways = new LinkedList();
+	public LinkedList<LinkedList<Position>> allways = new LinkedList<LinkedList<Position>>();
 	
 	/*
 		type == 0: "incident location" / Schadensstelle
@@ -38,18 +38,18 @@ public abstract class CatastropheArea extends Polygon {
 	public static CatastropheArea GetInstance(double[] Positions) {
 		int type = (int)Positions[Positions.length - 3];
 		switch (type) {
-		case 0: 
-			return new IncidentLocation(Positions);
-		case 1:
-			return new PatientsWaitingForThreatmentArea(Positions);
-		case 2:
-			return new CasualtiesClearingStation(Positions);
-		case 3:
-			return new TechnicalOperationalCommand(Positions);
-		case 4:
-			return new AmbulanceParkingPoint(Positions);
-		default:
-			throw new IllegalArgumentException("Unknown Type");
+			case 0: 
+				return new IncidentLocation(Positions);
+			case 1:
+				return new PatientsWaitingForThreatmentArea(Positions);
+			case 2:
+				return new CasualtiesClearingStation(Positions);
+			case 3:
+				return new TechnicalOperationalCommand(Positions);
+			case 4:
+				return new AmbulanceParkingPoint(Positions);
+			default:
+				throw new IllegalArgumentException("Unknown Type");
 		}
 	}
 
@@ -99,7 +99,6 @@ public abstract class CatastropheArea extends Polygon {
 	public double[] getPolygonParams() {
 		double[] params = new double[8];
 		for (int i = 0; i < xpoints.length; i++){
-			//System.out.println(i + " -> " + xpoints[i] + ";" + ypoints[i] + "\n");
 			params[2*i]   = (double)xpoints[i];
 			params[2*i+1] = (double)ypoints[i];
 		}

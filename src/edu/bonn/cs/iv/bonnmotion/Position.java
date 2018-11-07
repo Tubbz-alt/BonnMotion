@@ -74,6 +74,7 @@ public class Position {
 			a = 2 * Math.PI - a;
 		return a;
 	}
+
 	/** Difference between q and p ("how to reach q from p"). */
 	public static Position diff(Position p, Position q) {
 		return new Position(q.x - p.x, q.y - p.y);
@@ -91,5 +92,28 @@ public class Position {
 		return slope;
 	}
 
-
+	public String getMovementStringPart() {
+		StringBuilder sb = new StringBuilder();
+		
+		sb.append(this.x);
+		sb.append(" ");
+		sb.append(this.y);
+		
+		return sb.toString();
+	}
+	
+	public Position getWeightenedPosition(Position w, double weight) {
+		return new Position(
+				this.x * (1 - weight) + w.x * weight,
+				this.y * (1 - weight) + w.y * weight,
+				this.status);
+	}
+	
+	public Position newShiftedPosition(double _x, double _y) {
+		return new Position(this.x + _x, this.y + _y);
+	}
+	
+	public Position clone(double status) {
+		return new Position(this.x, this.y, status);
+	}
 }

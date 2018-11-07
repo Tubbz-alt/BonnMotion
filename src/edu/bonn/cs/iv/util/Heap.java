@@ -61,9 +61,6 @@ public class Heap {
 		return ((p + 1) / 2) - 1;
 	}
 	
-	/** Position des linken Nachfolgers eines Array-Elements.
- * 	@param p Position des Array-Elements. */
-	
 	/**
 	 * gets the position of the left child of an array element.
 	 * @param p position of the array element

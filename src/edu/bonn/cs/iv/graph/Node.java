@@ -3,7 +3,6 @@ package edu.bonn.cs.iv.graph;
 import edu.bonn.cs.iv.util.*;
 
 /** This class implements a node. */
-
 public class Node implements Sortable {
 	/** Node ID. */
 	public final int id;
@@ -80,11 +79,9 @@ public class Node implements Sortable {
 		return succList.get(succID);
 	}
 	
-	// PP begin
 	public Edge getPredec(int predID) {
-			return predList.get(predID);
-		}
-		// PP end
+		return predList.get(predID);
+	}
 
 	/** Get weight of an outgoing edge.
  * 	@param succID ID of destination node.
@@ -191,23 +188,22 @@ public class Node implements Sortable {
 		return String.valueOf(id);
 	}
 
-        /** is n in my successor list */
-        public boolean has_succ(int n_id) {
+    /** is n in my successor list */
+    public boolean has_succ(int n_id) {
 	    for (int i = 0; i < outDeg(); i++) {
-		if (succAt(i).dstNode().getKey() == n_id) 
-		    return true;
+			if (succAt(i).dstNode().getKey() == n_id) 
+			    return true;
 	    }
 	    return false;
-        } 
+    } 
 
-
-        /** return number of bi-directional links */
-        public int number_bi() {
+    /** return number of bi-directional links */
+    public int number_bi() {
 	    int bis = 0;
 	    for (int j = 0; j < outDeg(); j++) {
-		if (succAt(j).dstNode().has_succ(id))
-		    bis++;
+			if (succAt(j).dstNode().has_succ(id))
+			    bis++;
 	    }
 	    return bis;
-        }
+    }
 }

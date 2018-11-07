@@ -24,7 +24,7 @@ public class Cut extends App {
 			System.exit(0);
 		}
 	
-		Scenario s = new Scenario( source ); 
+		Scenario s = Scenario.getScenario(source); 
 
 		s.cut(begin, end);
 		s.write(destination, new String[0]);

@@ -10,15 +10,7 @@ import edu.bonn.cs.iv.bonnmotion.ScenarioLinkException;
 import edu.bonn.cs.iv.bonnmotion.Waypoint;
 
 /** Application to construct Gauss-Markov mobility scenarios. */
-
 public class OriginalGaussMarkov extends Scenario {
-
-	/** never read locally...
-	private static boolean bcDebug = false;
-	private static boolean minsDebug = false;
-	private static boolean gsDebug = false;
-	*/
-	
 	private static final String MODEL_NAME = "OriginalGaussMarkov";
 
 	/** Update frequency [s]. */
@@ -192,25 +184,21 @@ public class OriginalGaussMarkov extends Scenario {
 						dst = new Position(src.x + tbounce * velocity.x, y);
 						velocity = new Position(velocity.x, -velocity.y);
 						velocityMean = new Position(velocityMean.x, -velocityMean.y);
-//						velocityMean = getMeanVelocity((1. + randomNextDouble()) * Math.PI);
 					} else if (oobBottom) {
 						tbounce = (wNew = src.y / (src.y - dst.y)) * remaining;
 						dst = new Position(src.x + tbounce * velocity.x, 0.);
 						velocity = new Position(velocity.x, -velocity.y);
 						velocityMean = new Position(velocityMean.x, -velocityMean.y);
-//						velocityMean = getMeanVelocity(randomNextDouble() * Math.PI);
 					} else if (oobRight) {
 						tbounce = (wNew = (x - src.x) / (dst.x - src.x)) * remaining;
 						dst = new Position(x, src.y + tbounce * velocity.y);
 						velocity = new Position(-velocity.x, velocity.y);
 						velocityMean = new Position(-velocityMean.x, velocityMean.y);
-//						velocityMean = getMeanVelocity((.5 + randomNextDouble()) * Math.PI);
 					} else if (oobLeft) {
 						tbounce = (wNew = src.x / (src.x - dst.x)) * remaining;
 						dst = new Position(0., src.y + tbounce * velocity.y);
 						velocity = new Position(-velocity.x, velocity.y);
 						velocityMean = new Position(-velocityMean.x, velocityMean.y);
-//						velocityMean = getMeanVelocity((-.5 + randomNextDouble()) * Math.PI);
 					}
 					if ((wNew < 0.) || (tbounce > remaining)) {
 						System.out.println(MODEL_NAME + ".generate: Obviously, something is going wrong here! wNew=" + wNew + " tbounce=" + tbounce + " remaining=" + remaining);

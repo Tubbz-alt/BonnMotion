@@ -5,54 +5,58 @@ import java.util.Vector;
 /** Mobile node. */
 
 public class MobileNode {
-	protected static final int debug = 0;
 	protected static final boolean printAngleStuff = false;
 
 	/** Times when mobile changes speed or direction. */
-	protected double[] ct = null;
+	protected double[] changeSpeedOrDirectionTimes = null;
 
 	protected Vector<Waypoint> waypoints = new Vector<Waypoint>();
 
 	/** Optimised for waypoints coming in with increasing time.
 	@return Success of insertion (will return false iff there is already another waypoint in the list with same time but different position). */
-	public boolean add(double time, Position pos) {
-		ct = null;
-		int i = waypoints.size() - 1;
-		while (i >= 0) {
-			Waypoint w = waypoints.elementAt(i);
-			if (time > w.time) {
-				waypoints.insertElementAt(new Waypoint(time, pos), i + 1);
-				return true;
-			} else if (time == w.time) {
-				if (pos.equals(w.pos))
-					return true;
-				else 
-					return false;
-			} else {
-				i--;
-				System.err.println( "warning: MobileNode: trying to insert waypoint in the past <1>.");
-				System.err.println( "w.time: " +w.time + " time: " + time );
-			}
+	public boolean add(double _time, Position _newPosition) {
+	    changeSpeedOrDirectionTimes = null;
+	    int waypointCount = waypoints.size() - 1;
 
-		}
-		waypoints.insertElementAt(new Waypoint(time, pos), 0);
-		return true;
+	    Waypoint newWaypoint = new Waypoint(_time, _newPosition);
+
+	    while (waypointCount >= 0) {
+			Waypoint previousWaypoint = waypoints.elementAt(waypointCount);
+			if (_time > previousWaypoint.time) {
+			    waypoints.insertElementAt(newWaypoint, waypointCount + 1);
+			    return true;
+			}
+			else if (_time == previousWaypoint.time) {
+			    return sameWaypointAndTime(previousWaypoint,newWaypoint);
+			}
+			else {
+			    waypointCount--;
+			    System.err.println( "warning: MobileNode: trying to insert waypoint in the past <1>.");
+			    System.err.println( "w.time: " +previousWaypoint.time + " time: " + _time );
+			}
+	    }
+	    
+	    waypoints.insertElementAt(newWaypoint, 0);
+	    return true;
 	}
 
-	/**
-	 * Add Waypoint from an other node.
-	 * @param _node Waypoints of node to add
-	 */
-	public void add( MobileNode _node ) {
-		double timeOffset = 0;
+	protected boolean sameWaypointAndTime(Waypoint _A, Waypoint _B) {
+	    if(_A.time != _B.time) return false;
+	    if(!_A.pos.equals(_B.pos)) return false;
+	    return true;
+	}
 
-		if ( waypoints.size() > 0 )
-			timeOffset = ((Waypoint) waypoints.lastElement()).time + 0.0001; // Sonst ein Zeipunkt mit 2 Positionen 
+	public void addWaypointsOfOtherNode(MobileNode _node) {
+	    double timeOffset = 0;
 
-		for ( int i=0; i<_node.waypoints.size(); i++ ) {
-			Waypoint next = (Waypoint) _node.waypoints.get(i);
-			waypoints.add( new Waypoint(next.time + timeOffset, next.pos) );
-		}
+	    if (waypoints.size() > 0) {
+			timeOffset = ((Waypoint) waypoints.lastElement()).time + 0.0001; // Otherwise same timestamp for 2 positions
+	    }
+
+	    for (int i = 0; i<_node.waypoints.size(); i++) {
+			Waypoint next = (Waypoint)_node.waypoints.get(i);
+			waypoints.add(new Waypoint(next.time + timeOffset, next.pos) );
+	    }
 	}
 
 	/** Remove the latest waypoint (last in the internal list). */
@@ -61,61 +65,61 @@ public class MobileNode {
 	}
 
 	/** @return the latest waypoint (last in the internal list). */
-	public Waypoint lastElement() {
-		return waypoints.lastElement();
+	public Waypoint getLastWaypoint() {
+	    return waypoints.lastElement();
 	}
 
-	public int numWaypoints() {
-		return waypoints.size();
+	/** @return the number of waypoints */
+	public int getNumWaypoints() {
+	    return waypoints.size();
 	}
 
 	public Waypoint getWaypoint(int idx) {
-		return waypoints.elementAt(idx);
+	    try {
+			return waypoints.elementAt(idx);
+	    } 
+	    catch(ArrayIndexOutOfBoundsException e) {
+			System.err.println("Fatal error: Requested not existing waypoint: " + e.getLocalizedMessage());
+			System.exit(-1);
+			return null;
+	    }
 	}
-
-	/** @return the vector of waypoints. */
-//	this is just so dirty!!
-	/*	public Vector waypoints() {
-		return waypoints;
-	} */
 
 	/** Move all waypoints by a certain offset. */
 	public void shiftPos(double _x, double _y) {
 		for (int i = 0; i < waypoints.size(); i++) {
 			Waypoint oldWP = waypoints.get(i);
-			Waypoint newWP =
-				new Waypoint(oldWP.time, new Position(oldWP.pos.x + _x, oldWP.pos.y + _y) );
+			Waypoint newWP = new Waypoint(oldWP.time, oldWP.pos.newShiftedPosition(_x, _y));
 			waypoints.setElementAt(newWP, i);
 		}
 	}
 
 	/** @return Array with times when this mobile changes speed or direction. */
 	public double[] changeTimes() {
-		if (ct == null) {
-			ct = new double[waypoints.size()];
-			for (int i = 0; i < ct.length; i++)
-				ct[i] = waypoints.elementAt(i).time;
-		}
-		return ct;
+	    if (changeSpeedOrDirectionTimes == null) {
+			changeSpeedOrDirectionTimes = new double[waypoints.size()];
+			for (int i = 0; i < changeSpeedOrDirectionTimes.length; i++) {
+			    changeSpeedOrDirectionTimes[i] = waypoints.elementAt(i).time;
+			}
+	    }
+	    return changeSpeedOrDirectionTimes;
 	}
 
 	public void cut(double begin, double end) {
-		if (waypoints.size() == 0)
+		if (waypoints.size() == 0) {
 			return;
-		ct = null;
+		}
+		changeSpeedOrDirectionTimes = null;
 		Vector<Waypoint> nwp = new Vector<Waypoint>();
 		Waypoint w = null;
 		double oldstatus = 0.0;
 		for (int i = 0; i < waypoints.size(); i++) {
 			Waypoint w2 = waypoints.elementAt(i);
 			if ((w2.time >= begin) && (w2.time <= end)) {
-				//System.out.println(w2.time+","+w2.pos.status+" old:"+oldstatus);
 				w = w2;
 				if (nwp.size() == 0) {
-					// create new waypoint for 0.0 with status from Waypoint before
 					Position hpos = positionAt(begin);
-					Position bpos = new Position(hpos.x, hpos.y, oldstatus);
-					//if (!bpos.equals(w.pos))
+					Position bpos = hpos.clone(oldstatus);
 					nwp.addElement(new Waypoint(0.0, bpos));
 					if (w.time > begin) {
 						nwp.addElement(new Waypoint(w.time - begin, w.pos));
@@ -123,7 +127,6 @@ public class MobileNode {
 				} else 
 					nwp.addElement(new Waypoint(w.time - begin, w.pos));
 			}
-			// trace status
 			if (w2.pos.status == 2.0) {
 				oldstatus = 2.0;
 			} else if (w2.pos.status == 1.0) {
@@ -141,24 +144,18 @@ public class MobileNode {
 			if (!epos.equals(w.pos))
 				nwp.addElement(new Waypoint(end - begin, epos));
 		}
-		waypoints = nwp;		
+		waypoints = nwp;
 	}
 
 	public String movementString() {
-		String r = null;
 		StringBuffer sb = new StringBuffer(100*waypoints.size());
 		for (int i = 0; i < waypoints.size(); i++) {
 			Waypoint w = waypoints.elementAt(i);
 			sb.append(" ");
-			sb.append(w.time);
-			sb.append(" ");
-			sb.append(w.pos.x);
-			sb.append(" ");
-			sb.append(w.pos.y);
+			sb.append(w.getMovementStringPart());
 		}
 		sb.deleteCharAt(0);
-		r = sb.toString();
-		return r;
+		return sb.toString();
 	}
 
 	/** @param border The border we add around the scenario to prevent ns-2 from crashing; this value is added to all x- and y-values. */
@@ -183,8 +180,9 @@ public class MobileNode {
 				+ " "
 				+ (dist / (w2.time - w.time))
 				+ "\"";
-			if (dist == 0.0)
+			if (dist == 0.0) {
 				r[i + 1] = "# " + r[i + 1];
+			}
 			// hack alert... but why should we schedule these in ns-2?
 			w = w2;
 		}
@@ -199,33 +197,27 @@ public class MobileNode {
 
 	public String[] movementStringGlomo(String id) {
 		String[] r = new String[waypoints.size() - 1];
-		//Waypoint w = (Waypoint) waypoints.elementAt(0);
 		for (int i = 1; i < waypoints.size(); i++) {
-			Waypoint w2 = waypoints.elementAt(i);
-			r[i - 1] = id + " " + w2.time + "S (" + w2.pos.x + ", " + w2.pos.y + ", 0.0)";
+			Waypoint w = waypoints.elementAt(i);
+			r[i - 1] = id + " " + w.time + "S (" + w.pos.x + ", " + w.pos.y + ", 0.0)";
 		}
 		return r;
 	}
 
-	/** @return Position of this mobile at a given time. */
-	public Position positionAt(double time) {
+	private Position positionAt_old(double time) {
 		Position p1 = null;
 		double t1 = 0.0;
-		for (int i = 0;
-		i < waypoints.size();
-		i++) { // oh no, we should make this efficient (esp. for gauss-markov) -> binary search
+		for (int i = 0; i < waypoints.size(); i++) {
 			Waypoint w = waypoints.elementAt(i);
-			if (w.time == time)
+			if (w.time == time) {
 				return w.pos;
+			}
 			else if (w.time > time) {
 				if ((p1 == null) || p1.equals(w.pos))
 					return w.pos;
 				else {
 					double weight = (time - t1) / (w.time - t1);
-					return new Position(
-							p1.x * (1 - weight) + w.pos.x * weight,
-							p1.y * (1 - weight) + w.pos.y * weight,
-							p1.status);
+					return p1.getWeightenedPosition(w.pos, weight);	
 				}
 			}
 			p1 = w.pos;
@@ -234,77 +226,95 @@ public class MobileNode {
 		return p1;
 	}
 
+	/** @return Position of this mobile at a given time. */
+	public Position positionAt(double time) {
+		int begin = 0;
+		int end = waypoints.size() - 1;
+
+		if (end < 2) { // there are up to two waypoints, then call the linear search (old positionAt() function)
+			return positionAt_old(time);
+		}
+		
+		// check initial conditions: out of range [begin,end]
+		Waypoint firstWaypoint = waypoints.firstElement();
+		Waypoint lastWaypoint = waypoints.lastElement();
+		if (time < firstWaypoint.time)
+			return firstWaypoint.pos;
+		else if (time > lastWaypoint.time)
+			return lastWaypoint.pos;
+		else
+			return binarySearch(begin, end, time);
+	}
+	
+	private Position binarySearch(int i, int j, double time) {
+		int median = (i + j) / 2;
+		Waypoint w = waypoints.elementAt(median);
+		if (i + 1 == j) { // waypoint not found in waypoint list
+			Waypoint w_i = waypoints.elementAt(i);
+			Waypoint w_j = waypoints.elementAt(j);
+			
+			// if positions of surrounding waypoints are equal => no movement at time
+			// just return position
+			if (w_i.pos.equals(w_j.pos)) 
+				return new Position(w_i.pos.x, w_i.pos.y);
+			
+			double weight = (time - w_i.time) / (w_j.time - w_i.time);
+			return w_i.pos.getWeightenedPosition(w_j.pos, weight);	
+		}
+		else {
+			if (time == w.time) { // waypoint found
+				return w.pos;
+			} else if (time < w.time) { // left recursion
+				return binarySearch(i, median, time);
+			} else { // right recursion
+				return binarySearch(median, j, time);
+			}
+		}
+	}
+
 	public static boolean sameBuilding(Building[] buildings, Position pos1, Position pos2) {
-		// XXX: take care that two nodes do not communicate via opposite wall such that the following
-		//      will not be allowed:
+		//     takes care that two nodes do not communicate via opposite wall such that the following
+		//     will not be allowed:
 		//     __________
 		//     |        |
 		//      x       | x
 		//     |________|
 		//    
+		//		TODO: change loop, so that full array is checked
+		//			  now: only i=0 is checked
 		for (int i = 0; i < buildings.length; i++) {
-			Building b = buildings[i];
-			if ((pos1.x > b.x1) && (pos1.x < b.x2) && (pos1.y > b.y1) && (pos1.y < b.y2)) {
-				if ((pos2.x > b.x1) && (pos2.x < b.x2) && (pos2.y > b.y1) && (pos2.y < b.y2)) {
+			Building building = buildings[i];
+			
+			if (building.isInside(pos1)) {
+				// pos1 is in the building
+				if (building.isInside(pos2)) {
+					// pos2 is in the building, both are in the same building
 					return true;
 				}
-				else if ((b.x1 == b.doorx) && (pos2.x > b.doorx - 10) && (pos2.y == b.doory) && (pos1.x < b.doorx + 10) && (pos1.y == b.doory)) {
-					return true; 
+				
+				// pos2 is not in the building			
+				// check if pos1 can communicate with pos2 through the door
+				return building.canCommunicateThroughDoor(pos1, pos2);
+			} else {
+				// pos1 is not in the building
+				if (building.isInside(pos2)) {
+					// pos2 is in the building
+					if (building.canCommunicateThroughDoor(pos2, pos1)) {
+						return true;
+					}
 				}
-				else if ((b.x2 == b.doorx) && (pos2.x < b.doorx + 10) && (pos2.y == b.doory) && (pos1.x > b.doorx - 10) && (pos1.y == b.doory)) {
-					return true; 
-				}
-				else if ((b.y1 == b.doory) && (pos2.y > b.doory - 10) && (pos2.x == b.doorx) && (pos1.x == b.doorx) && (pos1.y < b.doory + 10)) {
-					return true; 
-				}
-				else if ((b.y1 == b.doory) && (pos2.y < b.doory + 10) && (pos2.x == b.doorx) && (pos1.x == b.doorx) && (pos1.y > b.doory - 10)) {
-					return true; 
-				}
-				else {
-					return false;
-				}
-			}
-			if ((pos2.x > b.x1) && (pos2.x < b.x2) && (pos2.y > b.y1) && (pos2.y < b.y2)) {
-				if ((b.x1 == b.doorx) && (pos1.x > b.doorx - 10) && (pos1.y == b.doory) && (pos2.x < b.doorx + 10) && (pos2.y == b.doory)) {
-					return true; 
-				}
-				else if ((b.x2 == b.doorx) && (pos1.x < b.doorx + 10) && (pos1.y == b.doory) && (pos2.x > b.doorx - 10) && (pos2.y == b.doory)) {
-					return true; 
-				}
-				else if ((b.y1 == b.doory) && (pos1.y > b.doory - 10) && (pos1.x == b.doorx) && (pos2.x == b.doorx) && (pos2.y < b.doory + 10)) {
-					return true; 
-				}
-				else if ((b.y1 == b.doory) && (pos1.y < b.doory + 10) && (pos1.x == b.doorx) && (pos2.x == b.doorx) && (pos2.y > b.doory - 10)) {
-					return true; 
-				}
-				else {
-					return false;
-				}
+				
+				return false;
 			}
 		}
 		return true;
 	}
 
-	public static double[] pairStatistics(
-			MobileNode node1,
-			MobileNode node2,
-			double start,
-			double duration,
-			double range,
-			boolean calculateMobility
-	) {
+	public static double[] pairStatistics(MobileNode node1, MobileNode node2, double start, double duration, double range, boolean calculateMobility) {
 		return pairStatistics(node1,node2,start,duration,range,calculateMobility,new Building[0]);
 	} 
 
-	public static double[] pairStatistics(
-			MobileNode node1,
-			MobileNode node2,
-			double start,
-			double duration,
-			double range,
-			boolean calculateMobility,
-			Building[] buildings) {
-
+	public static double[] pairStatistics(MobileNode node1, MobileNode node2, double start, double duration, double range, boolean calculateMobility, Building[] buildings) {
 		double[] ch1 = node1.changeTimes();
 		double[] ch2 = node2.changeTimes();
 
@@ -316,23 +326,33 @@ public class MobileNode {
 		double t0 = start;
 		Position o1 = node1.positionAt(start);
 		Position o2 = node2.positionAt(start);
+		
 		double mobility = 0.0;
 		double on_time = 0.0;
+		double D_spatial = 0.0;
+		int D_spatial_count = 0;
 		boolean connected = false;
 		boolean nodes_on_before = false;
+		
+		//For average relative speed metric
+		double Relative_speed = 0.0;
+		int Relative_speed_count = 0;	
+		
 		while (t0 < duration) {
 			double t1;
 			if (i1 < ch1.length)
 				if (i2 < ch2.length)
 					t1 = (ch1[i1] < ch2[i2]) ? ch1[i1++] : ch2[i2++];
-					else
-						t1 = ch1[i1++];
-			else if (i2 < ch2.length)
-				t1 = ch2[i2++];
-			else
-				t1 = duration;
-			if (t1 > duration)
-				t1 = duration;
+				else t1 = ch1[i1++];
+			else if (i2 < ch2.length) {
+			    t1 = ch2[i2++];
+			}
+			else {
+			    t1 = duration;
+			}
+			if (t1 > duration) {
+			    t1 = duration;
+			}
 			if (t1 > t0) {
 				Position n1 = node1.positionAt(t1);
 				Position n2 = node2.positionAt(t1);
@@ -350,14 +370,7 @@ public class MobileNode {
 					changes.addElement(new Double(t0));
 					connected = false;
 				}
-				if (debug > 1) {
-					System.out.println("o1=" + o1);
-					System.out.println("n1=" + n1);
-					System.out.println("o2=" + o2);
-					System.out.println("n2=" + n2);
-					System.out.println("do=" + o1.distance(o2));
-					System.out.println("dn=" + n1.distance(n2));
-				}
+
 				double dt = t1 - t0;          //time
 				double dxo = o1.x - o2.x;     //distance x at t0
 				double dxn = n1.x - n2.x;     //distance x at t1
@@ -367,43 +380,72 @@ public class MobileNode {
 				double c0 = (dxo * t1 - dxn * t0) / dt;
 				double d1 = (dyn - dyo) / dt;
 				double d0 = (dyo * t1 - dyn * t0) / dt;
+				
+				// calculate degree of spatial dependence
+				if (o1.distance(o2) < 2 * range)
+				{
+				    Position v_i = Position.diff(o1, n1);
+				    Position v_j = Position.diff(o2, n2);
+				    double s_i = Math.sqrt(Position.scalarProduct(v_i, v_i));
+				    double s_j = Math.sqrt(Position.scalarProduct(v_j, v_j));
+				    if (s_i > 0.0 && s_j > 0.0) {
+				        double RD = Position.scalarProduct(v_i, v_j) / (s_i * s_j);
+				        double SR = s_i > s_j ? (s_j/s_i) : (s_i/s_j);
+				        D_spatial += RD * SR;
+				        if (RD * SR != 0.0) {
+						    D_spatial_count++;
+						}
+				    }
+				    
+				    // calculate the relative speed
+				    Position relative_vector = Position.diff(v_i, v_j);
+				    double RS = relative_vector.norm();
+				    
+				    if (Math.abs(RS)>0.0000001) {
+				    	Relative_speed += RS;
+				    	Relative_speed_count++;
+				    }
+				    
+				}
+				
+				// TODO: pretty dirty, think of a better way to do this
+				double dzo = 0.0;
+				double e1 = 0.0;
+				double e0 = 0.0;
 
 				if (nodes_on) {
 					on_time = on_time + dt;
 				}
 
-				if ((c1 != 0.0) || (d1 != 0.0)) { // we have relative movement
-					double m = -1.0 * (c0 * c1 + d0 * d1) / (c1 * c1 + d1 * d1);
+				if ((c1 != 0.0) || (d1 != 0.0) || e1 != 0.0) { // we have relative movement
+					double m = -1.0 * (c0 * c1 + d0 * d1 + e0 * e1) / (c1 * c1 + d1 * d1 + e1 * e1);
 					// calculate relative mobility
 					double relmob = 0.0;
 					if ((calculateMobility || printAngleStuff)&&nodes_on) {
-						double dOld = Math.sqrt(dxo * dxo + dyo * dyo);
-						double dNew = Math.sqrt(dxn * dxn + dyn * dyn);
+						double dOld = Math.sqrt(dxo * dxo + dyo * dyo + dzo * dzo);
+						double dNew = Math.sqrt(dxn * dxn + dyn * dyn + dzo * dzo);
 						if ((m > t0) && (m < t1)) {
 							// at t0, nodes were losing distance to each other, but at t1, they are gaining distance again
 							Position in1 = node1.positionAt(m);
 							Position in2 = node2.positionAt(m);
-							double dxi = in1.x - in2.x;
-							double dyi = in1.y - in2.y;
-							double dInt = Math.sqrt(dxi * dxi + dyi * dyi);
+							double dInt = in2.distance(in1);
 							relmob = (Math.abs(dInt - dOld) + Math.abs(dNew - dInt))/dt;
-						} else
+						} 
+						else {
 							relmob = Math.abs(dNew - dOld)/dt;
+						}
 						mobility += relmob;
 					}
 
 
 					double m2 = m * m;
-					double q = (c0 * c0 + d0 * d0 - range * range) / (c1 * c1 + d1 * d1);
+					double q = (c0 * c0 + d0 * d0 + e0 * e0 - range * range) / (c1 * c1 + d1 * d1 + e1 * e1);
 					if (m2 - q > 0.0) {
 						double d = Math.sqrt(m2 - q);
 						double min = m - d;
 						double max = m + d;
-						if (debug > 1) {
-							System.out.println("[" + t0 + ";" + t1 + "]:");
-							System.out.println("\t[" + m + "-" + d + "=" + min + ";" + m + "+" + d + "=" + max + "]");
-						}
-						if ((min >= t0) && (min <= t1) && sameBuilding(buildings,o1,o2)) {
+
+						if ((min >= t0) && (min <= t1) && sameBuilding(buildings, o1, o2)) {
 							if (d < 0.01) {
 								System.out.println("---------------");
 								System.out.println("MobileNode.pairStatistics: The time span these 2 nodes are in range seems very");
@@ -419,8 +461,7 @@ public class MobileNode {
 								if (!connected) {
 									changes.addElement(new Double(min));
 									connected = true;
-									if (debug > 0)
-										System.out.println("connect at " + min);
+
 								} else if (min - t0 > 0.001) {
 									System.out.println("MobileNode.pairStatistics: sanity check failed (1)");
 									System.exit(0);
@@ -448,13 +489,15 @@ public class MobileNode {
 								if (connected) {
 									changes.addElement(new Double(max));
 									connected = false;
-									if (debug > 0)
-										System.out.println("disconnect at " + max);
-								} else if (max - t0 > 0.001) {
-									System.out.println("MobileNode.pairStatistics: sanity check failed (2)");
-									System.exit(0);
-								} else
-									System.out.println("MobileNode.pairStatistics: disconnect too late: t=" + max + " t0=" + t0);
+
+								}
+								else if (max - t0 > 0.001) {
+								    System.out.println("MobileNode.pairStatistics: sanity check failed (2)");
+								    System.exit(0);
+								} 
+								else {
+								    System.out.println("MobileNode.pairStatistics: disconnect too late: t=" + max + " t0=" + t0);
+								}
 						}
 					}
 				}
@@ -483,42 +526,95 @@ public class MobileNode {
 		/* add disconnect at the end of time - for correct stats link is counted at link-break */
 		/* NA: I do not know, why this wasn't needed before. 
 		   However, due to our changes we seem to need it and it shouldn't change anything */
-		if (connected) 
-			changes.addElement(new Double(duration));
-		//System.out.println("Changes-Size: "+changes.size());
+		if (connected) {
+		    changes.addElement(new Double(duration));
+		}
 
-		double[] result = new double[changes.size() + 2];
-		for (int i = 0; i < result.length; i++)
-			if (i == 0) {
+		double[] result = new double[changes.size() + 6];
+		for (int i = 0; i < result.length; i++) {
+		    if (i == 0) {
 				result[i] = mobility;
 				result[i+1] = on_time;
-				++i;
-			} else {
-				result[i] = ((Double) changes.elementAt(i - 2)).doubleValue();
-			}   
+				result[i+2] = D_spatial;
+				result[i+3] = D_spatial_count;
+				result[i+4] = Relative_speed;
+				result[i+5] = Relative_speed_count;
+				i += 5;
+		    } else {
+		    	result[i] = ((Double) changes.elementAt(i - 6)).doubleValue();
+		    }
+		}
+		
 		return result;
 	}
 
+	
+	/**
+	 * Finds the degree of temporal dependence for a node.
+	 * 
+	 * @param node Node being calculated
+	 * @param start Start time of the simulation
+	 * @param end End time of the simulation
+	 * @param c Value used to determine if times are too far apart to use
+	 * @return A double array containing the dependence and the number of calculations
+	 */
+	public static double[] getDegreeOfTemporalDependence(MobileNode node, double start, double end, double c){
+		double temporal_dependence[] = new double[2];
+		double[] change_times = node.changeTimes();
+		
+		double temp_dependence = 0.0;
+		int temporal_dependence_count = 0;
+		
+		for(int i = 0; i < change_times.length-1; i++)
+			for(int j = i+1; j < change_times.length-1; j++)
+				if( Math.abs(change_times[i] - change_times[j]) > c ){
+					Position vector_t = Position.diff(node.positionAt(change_times[i]),node.positionAt(change_times[i+1]));
+					Position vector_t_prime = Position.diff(node.positionAt(change_times[j]),node.positionAt(change_times[j+1]));
+					double time_t = change_times[i+1]-change_times[i];
+					double time_t_prime = change_times[j+1]-change_times[j];
+					
+					double dependence = getDegreeOfDependence(vector_t, vector_t_prime, time_t, time_t_prime);
+
+				    if (Math.abs(dependence)>0.0000001) {
+				    	temp_dependence += dependence;
+				    	temporal_dependence_count++;
+				    }
+				}
+		
+		temporal_dependence[0] = temp_dependence;
+		temporal_dependence[1] = temporal_dependence_count;
+
+		return temporal_dependence;
+	}
+	
+	/**
+	 * Get the degree of dependence between two vectors
+	 * @param vector_i First vector
+	 * @param vector_j Second vector
+	 * @param time_i First time interval
+	 * @param time_j Second time interval
+	 * @return Double of the dependence
+	 */
+	public static double getDegreeOfDependence(Position vector_i, Position vector_j, double time_i, double time_j){
+		double dependence = 0.0;
+	    double speed_i = vector_i.norm() / time_i;
+	    double speed_j = vector_j.norm() / time_j;
+	    
+	    if (speed_i > 0.0 && speed_j > 0.0) {
+	        double RD = Position.scalarProduct(vector_i, vector_j) / (vector_i.norm() * vector_j.norm());
+	        double SR = speed_i > speed_j ? (speed_j/speed_i) : (speed_i/speed_j);
+	        dependence = RD * SR;
+	    }
+	    return dependence;
+	}
 
 
-	public static double[] get_connection_time(
-			MobileNode node1,
-			MobileNode node2,
-			double start,
-			double duration,
-			double range
-	) {
+	public static double[] get_connection_time(MobileNode node1, MobileNode node2, double start, double duration, double range) {
 		return get_connection_time(node1,node2,start,duration,range,new Building[0]);
 	} 
 
 
-	public static double[] get_connection_time(
-			MobileNode node1,
-			MobileNode node2,
-			double start,
-			double duration,
-			double range,
-			Building[] buildings) {
+	public static double[] get_connection_time(MobileNode node1, MobileNode node2, double start, double duration, double range, Building[] buildings) {
 
 		double[] ch1 = node1.changeTimes();
 		double[] ch2 = node2.changeTimes();
@@ -532,22 +628,23 @@ public class MobileNode {
 		double t0 = start;
 		Position o1 = node1.positionAt(start);
 		Position o2 = node2.positionAt(start);
-		//double mobility = 0.0;
+		
 		boolean connected = false;
-		//boolean nodes_on_before = false;
+
 		while (t0 < duration) {
 			double t1;
 			if (i1 < ch1.length)
 				if (i2 < ch2.length)
 					t1 = (ch1[i1] < ch2[i2]) ? ch1[i1++] : ch2[i2++];
-					else
-						t1 = ch1[i1++];
+				else
+					t1 = ch1[i1++];
 			else if (i2 < ch2.length)
 				t1 = ch2[i2++];
 			else
 				t1 = duration;
 			if (t1 > duration)
 				t1 = duration;
+			
 			if (t1 > t0) {
 				Position n1 = node1.positionAt(t1);
 				Position n2 = node2.positionAt(t1);
@@ -563,7 +660,7 @@ public class MobileNode {
 					con_time = con_time + (t0 - link_up_at);
 					connected = false;
 				}
-
+				
 				double dt = t1 - t0;          //time
 				double dxo = o1.x - o2.x;     //distance x at t0
 				double dxn = n1.x - n2.x;     //distance x at t1
@@ -573,24 +670,25 @@ public class MobileNode {
 				double c0 = (dxo * t1 - dxn * t0) / dt;
 				double d1 = (dyn - dyo) / dt;
 				double d0 = (dyo * t1 - dyn * t0) / dt;
+				
+				// TODO: pretty dirty, think of a better way to do this
+				double e1 = 0.0;
+				double e0 = 0.0;
 
 				if (nodes_on) {
 					on_time = on_time + dt;
 				}
 
-				if ((c1 != 0.0) || (d1 != 0.0)) { // we have relative movement
-					double m = -1.0 * (c0 * c1 + d0 * d1) / (c1 * c1 + d1 * d1);
+				if ((c1 != 0.0) || (d1 != 0.0) || (e1 != 0.0)) { // we have relative movement
+					double m = -1.0 * (c0 * c1 + d0 * d1 + e0 * e1) / (c1 * c1 + d1 * d1 + e1 * e1);
 					double m2 = m * m;
-					double q = (c0 * c0 + d0 * d0 - range * range) / (c1 * c1 + d1 * d1);
+					double q = (c0 * c0 + d0 * d0 + e0 * e0 - range * range) / (c1 * c1 + d1 * d1 + e1 * e1);
 					if (m2 - q > 0.0) {
 						double d = Math.sqrt(m2 - q);
 						double min = m - d;
 						double max = m + d;
-						if (debug > 1) {
-							System.out.println("[" + t0 + ";" + t1 + "]:");
-							System.out.println("\t[" + m + "-" + d + "=" + min + ";" + m + "+" + d + "=" + max + "]");
-						}
-						if ((min >= t0) && (min <= t1) && sameBuilding(buildings,o1,o2)) {
+
+						if ((min >= t0) && (min <= t1) && sameBuilding(buildings, o1, o2)) {
 							if (d < 0.01) {
 								System.out.println("---------------");
 								System.out.println("MobileNode.pairStatistics: The time span these 2 nodes are in range seems very");
@@ -606,8 +704,6 @@ public class MobileNode {
 								if (!connected) {
 									link_up_at = min;
 									connected = true;
-									if (debug > 0)
-										System.out.println("connect at " + min);
 								} else if (min - t0 > 0.001) {
 									System.out.println("MobileNode.pairStatistics: sanity check failed (1)");
 									System.exit(0);
@@ -620,8 +716,6 @@ public class MobileNode {
 								if (connected) {
 									con_time = con_time + (max - link_up_at);
 									connected = false;
-									if (debug > 0)
-										System.out.println("disconnect at " + max);
 								} else if (max - t0 > 0.001) {
 									System.out.println("MobileNode.pairStatistics: sanity check failed (2)");
 									System.exit(0);
@@ -633,7 +727,6 @@ public class MobileNode {
 				t0 = t1;
 				o1 = n1;
 				o2 = n2;
-				//nodes_on_before = nodes_on;
 
 				// floating point inaccuracy detection:
 
@@ -658,7 +751,6 @@ public class MobileNode {
 		if (connected) {
 			con_time = con_time + (duration - link_up_at);
 		}
-		//System.out.println("Changes-Size: "+changes.size());
 
 		double[] result = new double[2];
 		result[0] = on_time;
@@ -689,10 +781,7 @@ public class MobileNode {
 
 			Position p1 = node.positionAt(t1);
 
-			double dx = p1.x - p0.x;
-			double dy = p1.y - p0.y;
-
-			double dp = Math.sqrt(dx * dx + dy * dy);
+			double dp = p0.distance(p1);
 
 			dist_cht[i] = dp;
 			on_cht[i] = (p0.status != 2.0); // if status of t0 == 2.0 node is off/away
@@ -703,25 +792,18 @@ public class MobileNode {
 			p0 = p1;
 		}
 
-		int i=0;
-		for (int j=0; j<size; j++) {
-
-			//interval of [start+j*interval;start+(j+1)*interval)
-
+		int i = 0;
+		for (int j = 0; j<size; j++) {
 			int k = 0;
-			//System.out.println("i:"+i+" k:"+k+" j:"+j+" array_length:"+time_start.length);
 			while ((time_start.length > i+k)&&(time_start[i+k] < (start+(j+1)*interval))) {
 				k++;
-				//System.out.println(". i:"+i+" k:"+k+" j:"+j+" array_length:"+time_start.length);
 			}
 
 			// calc on_time in interval and distance for interval
 			double on_time = 0.0;
 			double dist_on = 0.0;
 			for (int i_run = i; i_run < i+k; i_run++) {
-				//System.out.println("i_run:"+i_run);
 				if (on_cht[i_run]) {
-					// falls nicht komplett drin, m�ssen wir rechnen
 					double help = time_cht[i_run];
 					double help_dist = dist_cht[i_run];
 					if (time_start[i_run] < (start+j*interval)) {
@@ -741,17 +823,15 @@ public class MobileNode {
 			speed[(2*j)+1] = on_time; //on_time
 
 			i = i+k-1;
-
 		}
 
 		return speed;
 	}
 
-
 	public static double getNodesOnTime(MobileNode node, double duration) {
 
 		double[] cht = node.changeTimes();
-		double  on_time = 0.0;
+		double on_time = 0.0;
 		double t0 = 0.0;
 		Position p0 = node.positionAt(t0);
 
@@ -776,14 +856,11 @@ public class MobileNode {
 	}
 
 	public static boolean isNodeOffAtTime(MobileNode node, double time) {
-
 		Position pos = node.positionAt(time);
 		return (pos.status == 2);
-
 	}
 
 	public static double[] getOnOffChanges(MobileNode node) {
-
 		double[] ch = node.changeTimes();
 		boolean on = true;
 		int events = 0;
@@ -800,16 +877,13 @@ public class MobileNode {
 			if (node.positionAt(ch[t]).status == 2) {
 				result[j] = ch[t];
 				++j;
-				//if (!on) {
-					//    System.err.println("Error: Node switches off, but is already switched off! (t="+ch[t]+")");
-				//} 
 				on = false;
 			}
 			if (node.positionAt(ch[t]).status == 1) {
 				result[j] = ch[t];
 				++j;
 				if (on) {			    
-					System.err.println("Error: Node switches on, but is already switched on! (t="+ch[t]+")");
+				    System.err.println("Error: Node switches on, but is already switched on! (t="+ch[t]+")");
 				} 
 				on = true;
 			}		   

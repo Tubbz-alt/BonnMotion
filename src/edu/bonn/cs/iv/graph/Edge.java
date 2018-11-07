@@ -10,7 +10,7 @@ public class Edge {
 	/** For practical reasons, this variable (saving the weight of the edge) is public. There is not much you can do wrong here, just watch out when using a weight of 0! */
 	public int weight;
 	
-	protected Hashtable label = null;
+	protected Hashtable<Object,Object> label = null;
 	
 	public Edge(Node src, Node dst, int weight) {
 		if (src.homeGraph() != dst.homeGraph())
@@ -39,7 +39,7 @@ public class Edge {
 	
 	public void setLabel(Object key, Object value) {
 		if (label == null)
-			label = new Hashtable();
+			label = new Hashtable<Object,Object>();
 		label.put(key, value);
 	}
 	

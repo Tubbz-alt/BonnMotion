@@ -1,7 +1,7 @@
 /*******************************************************************************
  ** BonnMotion - a mobility scenario generation and analysis tool             **
- ** Copyright (C) 2002-2009 University of Bonn
- ** Code: Raphael Ernst
+ ** Copyright (C) 2002-2010 University of Bonn                                **
+ ** Code: Matthias Schwamborn                                                 **
  **                                                                           **
  ** This program is free software; you can redistribute it and/or modify      **
  ** it under the terms of the GNU General Public License as published by      **
@@ -21,59 +21,55 @@
 package edu.bonn.cs.iv.bonnmotion.apps;
 
 import java.io.*;
-
 import edu.bonn.cs.iv.bonnmotion.*;
 
-public class IntervalFormat extends App {
-	protected static final String filesuffix = ".if";
-        
+/** The ONE file format
+ * according to:
+ * http://www.netlab.tkk.fi/tutkimus/dtn/theone/javadoc/input/ExternalMovementReader.html
+ * 
+ * @author schwambo
+ */
+public class TheONEFile extends App {
+	protected static final String fileSuffix = ".one";
+
 	protected String name = null;
 	protected double intervalLength = 1.0;
-	protected boolean skipHead = false;
 
-	public IntervalFormat(String[] args) {
-		go( args );
+	public TheONEFile(String[] args) {
+		go(args);
 	}
 
-	public void go( String[] args ) {
+	public void go(String[] args) {
 		parse(args);
 
 		Scenario s = null;
-		if ( name == null ) {
+		if (name == null) {
 			printHelp();
 			System.exit(0);
 		}
-		
+
 		try {
 			s = Scenario.getScenario(name);
 		} catch (Exception e) {
-			App.exceptionHandler( "Error reading file", e);
+			e.printStackTrace();
+			App.exceptionHandler("Error reading file", e);
 		}
 
+		PrintWriter out = openPrintWriter(name + fileSuffix);
+		/** print header line:
+		 * minTime maxTime minX maxX minY maxY [minZ maxZ]
+		 * */
+		out.println(0.0 + " " + s.getDuration() + " " + 0.0 + " " + s.getX() + " " + 0.0 + " " + s.getY());
+
 		MobileNode[] node = s.getNode();
-		
-		PrintWriter out = openPrintWriter(name + filesuffix);
-		if(!skipHead) {
-		    out.println("#X " + s.getX());
-		    out.println("#Y " + s.getY());
-		    out.println("#Nodes " + s.nodeCount());
-		    out.println("#Duration " + s.getDuration());
-		    
-		    for (int i = 0; i < node.length; i++) {
-		    	String nodeMovementString = node[i].movementString();
-		    	out.println("#Waypoints node  " + i + ": " + nodeMovementString);
-		    }
-		    out.println("#Node Time X Y");
-		}
-		
-		double duration = Math.ceil(s.getDuration());
-		for(int i = 0; i < node.length; i++) {
-			double t = 0;
-            while(t<duration+1) {
-            	Position p = node[i].positionAt(t);
-                out.println(i + " " + t + " " + p.x + " " + p.y);
-                t += intervalLength;
-            }
+		double duration = s.getDuration();
+		double t = 0.0;
+		while (t < duration) {
+			for (int i = 0; i < node.length; i++) {
+				Position p = node[i].positionAt(t);
+				out.println(t + " " + i + " " + p.x + " " + p.y);
+			}
+			t += intervalLength;
 		}
 
 		out.close();
@@ -81,31 +77,27 @@ public class IntervalFormat extends App {
 
 	protected boolean parseArg(char key, String val) {
 		switch (key) {
-		    case 'f':
-		    	this.name = val;
-		    	return true;
-		    case 's':
-		    	this.skipHead = true;
-		    	return true;
-		    case 'l':
-		    	this.intervalLength = Double.parseDouble(val);
-		    	return true;
-		    default:
-		    	return super.parseArg(key, val);
+			case 'f':
+				this.name = val;
+				return true;
+			case 'l':
+				this.intervalLength = Double.parseDouble(val);
+				return true;
+			default:
+				return super.parseArg(key, val);
 		}
 	}
 
 	public static void printHelp() {
 		System.out.println();
 		App.printHelp();
-		System.out.println("IntervalFormat:");
-		System.out.println("Outputs node movement as interval");
-		System.out.println("\t-f <filename> (Scenario)");
-		System.out.println("\t-l <double> (Intervallength, Optional)");
-		System.out.println("\t-s (Skip head of outputfile, Optional)");
+		System.out.println("TheONEFile:");
+		System.out.println("Outputs node movement in The ONE format");
+		System.out.println("\t-f <filename> (scenario)");
+		System.out.println("\t-l <double> (sample interval length, default is 1s)");
 	}
-	
+
 	public static void main(String[] args) throws FileNotFoundException, IOException {
-		new IntervalFormat(args);
+		new TheONEFile(args);
 	}
 }

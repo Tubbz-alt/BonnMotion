@@ -15,9 +15,10 @@ import edu.bonn.cs.iv.bonnmotion.Waypoint;
 public class RandomWaypoint extends RandomSpeedBase {
 
 	private static final String MODEL_NAME = "RandomWaypoint";
-
 	/** Restrict the mobiles' movements: 1 . */
 	protected int dim = 3;
+	/** distance between neighbouring mesh nodes */
+	private double meshNodeDistance = -1;
 
 	public RandomWaypoint(int nodes, double x, double y, double duration, double ignore, long randomSeed, double minspeed, double maxspeed, double maxpause, int dim) {
 		super(nodes, x, y, duration, ignore, randomSeed, minspeed, maxspeed, maxpause);
@@ -88,7 +89,9 @@ public class RandomWaypoint extends RandomSpeedBase {
 						throw new RuntimeException(MODEL_NAME + ".go: dimension may only be of value 1, 2 or 3.");
 				}
 				double speed = (maxspeed - minspeed) * randomNextDouble() + minspeed;
-				t += src.distance(dst) / speed;
+				double dist = src.distance(dst);
+				double time = dist / speed;
+				t += time;
 				if (!node[i].add(t, dst))
 					throw new RuntimeException(MODEL_NAME + ".go: error while adding waypoint (2)");
 				if ((t < duration) && (maxpause > 0.0)) {
@@ -126,6 +129,9 @@ public class RandomWaypoint extends RandomSpeedBase {
 				if ((aFieldParams != null) && (dim != 3))
 					System.out.println("warning: attractor field not used if dim != 3");
 				return true;
+			case 'm': // set mesh node distance
+			    meshNodeDistance = Double.parseDouble(val);
+			    return true;
 			default:
 				return super.parseArg(key, val);
 		}
@@ -137,38 +143,46 @@ public class RandomWaypoint extends RandomSpeedBase {
 		System.out.println("\t-o <dimension: 1: x only, 2: x or y, 3: x and y>");
 	}
 	
-
-	/* (non-Javadoc)
-	 * @see edu.bonn.cs.iv.bonnmotion.Scenario#postGeneration()
-	 */
 	protected void postGeneration() {
 		for ( int i = 0; i < node.length; i++ ) {
-			/* AAAAAAARG! nodes walk beyond the border
-			
-			MobileNode n = node[i];
-			
-			Waypoint w2 = node[i].getWaypoint(node[i].numWaypoints() - 1);
-			Waypoint w1 = node[i].getWaypoint(node[i].numWaypoints() - 2);
-
-			// Gradlinige Bewegung, konstante Geschw.,  v-> = v_x-> + v_y->
-			double t_d = w2.time - w1.time;
-			double v_x = (w2.pos.x-w1.pos.x) / t_d;
-			double v_y = (w2.pos.y-w1.pos.y) / t_d;
-			double p_x = (duration-w1.time) * v_x + w1.pos.x;
-			double p_y = (duration-w1.time) * v_y + w1.pos.y;
-			Position p = new Position( p_x, p_y );
-
-			node[i].removeLastElement();
-			node[i].add(duration, p); */
-			
-			Waypoint l = node[i].lastElement();
+			Waypoint l = node[i].getLastWaypoint();
 			if (l.time > duration) {
 				Position p = node[i].positionAt(duration);
 				node[i].removeLastElement();
 				node[i].add(duration, p);
 			}
 		}
+
+		if (meshNodeDistance > 0)
+		    addMeshNodes();
+        
 		super.postGeneration();
 	}
+    
+    /**
+    *
+    * @pre meshNodeDistance > 0
+    */
+    private void addMeshNodes()
+    {
+        int numMeshX = (int)Math.floor(x / meshNodeDistance);
+        int numMeshY = (int)Math.floor(y / meshNodeDistance);
+        int numMeshNodes = numMeshX * numMeshY;
 
+        System.out.println("Adding a grid of " + numMeshNodes + " static mesh nodes...");
+
+        MobileNode[] nodeNew = new MobileNode[node.length + numMeshNodes];
+        for (int i = 0; i < node.length; i++)
+            nodeNew[i] = node[i];
+        for (int i = 0; i < numMeshNodes; i++)
+            nodeNew[node.length + i] = new MobileNode();
+
+        for (int j = 0; j < numMeshY; j++)
+        {
+            for (int i = 0; i < numMeshX; i++)
+                nodeNew[node.length + j*numMeshX + i].add(0.0, new Position((i+1) * meshNodeDistance, (j+1) * meshNodeDistance));
+        }
+
+        node = nodeNew;
+    }
 }

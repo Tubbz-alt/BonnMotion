@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.io.BufferedWriter;
+import java.io.Serializable;
 import java.util.Vector;
 import java.util.LinkedList;
 import java.util.Map;
@@ -14,16 +15,15 @@ import java.awt.Rectangle;
 
 import edu.bonn.cs.iv.bonnmotion.CatastropheNode;
 import edu.bonn.cs.iv.bonnmotion.Position;
-import edu.bonn.cs.iv.bonnmotion.RandomSpeedBase;
+import edu.bonn.cs.iv.bonnmotion.RandomSpeedBaseDisasterArea;
 import edu.bonn.cs.iv.bonnmotion.CatastropheArea;
 import edu.bonn.cs.iv.bonnmotion.Obstacle;
 import edu.bonn.cs.iv.util.PositionHashMap;
 import edu.bonn.cs.iv.util.IntegerHashMap;
 
+/** Application to create movement scenarios according to the Disaster Area model. */
 
-/** Application to create movement scenarios according to the Reference Point Group Mobility model. */
-
-public class DisasterArea extends RandomSpeedBase {
+public class DisasterArea extends RandomSpeedBaseDisasterArea {
 
 	public static final String MODEL_NAME = "DisasterArea";
 
@@ -34,7 +34,6 @@ public class DisasterArea extends RandomSpeedBase {
 	/** Minimum space needed by group. */
 	protected double mindist = 2.5;
 	/** Average nodes per group. */
-	/* protected double avgMobileNodesPerGroup = 3.0;*/
 	protected double avgMobileNodesPerGroup = 3.0;
 	/** Standard deviation of nodes per group. */
 	protected double groupSizeDeviation = 0;
@@ -52,8 +51,6 @@ public class DisasterArea extends RandomSpeedBase {
 	protected CatastropheArea[] catastropheAreas = null;
 	/** temporary saves the arguments for the catastrophe areas */
 	private LinkedList<String> catastropheAreaArgs = new LinkedList<String>();
-	/** distinguish between phases . */
-	int movePhase = 0;
 	/** initialize dst . */
 	Position dst = new Position(0,0);
 	/** remember maxpause . */
@@ -82,21 +79,24 @@ public class DisasterArea extends RandomSpeedBase {
 		type == 4: "ambulance parking point" / Rettungsmittelhalteplatz
 	 */
 	/** Manage the Obstacles . */
+	@SuppressWarnings("unchecked")
 	protected LinkedList<Obstacle>[] obstacles = new LinkedList[5];
 	/** Manage the C-Obstacles for maxdist. */
+	@SuppressWarnings("unchecked")
 	protected LinkedList<Obstacle>[] maxCObstacles = new LinkedList[5];
 	/** Manage the C-Obstacles for mindist. */
+	@SuppressWarnings("unchecked")
 	protected LinkedList<Obstacle>[] minCObstacles = new LinkedList[5];
 	/** remember Visibility Graph with MaxCObstacles*/
-	LinkedList[] Graph = new LinkedList[5];
+	@SuppressWarnings("unchecked")
+	LinkedList<Serializable>[] Graph = new LinkedList[5];
 	/** remember Visibility Graph with MinCObstacles*/
-	LinkedList[] MinGraph = new LinkedList[5];
+	@SuppressWarnings("unchecked")
+	LinkedList<Serializable>[] MinGraph = new LinkedList[5];
 	/** remember shortest paths with MaxCObstacles*/
 	PositionHashMap[] shortestpaths = new PositionHashMap[5];
 	/** remember shortest paths with MinCObstacles*/
 	PositionHashMap[] Minshortestpaths = new PositionHashMap[5];
-
-
 
 	public DisasterArea(int nodes, double x, double y, double duration, double ignore, long randomSeed, double minspeed, double maxspeed, double maxpause, double maxdist, double avgMobileNodesPerGroup, double groupSizeDeviation, double pGroupChange) {
 		super(nodes, x, y, duration, ignore, randomSeed, minspeed, maxspeed, maxpause);
@@ -122,8 +122,7 @@ public class DisasterArea extends RandomSpeedBase {
 		generate();
 	}
 
-
-
+	@SuppressWarnings("rawtypes")
 	public void generate() {
 		this.processArguments();
 		preGeneration();
@@ -152,12 +151,12 @@ public class DisasterArea extends RandomSpeedBase {
 				   type == 4: "ambulance parking point" / Rettungsmittelhalteplatz
 				 */
 				switch (t) {
-				case 4:
-					if ((catastropheAreas[i].type != 4) && no_knock_over) {
-						add = true;
-					}
-					break;
-					/* case 0-3 event. later */
+					case 4:
+						if ((catastropheAreas[i].type != 4) && no_knock_over) {
+							add = true;
+						}
+						break;
+						/* case 0-3 event. later */
 				}
 				if (add) {
 					double[] CA_Params = catastropheAreas[i].getPolygonParams();
@@ -204,7 +203,7 @@ public class DisasterArea extends RandomSpeedBase {
 			//for (int t = 0; t < 5; t++) { // for each type of area
 			for(int j = 0; j < obstacles[catastropheAreas[i].type].size(); j++) {
 				if(catastropheAreas[i].intersects(obstacles[catastropheAreas[i].type].get(j).getBounds())) {
-					System.out.println("NOTE: in " + DisasterArea.MODEL_NAME + ", one Obstacle's ("+j+") Bounds intersect a Catastrophe Area - type "+catastropheAreas[i].type+" \n");
+					System.out.println("NOTE: in " + MODEL_NAME + ", one Obstacle's ("+j+") Bounds intersect a Catastrophe Area - type "+catastropheAreas[i].type+" \n");
 					//System.exit(0);
 				}
 			}
@@ -249,7 +248,6 @@ public class DisasterArea extends RandomSpeedBase {
 					break;
 				}
 			}
-			movePhase = 0;
 			CatastropheNode ref = null;
 			if(catastropheAreas[toArea].assignedtransportgroups < catastropheAreas[toArea].numtransportgroups){
 				CatastropheNode ref1 = new CatastropheNode(toArea,0,catastropheAreas[toArea].entry, catastropheAreas[toArea].exit);
@@ -269,20 +267,14 @@ public class DisasterArea extends RandomSpeedBase {
 			Position src = DetRandDst(catastropheAreas[((CatastropheNode)ref).belongsto].getBounds().x, catastropheAreas[((CatastropheNode)ref).belongsto].getBounds().x + catastropheAreas[((CatastropheNode)ref).belongsto].getBounds().width, catastropheAreas[((CatastropheNode)ref).belongsto].getBounds().y + catastropheAreas[((CatastropheNode)ref).belongsto].getBounds().height, catastropheAreas[((CatastropheNode)ref).belongsto].getBounds().y, catastropheAreas[((CatastropheNode)ref).belongsto]);
 
 			if (! ref.add(0.0, src)) {
-				System.out.println(DisasterArea.MODEL_NAME + ".main: error while adding group movement (1)");
+				System.out.println(MODEL_NAME + ".generate: error while adding group movement (1)");
 				System.exit(0);
 			}
 			
 			while (t < duration) {
 				//determine movementcycle for group
-				LinkedList movementcycle = new LinkedList();
+				LinkedList<Position> movementcycle = new LinkedList<Position>();
 				movementcycle = determineMovementCycle(catastropheAreas[((CatastropheNode)ref).belongsto], ref);
-				/** variables never used...
-				double xleft = CatastropheAreas[((CatastropheNode)ref).belongsto].getBounds().x;
-				double xright = CatastropheAreas[((CatastropheNode)ref).belongsto].getBounds().x + CatastropheAreas[((CatastropheNode)ref).belongsto].getBounds().width;
-				double yhigh = CatastropheAreas[((CatastropheNode)ref).belongsto].getBounds().y;
-				double ylow = CatastropheAreas[((CatastropheNode)ref).belongsto].getBounds().y + CatastropheAreas[((CatastropheNode)ref).belongsto].getBounds().height;
-				 */
 				//determine speed according to the area the group belongs to
 				double speed = 0;
 				maxspeed = catastropheAreas[ref.belongsto].maxspeed[ref.type];
@@ -295,21 +287,18 @@ public class DisasterArea extends RandomSpeedBase {
 					double initial_maxpause = (2*x + 2*y) / minspeed;
 					double pause = initial_maxpause * randomNextDouble();
 					t += pause;
-					//System.out.println(pause);
 					if (! ref.add(t, src)) {
-						System.out.println(DisasterArea.MODEL_NAME + ".main: error while adding group movement (2)");
+						System.out.println(MODEL_NAME + ".generate: error while adding group movement (2)");
 						System.exit(0);
 					}
 				}
 				/***************/
 
-				//System.out.println("Movement Cycle: (time"+t+")");
 				for(int i = 0; i < movementcycle.size(); i++) {
-					dst = ((Position)movementcycle.get(i));
-					//System.out.println(dst.x+","+dst.y+","+dst.status);
+					dst = movementcycle.get(i);
 					t += src.distance(dst) / speed;
 					if (! ref.add(t, dst)) {
-						System.out.println(DisasterArea.MODEL_NAME + ".main: error while adding group movement (2)");
+						System.out.println(MODEL_NAME + ".generate: error while adding group movement (2)");
 						System.exit(0);
 					}
 					if ((t < duration) && (maxpause > 0.0)) {
@@ -317,14 +306,13 @@ public class DisasterArea extends RandomSpeedBase {
 						if (pause > 0.0) {
 							t += pause;
 							if (! ref.add(t, dst)) {
-								System.out.println(MODEL_NAME + ".main: error while adding node movement (3)");
+								System.out.println(MODEL_NAME + ".generate: error while adding node movement (3)");
 								System.exit(0);
 							}
 						}
 					}
 					src = dst;
 				}
-				//System.out.println("Movement Cycle Ende:");
 			}
 
 			// define group size:
@@ -354,12 +342,10 @@ public class DisasterArea extends RandomSpeedBase {
 			maxspeed = catastropheAreas[((CatastropheNode)group).belongsto].maxspeed[((CatastropheNode)group).type];
 			minspeed = catastropheAreas[((CatastropheNode)group).belongsto].minspeed[((CatastropheNode)group).type];
 			Position src = null;
-			//boolean srcvalid = false;
-			//double min = 0.0;
 			src = group.positionAt(t).rndprox(maxdist, randomNextDouble(), randomNextDouble());
 
 			if (! node[i].add(0.0, src)) {
-				System.out.println(MODEL_NAME + ".main: error while adding node movement (1)");
+				System.out.println(MODEL_NAME + ".generate: error while adding node movement (1)");
 				System.exit(0);
 			}
 			while (t < duration) {
@@ -368,27 +354,33 @@ public class DisasterArea extends RandomSpeedBase {
 				while ((gmi < gm.length) && (gm[gmi] <= t))
 					++gmi;
 				boolean pause = (gmi == 0);
+				
 				if (! pause) {
 					Position pos1 = group.positionAt(gm[gmi-1]);
 					Position pos2 = group.positionAt(gm[gmi]);
 					pause = pos1.equals(pos2);
 				}
+				
 				double next = (gmi < gm.length) ? gm[gmi] : duration;
-				Position dst; double speed;
+				Position dst; 
+				double speed;
+				
 				do {
 					dst = group.positionAt(next).rndprox(maxdist, randomNextDouble(), randomNextDouble());
 					speed = src.distance(dst) / (next - t);
 				} while ((! pause) && (speed > maxspeed));
+				
 				if (speed > maxspeed) {
 					double c_dst = ((maxspeed - minspeed) * randomNextDouble() + minspeed) / speed;
 					double c_src = 1 - c_dst;
-					//Position xdst = dst;
 					dst = new Position(c_src * src.x + c_dst * dst.x, c_src * src.y + c_dst * dst.y);
 				}
+				
 				if (! node[i].add(next, dst)) {
-					System.out.println(MODEL_NAME + ".main: error while adding node movement (4)");
+					System.out.println(MODEL_NAME + ".generate: error while adding node movement (4)");
 					System.exit(0);
 				}
+				
 				if(catastropheAreas[node[i].belongsto].type == 4 && node[i].type == 0){
 					if(group.positionAt(next).equals(catastropheAreas[node[i].belongsto].borderentry) || group.positionAt(next).equals(catastropheAreas[node[i].belongsto].borderexit)){
 						Double value = new Double(next);
@@ -434,11 +426,10 @@ public class DisasterArea extends RandomSpeedBase {
 		p[3] = "maxdist=" + maxdist;
 
 		PrintWriter changewriter = new PrintWriter(new BufferedWriter(new FileWriter(_name + ".changes")));
-		Iterator it = statuschanges.entrySet().iterator();
+		Iterator<Map.Entry<Integer, Object>> it = statuschanges.entrySet().iterator();
 		while(it.hasNext()){
-			Map.Entry entry = (Map.Entry)it.next();
+			Map.Entry<Integer, Object> entry = it.next();
 			Integer key = ((Integer)entry.getKey());
-//			changewriter.write("Bewegung ");
 			changewriter.write(key.toString());
 			changewriter.write(" ");
 		}
@@ -462,7 +453,7 @@ public class DisasterArea extends RandomSpeedBase {
 		this.catastropheAreas = new CatastropheArea[maxCatastropheAreas];
 		// process catastrophe area arguments
 		for (String arg : this.catastropheAreaArgs) {
-			++this.numCatastropheAreas;
+                        ++this.numCatastropheAreas;
 			/** fetch params for Area. */
 			double[] areaParams = parseDoubleArray(arg);
 			// last three params are no coordinates
@@ -473,16 +464,14 @@ public class DisasterArea extends RandomSpeedBase {
 			}
 			// check if coordinates are valid for scenario
 			for(int i = 0; i < check_till; i = i+2){
-				if(areaParams[i] > x - this.maxdist 
-						|| areaParams[i] < 0 + this.maxdist){
+				if(areaParams[i] > x - this.maxdist || areaParams[i] < 0 + this.maxdist){
 					System.out.println("Areas' x-coordinates should be in scenario range and not too near to border");
 					System.out.println("Area-Type: " + areaParams[areaParams.length - 3]+"maxdist " + maxdist + " Params " + areaParams[i]);
 					System.exit(0);
 				}
 			}
 			for(int i = 1; i < check_till; i = i+2){
-				if(areaParams[i] > y - this.maxdist 
-						|| areaParams[i] < 0 + this.maxdist){
+				if(areaParams[i] > y - this.maxdist || areaParams[i] < 0 + this.maxdist){
 					System.out.println("Areas' y-coordinates should be in scenario range and not too near to border");
 					System.out.println("Area-Type: " + areaParams[areaParams.length - 3] + " maxdist " + maxdist + " Params " + areaParams[i]);
 					System.exit(0);
@@ -595,11 +584,12 @@ public class DisasterArea extends RandomSpeedBase {
 	}
 
 	public static void printHelp() {
-		RandomSpeedBase.printHelp();
+		RandomSpeedBaseDisasterArea.printHelp();
 		System.out.println( MODEL_NAME + ":" );
 		System.out.println("\t-a <average no. of nodes per group>");
 		System.out.println("\t-b <catastrophe area (can be used multiple times for several catastrophe areas)>");
 		System.out.println("\t-c <group change probability>");
+		System.out.println("\t-e <max catastrophe areas>");
 		System.out.println("\t-r <max. distance to group center>");
 		System.out.println("\t-s <group size standard deviation>");
 		System.out.println("\t-O <obstacle for only one group (specified in last param)>");
@@ -614,7 +604,6 @@ public class DisasterArea extends RandomSpeedBase {
 		boolean inobstacle = false;
 		Position newdst = null;
 
-		//System.out.println("("+xleft+","+xright+","+ylow+","+yhigh+","+area.type+")");
 		while(maximum < 10000){
 			newdst = new Position(xleft + (randomNextDouble() * (xright - xleft)) , yhigh + (randomNextDouble() * (ylow - yhigh)));
 
@@ -653,13 +642,11 @@ public class DisasterArea extends RandomSpeedBase {
 				}
 			}
 			else{
-				//System.out.println("not found random variate in type "+area.type+" try:"+maximum);
 				++maximum;
 			}
 		}
 		System.out.println("Please enlarge your area or specify other obstacles, System was not able to compute valid destination - DetRandDst("+area.type+")");
 		System.out.println("exit(0) but HACKED");
-		//if (true) return newdst;
 		System.exit(0);
 		return null;
 	}
@@ -675,10 +662,11 @@ public class DisasterArea extends RandomSpeedBase {
 	}
 
 	//write coordinates of obstacles, cobstacles, areas and node movements to a file
+	@SuppressWarnings("rawtypes")
 	public void mywrite(){
 		int t = 4;         // use obstacles from 3, cause TEL does not contain moving nodes
 		try {
-		        PrintWriter mywriter = new PrintWriter(new BufferedWriter(new FileWriter("Aspects.txt")));
+	        PrintWriter mywriter = new PrintWriter(new BufferedWriter(new FileWriter("Aspects.txt")));
 			System.out.println("habe erstellt " + "Aspects.txt");
 			for(int i=0; i < catastropheAreas.length;i++){
 				mywriter.write("Area");
@@ -730,27 +718,26 @@ public class DisasterArea extends RandomSpeedBase {
 	}
 
 	// chooses the shortest path to next area (only areas that have to be visited for nodetype), even if its width is not maxdist but another has a width of maxdist
-	public LinkedList determineway(CatastropheArea area) {
-		LinkedList possibleAreas = determineAreastovisit(area);
-		LinkedList completeway = new LinkedList();
-		LinkedList tempway = new LinkedList();
-		LinkedList tempway2 = new LinkedList();
-		//Line2D.Double way = null;
+	@SuppressWarnings("unchecked")
+	public LinkedList<Position> determineway(CatastropheArea area) {
+		LinkedList<CatastropheArea> possibleAreas = determineAreastovisit(area);
+		LinkedList<Position> completeway = null;
+		LinkedList<Position> tempway = null;
+		LinkedList<Position> tempway2 = null;
 		Position src = null;
 		Position toreach = null;
-		//Obstacle obs = null;
 		double mindist2 = Double.MAX_VALUE;
 		double tempdist = 0;
 		for (int i = 0; i < possibleAreas.size(); i++) {
 			switch(area.type){
 			case 0:		
-				Position end1 = new Position(((CatastropheArea)possibleAreas.get(i)).entry.x, ((CatastropheArea)possibleAreas.get(i)).entry.y);
+				Position end1 = new Position(possibleAreas.get(i).entry.x, possibleAreas.get(i).entry.y);
 				toreach = end1;
 				Position src1 = new Position(area.exit.x, area.exit.y);
 				src = src1;
 				break;
 			case 1:		
-				Position end2 = new Position(((CatastropheArea)possibleAreas.get(i)).entry.x, ((CatastropheArea)possibleAreas.get(i)).entry.y);
+				Position end2 = new Position(possibleAreas.get(i).entry.x, possibleAreas.get(i).entry.y);
 				toreach = end2;
 				Position src2 = new Position(area.exit.x, area.exit.y);
 				src = src2;
@@ -760,23 +747,23 @@ public class DisasterArea extends RandomSpeedBase {
 			case 3:		
 				break;
 			case 4:		
-				Position end3 = new Position(((CatastropheArea)possibleAreas.get(i)).exit.x, ((CatastropheArea)possibleAreas.get(i)).exit.y);
+				Position end3 = new Position(possibleAreas.get(i).exit.x, possibleAreas.get(i).exit.y);
 				toreach = end3;
 				Position src3 = new Position(area.exit.x, area.exit.y);
 				src = src3;
 				break;
 			default: 
 				//should not be reached
-				System.out.println("Error in " + DisasterArea.MODEL_NAME + ", couldn't determine way");
+				System.out.println("Error in " + MODEL_NAME + ", couldn't determine way");
 			System.exit(0);
 			}
 			if(src != null && toreach != null){
 				PositionHashMap waysForSrc = ((PositionHashMap)shortestpaths[area.type].get(src));
 				PositionHashMap MinwaysForSrc = ((PositionHashMap)Minshortestpaths[area.type].get(src));
-				tempway = ((LinkedList)waysForSrc.get(toreach));
-				tempway2 = ((LinkedList)MinwaysForSrc.get(toreach));
+				tempway = (LinkedList<Position>)waysForSrc.get(toreach);
+				tempway2 = (LinkedList<Position>)MinwaysForSrc.get(toreach);
 				for(int j = 0; j < tempway.size()-1; j++){
-					tempdist = tempdist + ((Position)tempway.get(j)).distance(((Position)tempway.get(j+1)));
+					tempdist = tempdist + tempway.get(j).distance(tempway.get(j+1));
 				}
 				if(tempdist < mindist2){
 					maxdist = oldmaxdist;
@@ -785,7 +772,7 @@ public class DisasterArea extends RandomSpeedBase {
 				}
 				tempdist = 0;
 				for(int j = 0; j < tempway2.size()-1; j++){
-					tempdist = tempdist + ((Position)tempway2.get(j)).distance(((Position)tempway2.get(j+1)));
+					tempdist = tempdist + tempway2.get(j).distance(tempway2.get(j+1));
 				}
 				tempdist = tempdist * factor;
 				if(tempdist < mindist2){
@@ -802,64 +789,64 @@ public class DisasterArea extends RandomSpeedBase {
 	}
 
 	// determine which areas groups belonging to area may visit
-	public LinkedList determineAreastovisit(CatastropheArea area){
-		LinkedList Areastovisit = new LinkedList();
-		LinkedList arraypos = new LinkedList();
+	public LinkedList<CatastropheArea> determineAreastovisit(CatastropheArea area){
+		LinkedList<CatastropheArea> Areastovisit = new LinkedList<CatastropheArea>();
+		LinkedList<Integer> arraypos = new LinkedList<Integer>();
 		switch(area.type){
-		case 0:		
-			for (int i = 0; i < catastropheAreas.length; i++){
-				if(catastropheAreas[i].type == 1){
-					Areastovisit.add(catastropheAreas[i]);
-					Integer temp = new Integer(i);
-					arraypos.add(temp);
+			case 0:		
+				for (int i = 0; i < catastropheAreas.length; i++){
+					if(catastropheAreas[i].type == 1){
+						Areastovisit.add(catastropheAreas[i]);
+						Integer temp = new Integer(i);
+						arraypos.add(temp);
+					}
 				}
-			}
-			if (Areastovisit.size() == 0) {
-				System.out.println("Please specify a patients waiting for treatment area for incident location! aborting...");
-				System.exit(0);
-			}
-			break;
-		case 1:		
-			for (int i = 0; i < catastropheAreas.length; i++){
-				if(catastropheAreas[i].type == 2){
-					Areastovisit.add(catastropheAreas[i]);
-					Integer temp = new Integer(i);
-					arraypos.add(temp);
+				if (Areastovisit.size() == 0) {
+					System.out.println("Please specify a patients waiting for treatment area for incident location! aborting...");
+					System.exit(0);
 				}
-			}
-			if (Areastovisit.size() == 0) {
-				System.out.println("Please specify a casualties clearing station for patients waiting for treatment area! aborting...");
-				System.exit(0);
-			}
-			break;
-		case 2:
-			break;
-		case 3:
-			break;
-		case 4:
-			for (int i = 0; i < catastropheAreas.length; i++){
-				if(catastropheAreas[i].type == 2){
-					Areastovisit.add(catastropheAreas[i]);
-					Integer temp = new Integer(i);
-					arraypos.add(temp);
+				break;
+			case 1:		
+				for (int i = 0; i < catastropheAreas.length; i++){
+					if(catastropheAreas[i].type == 2){
+						Areastovisit.add(catastropheAreas[i]);
+						Integer temp = new Integer(i);
+						arraypos.add(temp);
+					}
 				}
-			}
-			if (Areastovisit.size() == 0) {
-				System.out.println("Please specify a casualties clearing station for ambulance parking point! aborting...");
-				System.exit(0);
-			}
-			break;
-		default: //should not be reached
-			System.out.println("Error in " + DisasterArea.MODEL_NAME + ", couldn't determine Areas to visit");
-		System.exit(0);
+				if (Areastovisit.size() == 0) {
+					System.out.println("Please specify a casualties clearing station for patients waiting for treatment area! aborting...");
+					System.exit(0);
+				}
+				break;
+			case 2:
+				break;
+			case 3:
+				break;
+			case 4:
+				for (int i = 0; i < catastropheAreas.length; i++){
+					if(catastropheAreas[i].type == 2){
+						Areastovisit.add(catastropheAreas[i]);
+						Integer temp = new Integer(i);
+						arraypos.add(temp);
+					}
+				}
+				if (Areastovisit.size() == 0) {
+					System.out.println("Please specify a casualties clearing station for ambulance parking point! aborting...");
+					System.exit(0);
+				}
+				break;
+			default: //should not be reached
+				System.out.println("Error in " + MODEL_NAME + ", couldn't determine Areas to visit");
+			System.exit(0);
 		}
 		return Areastovisit;
 	}
 
 	// determine movement cycle depending on area the group belongs to and type of group
-	public LinkedList determineMovementCycle(CatastropheArea area, CatastropheNode node){
+	public LinkedList<Position> determineMovementCycle(CatastropheArea area, CatastropheNode node){
 		int movePhase = 0;
-		LinkedList cycle = new LinkedList();
+		LinkedList<Position> cycle = new LinkedList<Position>();
 		double xleft = area.getBounds().x;
 		double xright = area.getBounds().x + area.getBounds().width;
 		double yhigh = area.getBounds().y;
@@ -888,8 +875,8 @@ public class DisasterArea extends RandomSpeedBase {
 					if(movePhase == 1){
 						//transport injured via incident location exit to patients waiting for treatment area entry
 						maxpause = oldmaxpause;
-						for(int i = 0; i < ((LinkedList)area.allways.get(PosInList)).size(); i++){
-							dst = ((Position)((LinkedList)area.allways.get(PosInList)).get(i));
+						for(int i = 0; i < (area.allways.get(PosInList)).size(); i++){
+							dst = ((Position)(area.allways.get(PosInList)).get(i));
 							cycle.add(dst);
 						}
 						if(area.neighborAreaPos != null && area.exit.equals(catastropheAreas[area.neighborAreaPos.intValue()].entry)){
@@ -903,9 +890,9 @@ public class DisasterArea extends RandomSpeedBase {
 						if(movePhase == 2){
 							//return to incident location exit using the same way as before
 							maxpause = 0.0;
-							for(int i = ((LinkedList)area.allways.get(PosInList)).size()-2; i >= 0; i--){
+							for(int i = (area.allways.get(PosInList)).size()-2; i >= 0; i--){
 								//skip last entry, because you are already there
-								dst = ((Position)((LinkedList)area.allways.get(PosInList)).get(i));
+								dst = (Position)(area.allways.get(PosInList)).get(i);
 								cycle.add(dst);
 							}
 							movePhase = 0;
@@ -930,8 +917,8 @@ public class DisasterArea extends RandomSpeedBase {
 						if(movePhase == 1){
 							//move via patients waiting for treatment area exit to casualties clearing station entry
 							maxpause = oldmaxpause;
-							for(int i = 0; i < ((LinkedList)area.allways.get(PosInList)).size(); i++){
-								dst = ((Position)((LinkedList)area.allways.get(PosInList)).get(i));
+							for(int i = 0; i < (area.allways.get(PosInList)).size(); i++){
+								dst = ((Position)(area.allways.get(PosInList)).get(i));
 								cycle.add(dst);
 							}
 							++movePhase;
@@ -940,9 +927,9 @@ public class DisasterArea extends RandomSpeedBase {
 							if (movePhase == 2){
 								//return to patients waiting for treatment area exit
 								maxpause = 0.0;
-								for(int i = ((LinkedList)area.allways.get(PosInList)).size()-2; i >= 0; i--){
+								for(int i = (area.allways.get(PosInList)).size()-2; i >= 0; i--){
 									//skip last entry, because you are already there
-									dst = ((Position)((LinkedList)area.allways.get(PosInList)).get(i));
+									dst = ((Position)(area.allways.get(PosInList)).get(i));
 									cycle.add(dst);
 								}
 								movePhase = 0;	
@@ -985,8 +972,8 @@ public class DisasterArea extends RandomSpeedBase {
 						if (movePhase == 1){
 							//get to injured at casualties clearing station exit via ambulance parking point exit
 							maxpause = oldmaxpause;
-							for(int i = 0; i < ((LinkedList)area.allways.get(PosInList)).size(); i++){
-								dst = ((Position)((LinkedList)area.allways.get(PosInList)).get(i));
+							for(int i = 0; i < (area.allways.get(PosInList)).size(); i++){
+								dst = ((Position)(area.allways.get(PosInList)).get(i));
 								cycle.add(dst);
 							}
 							++movePhase;
@@ -995,11 +982,11 @@ public class DisasterArea extends RandomSpeedBase {
 							if (movePhase == 2){
 								//drive street until new start
 								maxpause = 0.0;
-								LinkedList tempway = waysToBorder(((Position)((LinkedList)area.allways.get(PosInList)).get(((LinkedList)area.allways.get(PosInList)).size()-1)), area);
+								LinkedList<Position> tempway = waysToBorder(((Position)(area.allways.get(PosInList)).get((area.allways.get(PosInList)).size()-1)), area);
 								//way to borderentry
 								for(int i = 1; i < tempway.size(); i++){
 									//skip first entry, because you are already there
-									dst = ((Position)tempway.get(i));
+									dst = tempway.get(i);
 									// end of this cycle ist the borderentry, thus switch off
 									if (i == (tempway.size()-1)) {
 										dst = new Position(dst.x,dst.y,2.0);
@@ -1009,13 +996,13 @@ public class DisasterArea extends RandomSpeedBase {
 								tempway = determineBorderWay(area.borderentry, area.borderexit);
 								//move on border between borderenty and borderexit
 								for(int i = 0; i < tempway.size(); i++){
-									dst = ((Position)tempway.get(i));
+									dst = tempway.get(i);
 									cycle.add(dst);
 								}
-								tempway = waysFromBorder(((Position)((LinkedList)area.allways.get(PosInList)).get(((LinkedList)area.allways.get(PosInList)).size()-1)), area);
+								tempway = waysFromBorder(((Position)(area.allways.get(PosInList)).get((area.allways.get(PosInList)).size()-1)), area);
 								//move from borderexit to areaentry
 								for(int i = 1; i < tempway.size(); i++){
-									dst = ((Position)tempway.get(i));
+									dst = tempway.get(i);
 									// end of this cycle ist the area-entry, thus switch on
 									if (i == (tempway.size()-1)) {
 										dst = new Position(dst.x,dst.y,1.0);
@@ -1036,21 +1023,21 @@ public class DisasterArea extends RandomSpeedBase {
 			while(movePhase != 0);
 			break;
 		default:	//should not be reached
-			System.out.println("Error in " + DisasterArea.MODEL_NAME + ", couldn't determine Movement Cycle");
-		System.exit(0);
+			System.out.println("Error in " + MODEL_NAME + ", couldn't determine Movement Cycle");
+			System.exit(0);
 		}
 		return cycle;
 	}
 	
 	//initialize visibility graph
-	public LinkedList VisibilityGraph(LinkedList<Obstacle> CObstacles, int type){
+	public LinkedList<Serializable> VisibilityGraph(LinkedList<Obstacle> CObstacles, int type){
 		LinkedList<Position> Vertices = new LinkedList<Position>();
 		PositionHashMap Edges = new PositionHashMap();
-		LinkedList VisGraph = new LinkedList();
+		LinkedList<Serializable> VisGraph = new LinkedList<Serializable>();
 
 		//add Corners of Obstacles (convex)
 		for(int i = 0; i < CObstacles.size(); i++){
-			Position[] temp = ((Obstacle)CObstacles.get(i)).getPosVertices();
+			Position[] temp = CObstacles.get(i).getPosVertices();
 			for(int j = 0; j < temp.length; j++){
 				Vertices.add(temp[j]);
 			}
@@ -1072,23 +1059,16 @@ public class DisasterArea extends RandomSpeedBase {
 				case 2: 
 					//from clearing station the exits
 					Vertices.add(catastropheAreas[i].exit);			    
-					/*			default: // add corners of areas ...
-				    for (int j=0; j < CatastropheAreas[i].corners.length;j++) {
-					Vertices.add(CatastropheAreas[i].corners[j]);
-					System.out.println(type+"Type:"+i+"| Corner:"+j+"| ("+CatastropheAreas[i].corners[j].x+","+CatastropheAreas[i].corners[j].y+")");
-					Obstacle newone = new Obstacle(CatastropheAreas[i].getPolygonParams());
-					CObstacles.add(newone);
-					}*/
 				}  
 				break;
 			default: 			
 				Vertices.add(catastropheAreas[i].entry);
-			Vertices.add(catastropheAreas[i].exit);
-			if(catastropheAreas[i].type == 4){
-				Vertices.add(catastropheAreas[i].borderentry);
-				Vertices.add(catastropheAreas[i].borderexit);
-			}
-			break;
+				Vertices.add(catastropheAreas[i].exit);
+				if(catastropheAreas[i].type == 4){
+					Vertices.add(catastropheAreas[i].borderentry);
+					Vertices.add(catastropheAreas[i].borderexit);
+				}
+				break;
 			}
 		}
 		for(int i = 0; i < Vertices.size(); i++){
@@ -1096,10 +1076,10 @@ public class DisasterArea extends RandomSpeedBase {
 			LinkedList<Position> VisVert = new LinkedList<Position>();
 			VisVert = VisibleVertices(Vertices.get(i), Vertices, CObstacles);
 			for(int j = 0; j < VisVert.size(); j++){
-				Line2D.Double line = new Line2D.Double(((Position)Vertices.get(i)).x, ((Position)Vertices.get(i)).y, ((Position)VisVert.get(j)).x, ((Position)VisVert.get(j)).y);
+				Line2D.Double line = new Line2D.Double(Vertices.get(i).x, Vertices.get(i).y, VisVert.get(j).x, VisVert.get(j).y);
 				//to realize obstacles that reach to the boundary - vertices on the bound. are ignored
-				if (!Vertice_on_Boundary( ((Position)Vertices.get(i)).x, ((Position)Vertices.get(i)).y, 
-						((Position)VisVert.get(j)).x, ((Position)VisVert.get(j)).y )) {
+				if (!Vertice_on_Boundary( Vertices.get(i).x, Vertices.get(i).y, 
+						VisVert.get(j).x, VisVert.get(j).y )) {
 					VisEdges.add(line);
 				}
 			}
@@ -1162,11 +1142,11 @@ public class DisasterArea extends RandomSpeedBase {
 					numintersections = numintersections + CObstacles.get(j).intersectsObstacle(Vertex.x, Vertex.y, Vertices.get(i).x, Vertices.get(i).y);
 				}
 			}
-			if((numintersections == 2) && (StartOnObstacle || StopOnObstacle) && !Vertex.equals(((Position)Vertices.get(i)))){
+			if((numintersections == 2) && (StartOnObstacle || StopOnObstacle) && !Vertex.equals(Vertices.get(i))){
 				//es handelt sich bei Vertex oder Vertices.get(i) um einen Eingang oder Ausgang eines Bereichs; 2 Schnitte heit Endpunkt ist ein Eckpunkt eines Hindernisses
 				VisVert.add(Vertices.get(i));
 			}
-			if((numintersections == 0) && !StartOnObstacle && !StopOnObstacle && !Vertex.equals(((Position)Vertices.get(i)))){
+			if((numintersections == 0) && !StartOnObstacle && !StopOnObstacle && !Vertex.equals(Vertices.get(i))){
 				//es handelt sich sowohl bei Vertex als auch bei Vertices.get(i) um einen Eingang oder Ausgang eines Bereichs; 0 Schnitte heit es existiert freier Weg
 				VisVert.add(Vertices.get(i));
 			}
@@ -1178,7 +1158,7 @@ public class DisasterArea extends RandomSpeedBase {
 				else{
 					if(numintersections == 4) {
 						//bei 4 Schnittpunkten auf einem Hinderniss, verluft die Kante entweder komplett durch das Polygon oder auerhalb. Deshalb wird ein Punkt auf der Geraden gewhlt und getestet ob dieser im Polygon liegt.
-						if(!obstacle.throughObstacle(Vertex.x, Vertex.y, ((Position)Vertices.get(i)).x, ((Position)Vertices.get(i)).y)){
+						if(!obstacle.throughObstacle(Vertex.x, Vertex.y, Vertices.get(i).x, Vertices.get(i).y)){
 							VisVert.add(Vertices.get(i));
 						}
 					}
@@ -1199,6 +1179,7 @@ public class DisasterArea extends RandomSpeedBase {
 	}
 
 	//calculates the Algorithm of Dijkstra for given Graph and starting point
+	@SuppressWarnings("rawtypes")
 	public PositionHashMap Dijkstra(LinkedList Graph, Position start){
 		PositionHashMap weights = new PositionHashMap();
 		Double min = new Double(Double.MAX_VALUE);
@@ -1234,7 +1215,6 @@ public class DisasterArea extends RandomSpeedBase {
 				return ways;
 			}
 			vertices.remove(minpos);
-			((LinkedList)((PositionHashMap)Graph.get(1)).get(minpos)).size();
 			for(int i = 0; i < ((LinkedList)((PositionHashMap)Graph.get(1)).get(minpos)).size(); i++){
 				Position endpoint1 = new Position(((Line2D.Double)((LinkedList)((PositionHashMap)Graph.get(1)).get(minpos)).get(i)).x1, ((Line2D.Double)((LinkedList)((PositionHashMap)Graph.get(1)).get(minpos)).get(i)).y1);
 				Position endpoint2 = new Position(((Line2D.Double)((LinkedList)((PositionHashMap)Graph.get(1)).get(minpos)).get(i)).x2, ((Line2D.Double)((LinkedList)((PositionHashMap)Graph.get(1)).get(minpos)).get(i)).y2);
@@ -1270,14 +1250,7 @@ public class DisasterArea extends RandomSpeedBase {
 				}
 			}
 		}
-		/** code has no sideeffects and is never used...
-		Iterator it2 = ways.entrySet().iterator();
-		while(it2.hasNext()){
-			Map.Entry entry = (Map.Entry)it2.next();
-			Position endpoint = ((Position)entry.getKey());
-			LinkedList way = ((LinkedList)entry.getValue());
-		}
-		*/
+
 		return ways;
 	}
 
@@ -1304,13 +1277,14 @@ public class DisasterArea extends RandomSpeedBase {
 	}
 
 	//find ways to border
-	public LinkedList waysToBorder(Position src, CatastropheArea area) {
+	@SuppressWarnings("unchecked")
+	public LinkedList<Position> waysToBorder(Position src, CatastropheArea area) {
 		double MinTempdist = 0.0;
 		double MaxTempdist = 0.0;
 		PositionHashMap waysForMinCObstacles = ((PositionHashMap)Minshortestpaths[area.type].get(src));
 		PositionHashMap waysForMaxCObstacles = ((PositionHashMap)shortestpaths[area.type].get(src));
-		LinkedList MinTempway = ((LinkedList)waysForMinCObstacles.get(area.borderentry));
-		LinkedList MaxTempway = ((LinkedList)waysForMaxCObstacles.get(area.borderentry));
+		LinkedList<Position> MinTempway = ((LinkedList<Position>)waysForMinCObstacles.get(area.borderentry));
+		LinkedList<Position> MaxTempway = ((LinkedList<Position>)waysForMaxCObstacles.get(area.borderentry));
 		for(int i = 0; i < MinTempway.size()-1; i++) {
 			MinTempdist = MinTempdist + ((Position)MinTempway.get(i)).distance((Position)MinTempway.get(i+1));
 		}
@@ -1328,13 +1302,14 @@ public class DisasterArea extends RandomSpeedBase {
 	}
 
 	//find ways from border
-	public LinkedList waysFromBorder(Position src, CatastropheArea area){
+	@SuppressWarnings("unchecked")
+	public LinkedList<Position> waysFromBorder(Position src, CatastropheArea area){
 		double MinTempdist = 0.0;
 		double MaxTempdist = 0.0;
 		PositionHashMap waysForMinCObstacles = ((PositionHashMap)Minshortestpaths[area.type].get(src));
 		PositionHashMap waysForMaxCObstacles = ((PositionHashMap)shortestpaths[area.type].get(src));
-		LinkedList MinTempway = ((LinkedList)waysForMinCObstacles.get(area.entry));
-		LinkedList MaxTempway = ((LinkedList)waysForMaxCObstacles.get(area.entry));
+		LinkedList<Position> MinTempway = ((LinkedList<Position>)waysForMinCObstacles.get(area.entry));
+		LinkedList<Position> MaxTempway = ((LinkedList<Position>)waysForMaxCObstacles.get(area.entry));
 		for(int i = 0; i < MinTempway.size()-1; i++){
 			MinTempdist = MinTempdist + ((Position)MinTempway.get(i)).distance((Position)MinTempway.get(i+1));
 		}

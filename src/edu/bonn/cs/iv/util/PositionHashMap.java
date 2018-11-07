@@ -24,19 +24,14 @@ import edu.bonn.cs.iv.bonnmotion.Position;
 import java.util.Map;
 import java.util.Iterator;
 
-
-/** Diese Klasse implementiert eine HashMap, die beim get die equals Funktion der Klasse Position verwendet. */
-
-public class PositionHashMap extends HashMap {
+public class PositionHashMap extends HashMap<Position,Object> {
 	private static final long serialVersionUID = 6541722900508992094L;
 
 	public Object get(Position key){
-		Iterator it = this.entrySet().iterator();
+		Iterator<?> it = this.entrySet().iterator();
 		while(it.hasNext()){
-			Map.Entry entry = (Map.Entry)it.next();
+			Map.Entry<?,?> entry = (Map.Entry<?,?>)it.next();
 			Position k = ((Position)entry.getKey());
-			//System.out.println("k " + k.x + " " + k.y);
-			//System.out.println("key " + key.x + " " + key.y);
 			if(key.equals(k)){
 				return entry.getValue();
 			}
@@ -45,18 +40,15 @@ public class PositionHashMap extends HashMap {
 	}
 	
 	public void changeto(Position key, Object value){
-		Iterator it = this.entrySet().iterator();
+		Iterator<?> it = this.entrySet().iterator();
 		while(it.hasNext()){
-			Map.Entry entry = (Map.Entry)it.next();
+			Map.Entry<?,?> entry = (Map.Entry<?,?>)it.next();
 			Position k = ((Position)entry.getKey());
 			if(key.equals(k)){
-		//		System.out.println("entferne key " + k.x + " " + k.y);
 				super.remove(k);
 				break;
 			}
 		}
-		//System.out.println("fuege ein key " + key.x + " " + key.y + " value " + ((Double)value).doubleValue());
-		//System.out.println("fuege ein key " + key.x + " " + key.y);
 		super.put(key, value);
 	}
 }

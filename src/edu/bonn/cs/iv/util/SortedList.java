@@ -29,10 +29,6 @@ public class SortedList {
         return end;
     }
 
-	/** Liefert die Position eines Elements.
- * 	@param key Schl�ssel des Elements.
- * 	@return Position des Elements; falls nicht vorhanden, Position, _hinter_ der das Element stehen m��te. */
-    
     /**
      * Gets the position of a element.
      * @param key The key of the element.
@@ -109,10 +105,6 @@ public class SortedList {
 		count = 0;
 	}
 
-	/** L�scht das Element an einer bestimmten Position.
- * 	@param p Position des zu l�schenden Elements.
- * 	@return Gel�schtes Element (oder null, falls Position nicht belegt). */
-	
 	/**
 	 * Removes the element at the given position.
 	 * @param p The position of the element to remove.
@@ -204,22 +196,6 @@ public class SortedList {
 	public int size() {
 		return count;
 	}
-
-/*	public int matchingKeys(SortedList l) {
-        int begin = 0;
-        int end = l.count - 1;
-        int match = 0;
-        for (int i = 0; i < count; i++) {
-            int key = list[i].getKey();
-            int p = findPosHelper(l.list, begin, end, key);
-            if (p >= 0) {
-                begin = p;
-                if (l.list[p].getKey() == key)
-                    match++;
-            }
-        }
-		return match;
-	} */
 
 	public String toString() {
 		String s = "";

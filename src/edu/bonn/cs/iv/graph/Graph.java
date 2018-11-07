@@ -38,7 +38,7 @@ public class Graph {
 	/** Added a node to the graph. Cooperates with Node.addToGraph. */
 	public void addNode(Node n) {
 		if (((n.homeGraph() != null) && (n.homeGraph() != this)) || (nodeList.add(n) == -1)) {
-			System.out.println("Graph.addNode: so nicht!");
+			System.out.println("Graph.addNode: error adding node");
 			System.exit(0);
 		}
 		if (n.homeGraph() == null)
@@ -78,7 +78,7 @@ public class Graph {
 				System.out.println("DEBUG: v.homeGraph() == null");
 			else
 				System.out.println("DEBUG: v.homeGraph() != null");
-			(new RuntimeException("Graph.delNode: falscher Graph Du Pfeife!")).printStackTrace();
+			(new RuntimeException("Graph.delNode: wrong graph")).printStackTrace();
 			return false;
 		}
 	}
@@ -193,7 +193,7 @@ public class Graph {
 			aPoint[i] = false;
 		int biconnectivity = 0;
 	
-		Vector bcc = new Vector();
+		Vector<Integer> bcc = new Vector<Integer>();
 	
 		int[] num = new int[nodes];
 		for (int i = 0; i < nodes; i++)
@@ -315,7 +315,6 @@ public class Graph {
 	public boolean isTree() {
 		int n = nodeCount();
 		byte[] marker = new byte[n];
-		//int dCount = 0;
 		int m1 = 0, m2 = 0;
 		for (int i = 0; i < marker.length; i++)
 			marker[i] = 0;
@@ -429,7 +428,7 @@ public class Graph {
 		return tree;
 	}
 
-	/** Hilfsfunktion fr sort, vertauscht in einem Array zwei Elemente. */
+	/** Helperfunction: Replace two array elements */
 	/** Number of connected components (expects undirected graph).
 	@param threshold Only account for edges with a weight of at least this value. */
 	public int partitions(int threshold) {
@@ -445,7 +444,6 @@ public class Graph {
     		while (toDo.size() > 0) {
     			Node v = (Node)toDo.firstElement();
     			toDo.removeElementAt(0);
-    			//int vID = v.getKey();
     			for (int i = 0; i < v.outDeg(); i++) {
     				Edge e = v.succAt(i);
                     if (e.weight >= threshold) {
@@ -504,19 +502,18 @@ public class Graph {
 	/** Retrieve connected components (expects undirected graph).
 	@param threshold Only account for edges with a weight of at least this value. */
 	public SortedList[] getCCs(int threshold) {
-        Vector components = new Vector();
+        Vector<SortedList> components = new Vector<SortedList>();
 		SortedList[] s = new SortedList[2];
 		s[0] = new SortedList();
 		s[1] = (SortedList)nodeList.clone();
         while (s[1].size() > 0) {
-    		Vector toDo = new Vector();
+    		Vector<Node> toDo = new Vector<Node>();
             Node src = (Node)s[1].deleteElementAt(0);
     		s[0].add(src);
     		toDo.addElement(src);
     		while (toDo.size() > 0) {
     			Node v = (Node)toDo.firstElement();
     			toDo.removeElementAt(0);
-    			//int vID = v.getKey();
     			for (int i = 0; i < v.outDeg(); i++) {
     				Edge e = v.succAt(i);
                     if (e.weight >= threshold) {
@@ -580,7 +577,6 @@ public class Graph {
 					if (min > 0) {
 						if (dist[vPos] == dist[wPos] + 1) {
 							Node fw = flowGraph.checkNode(wID);
-							int prevForeFlow = fv.getSuccWeight(wID);
 							int prevBackFlow = fw.getSuccWeight(vID);
 							if (prevBackFlow == 0)
 								fv.adjustWeight(fw, min);
@@ -804,7 +800,7 @@ public class Graph {
 		String line = in.readLine();
 		if (line.startsWith("V2")) {
 			line = in.readLine();
-			String loc = " in Zeile \"" + line + "\"";
+			String loc = " in line \"" + line + "\"";
 			try {
 				int count = Integer.parseInt(line);
 				for (int i = 0; i < count; i++) {
@@ -812,33 +808,33 @@ public class Graph {
 					checkNode(a);
 				}
 				line = in.readLine();
-				loc = " in Zeile \"" + line + "\"";
+				loc = " in line \"" + line + "\"";
 				count = Integer.parseInt(line);
 				for (int i = 0; i < count; i++) {
 					line = in.readLine();
-					loc = " in Zeile \"" + line + "\"";
+					loc = " in line \"" + line + "\"";
 					line = line.trim();
 					StringTokenizer st = new StringTokenizer(line);
 					if (st.countTokens() != 3)
-						return "falsche Feldzahl" + loc;
+						return "wrong column count" + loc;
 					try {
 						int a1 = Integer.parseInt(st.nextToken());
 						int a2 = Integer.parseInt(st.nextToken());
 						int weight = Integer.parseInt(st.nextToken());
 						adjustWeight(a1, a2, weight);
 					} catch (java.util.NoSuchElementException e1) {
-						return "UNMGLICH: " + e1 + loc;
+						return "NoSuchElementException: " + e1 + loc;
 					} catch (NumberFormatException e2) {
-						return "Wichtung kein int" + loc;
+						return "weight is no int" + loc;
 					}
 				}
 			} catch (NumberFormatException e) {
-				return "kein int" + loc;
+				return "no int" + loc;
 			}
 			return null;
 		}
 		else
-			return "falsches Dateiformat [" + line + "]";
+			return "wrong fileformat [" + line + "]";
 	}
 
 	public String readFile(String fileName) {

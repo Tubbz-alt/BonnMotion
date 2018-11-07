@@ -25,12 +25,8 @@ public class AmbulanceParkingPoint extends CatastropheArea {
 	}
 	
 	protected void SetDefaultValues() {
-
 		this.groupsize[0] = 1;
-		this.groupsize[1] = 1;
-		// groups
-		//this.groupsize[0] = 3;
-		//this.groupsize[1] = 1;		
+		this.groupsize[1] = 1;	
 		this.minspeed[0] = 5.0;
 		this.maxspeed[0] = 12.0;
 		this.minspeed[1] = 1.0;
