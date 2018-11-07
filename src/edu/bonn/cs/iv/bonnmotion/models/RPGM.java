@@ -159,12 +159,12 @@ public class RPGM extends RandomSpeedBase {
 							// create pairStatistics
 							double[] ct = MobileNode.pairStatistics(dummy, ref, t, next, maxdist, false);
 							// check if the link comes up before any other link to a ref by now
-							if (ct.length > 2 && ct[2] < linkUp) {
+							if (ct.length > 6 && ct[6] < linkUp) {
 								if (randomNextDouble() < pGroupChange) {
 									linkDown = next;
-									nLinkUp = ct[2];
-									if (ct.length > 3) {
-										linkDown = ct[3];
+									nLinkUp = ct[6];
+									if (ct.length > 7) {
+										linkDown = ct[7];
 									}
 									// change group at time tmpnext
 									double tmpnext = nLinkUp + randomNextDouble() * (linkDown - nLinkUp);
