@@ -39,7 +39,7 @@ public class SMOOTH extends Scenario {
 		info.affiliation = ModuleInfo.TOILERS;
 		info.contacts.add(ModuleInfo.BM_MAILINGLIST);
 		info.authors.add("Michael Coughlin");
-		info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 432 $");
+		info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 440 $");
 	}
 
 	public static ModuleInfo getInfo() {
@@ -100,7 +100,7 @@ public class SMOOTH extends Scenario {
 	private static ArrayList<Double> cnData = null;
 	private static ArrayList<Double> ctData = null;
 	private static ArrayList<Double> ictData = null;
-	private int currentTime;
+	//private int currentTime;
 	private int i;
 	private static long next = 1;
 	private static int count=0;
@@ -151,7 +151,7 @@ public class SMOOTH extends Scenario {
 		printCN = false;
 		printCT = false;
 		printICT = false;
-		currentTime = 1;
+//		currentTime = 1;
 		alpha = -1;
 		beta = -1;
 		range = -1;
@@ -459,6 +459,7 @@ public class SMOOTH extends Scenario {
 	 */
 	private void runAndExtractLocationMap() throws SmoothException {
 		for (locationmapGenIterationCount = 0; locationmapGenIterationCount < node.length; locationmapGenIterationCount++) {
+//			updateCurrentTime(locationmapGenIterationCount);
 			runLocationmap();
 			if (locationmapCurrentTime == locationmapStartTime) {
 				/*tmp_crnt_xy.add(locationmapGenIterationCount,
@@ -640,6 +641,7 @@ public class SMOOTH extends Scenario {
 	 * @throws SmoothException 
 	 */
 	private void runLocationmap() throws SmoothException {
+		
 		locationMap = new LocationMap(param, pause_end_time,
 				locationmapGenIterationCount, locationmapCurrentTime, paused,
 				prev_start_time, prev_xy, next_xy, max_locations, locations,
@@ -648,6 +650,10 @@ public class SMOOTH extends Scenario {
 		locationMap.locationMap();
 		extractLocationmapFields();
 	}
+
+//	private void updateCurrentTime(double newTime) {
+//		currentTime = (int) newTime;		
+//	}
 
 	/**
 	 * METHOD THAT PERFORMS THE EXTRACTION OF THE FIELDS STORED IN LOCATIONMAP
@@ -676,10 +682,9 @@ public class SMOOTH extends Scenario {
 	 * MODEL. IS USED TO PROVIDE UNIQUE TIME VALUES TO THE CREATION OF WAYPOINTS
 	 * FOR THE MOBILE NODES
 	 */
-	public int getCurrentTime() {
-		currentTime++;
-		return currentTime - 1;
-	}
+//	public int getCurrentTime() {
+//		return currentTime;
+//	}
 
 	/**
 	 * METHOD THAT INITIALIZES THE VARIABLES THAT ARE NEEDED TO CONSTRUCT A
@@ -901,7 +906,8 @@ public class SMOOTH extends Scenario {
 					locations.set(i, j, 1, -1);
 					node_location.set(i, j, 0);
 				}
-				locationHistory.get(i).add(0, new Position(-1, -1));
+				//removing addition of initial location
+//				locationHistory.get(i).add(0, new Position(-1, -1));
 			}
 	
 			for (i = 0; i < node.length; i++) {
@@ -986,7 +992,7 @@ public class SMOOTH extends Scenario {
 			 * NODES****************
 			 */
 			runGen();
-			locationHistory.get(locationmapGenIterationCount).add(getCurrentTime(),
+			locationHistory.get(locationmapGenIterationCount).add(0,
 					new Position(x_position.get(0), y_position.get(0)));
 			locations.set(locationmapGenIterationCount, 0, 0, x_position.get(0));
 			locations.set(locationmapGenIterationCount, 0, 1, y_position.get(0));

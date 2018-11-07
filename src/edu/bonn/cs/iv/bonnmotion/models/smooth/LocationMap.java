@@ -4,6 +4,7 @@ import java.util.Vector;
 
 import edu.bonn.cs.iv.bonnmotion.MobileNode;
 import edu.bonn.cs.iv.bonnmotion.Position;
+import edu.bonn.cs.iv.bonnmotion.Waypoint;
 import edu.bonn.cs.iv.bonnmotion.models.SMOOTH;
 import edu.bonn.cs.iv.bonnmotion.models.SMOOTH.PrintTypes;
 
@@ -221,8 +222,16 @@ public class LocationMap {
 					
 					
 
-					smooth.locationHistory.get(iterationCount).add(smooth.getCurrentTime(),
-							new Position(x_2, y_2));
+//					smooth.locationHistory.get(iterationCount).add(smooth.getCurrentTime(),	new Position(x_2, y_2));
+					Waypoint lastWaypoint = smooth.locationHistory.get(iterationCount).getLastWaypoint();
+					Position newPosition = new Position(x_2, y_2);
+					if(lastWaypoint.time != time){
+						smooth.locationHistory.get(iterationCount).add(time, newPosition);
+					} else{
+						smooth.locationHistory.get(iterationCount).removeLastElement();
+						smooth.locationHistory.get(iterationCount).add(time, newPosition);
+					}
+					
 					try{
 						locations.set(iterationCount, C2, 0, x_2);
 						locations.set(iterationCount, C2, 1, y_2);

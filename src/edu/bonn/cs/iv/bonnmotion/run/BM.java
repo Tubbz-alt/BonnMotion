@@ -8,7 +8,7 @@ import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
 
 public class BM {
     private final static String PROG_NAME = "BonnMotion";
-    private final static String PROG_VER = "2.1";
+    private final static String PROG_VER = "2.1a";
     private final static String MODELS_PACK = "edu.bonn.cs.iv.bonnmotion.models";
     private final static String MODELS[] =
         {
