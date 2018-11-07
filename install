@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "BonnMotion - a mobility scenario generation and analysis tool"
-echo "Copyright (C) 2002-2005 University of Bonn"
+echo "Copyright (C) 2002-2011 University of Bonn"
 echo
 echo "This program is free software; you can redistribute it and/or modify"
 echo "it under the terms of the GNU General Public License as published by"
@@ -91,6 +91,16 @@ then
 	rm .head
 
 	echo " done."
+	
+	if [ -e "compile" ]
+	then
+		echo "Starting compilation ..."
+		./compile
+	fi
+	echo "done."
+	echo
+	echo "$ ./bin/bm -h"
+	./bm
 else
 	echo No executable \"$JAVAPATH/java\", aborting.
 fi

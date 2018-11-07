@@ -7,6 +7,25 @@ import edu.bonn.cs.iv.bonnmotion.*;
 /** Application that dumps the link durations in a movement scenario to the standard output. */
 
 public class LinkDump extends App {
+    private static ModuleInfo info;
+    
+    static {
+        info = new ModuleInfo("LinkDump");
+        info.description = "Application that dumps informations about the links";
+        
+        info.major = 1;
+        info.minor = 0;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        
+        info.contacts.add(ModuleInfo.BM_MAILINGLIST);
+        info.authors.add("University of Bonn");
+		info.affiliation = ModuleInfo.UNIVERSITY_OF_BONN;
+    }
+    
+    public static ModuleInfo getInfo() {
+        return info;
+    }
+    
 	protected String name = null;
 	protected double radius = 0.0;
 	protected double begin = 0.0;
@@ -49,7 +68,14 @@ public class LinkDump extends App {
 
 		for (int j = 0; j < node.length; j++) {
 			for (int k = j+1; k < node.length; k++) {
-				double[] lsc = MobileNode.pairStatistics(node[j], node[k], 0.0, duration, radius, false, s.getBuilding());
+			    double[] lsc = null;
+			    
+			    if (s instanceof Scenario3D) {
+			        lsc = MobileNode3D.pairStatistics(node[j], node[k], 0.0, duration, radius, false, ((Scenario3D)s).getBuilding());
+			    } else {
+			        lsc = MobileNode.pairStatistics(node[j], node[k], 0.0, duration, radius, false, s.getBuilding());
+			    }
+			    
 				boolean first = true;
 				boolean first_inter_contact = true;
 				boolean first_inter_contact_print = true;
@@ -143,6 +169,7 @@ public class LinkDump extends App {
 	}
 
 	public static  void printHelp() {
+        System.out.println(getInfo().toDetailString());
 		App.printHelp();
 		System.out.println("LinkDump:");
 		System.out.println("\t-b <begin of time span>");

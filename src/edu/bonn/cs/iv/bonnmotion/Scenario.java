@@ -11,53 +11,72 @@ import edu.bonn.cs.iv.util.IntegerHashSet;
 
 /** Base class for creating new scenarios. */
 public class Scenario extends App implements Model, ScenarioLink {
-	protected MobileNode[] node; /* Mobile nodes. */
-	protected double x = 200.0; /** Area x length [m]. */
-	protected double y = 200.0; /** Area y length [m]. */
-	protected double duration = 600.0; /** Duration of scenario [s]. */
-	protected double ignore = 3600.0; /** Length of initial time span which is to be cut off after scenario generation [s]. */
-	protected long randomSeed = System.currentTimeMillis(); /** Random seed to initialise RNG. */ // this is what the java.util.Random constructor does without parameter, too
-	protected Building[] buildings = new Building[0]; /** Buildings */
-	protected Random rand;
-	public long count_rands;
+    protected MobileNode[] node; /* Mobile nodes. */
+    protected double x = 200.0; /** Area x length [m]. */
+    protected double y = 200.0; /** Area y length [m]. */
+    protected double duration = 600.0; /** Duration of scenario [s]. */
+    protected double ignore = 3600.0; /** Length of initial time span which is to be cut off after scenario generation [s]. */
+    protected long randomSeed = System.currentTimeMillis(); /** Random seed to initialise RNG. */ // this is what the java.util.Random constructor does without parameter, too
+    protected Building[] buildings = new Building[0]; /** Buildings */
+    protected Random rand;
+    public long count_rands;
 
-	/** Name of the model */
-	protected String modelName = null;
-	protected boolean circular = false;
-	protected double[] aFieldParams = null;
-	protected AttractorField aField = null;
+    /** Name of the model */
+    protected String modelName = null;
+    protected boolean circular = false;
+    protected double[] aFieldParams = null;
+    protected AttractorField aField = null;
 
-	/** if true generate() first must do transition */ 
-	protected boolean isTransition = false;
-	protected int transitionMode = 0;
-	protected Scenario predecessorScenario = null;
+    /** if true generate() first must do transition */
+    protected boolean isTransition = false;
+    protected int transitionMode = 0;
+    protected Scenario predecessorScenario = null;
 
-	/** caches movements from last read(basename). null if read(basename) was not executed yet */
-	public String movements = null;
+    /** caches movements from last read(basename). null if read(basename) was not executed yet */
+    public String movements = null;
 
-	/**
-	 * Returns random double from the RandomSeed.
-	 * @return double
-	 */
-	protected double randomNextDouble() {
+    /**
+     * Returns random double from the RandomSeed.
+     * @return double
+     */
+    protected double randomNextDouble() {
+            count_rands++;
+            return rand.nextDouble();
+    }
+
+	protected double randomNextDouble(final double value) {
 		count_rands++;
-		return rand.nextDouble(); 
+		return (rand.nextDouble()*value);
 	}
 
+    /**
+     * Returns 1.0 or -1.0
+     * @return 1.0 or -1.0
+     */
     protected double randomNextPlusOrMinusOne() {
         count_rands++;
         if(rand.nextBoolean()) { return 1.0; }
         else { return -1.0; }
     }
 
-	/**
-	 * Returns random Gaussian from the RandomSeed
-	 * @return double
-	 */
-	protected double randomNextGaussian() {
-		count_rands++;
-		return rand.nextGaussian();
-	}
+    /**
+     * Returns a pseudorandom, uniformly distributed int value between 0 (inclusive) and the specified value (exclusive), drawn from this random number generator's sequence. (Docu taken from: http://download.oracle.com/javase/1.4.2/docs/api/java/util/Random.html#nextInt%28int%29)
+     * @param n the bound on the random number to be returned. Must be positive.
+     * @return a pseudorandom, uniformly distributed int value between 0 (inclusive) and n (exclusive).
+     */
+    protected int randomNextInt(int n) {
+        count_rands++;
+        return rand.nextInt(n);
+    }
+
+    /**
+     * Returns random Gaussian from the RandomSeed
+     * @return double
+     */
+    protected double randomNextGaussian() {
+            count_rands++;
+            return rand.nextGaussian();
+    }
 
     /**
      * Returns random Weibull from the RandomSeed
@@ -80,9 +99,14 @@ public class Scenario extends App implements Model, ScenarioLink {
 		count_rands = 0;
 	}
 
-	public static Scenario getScenario(String basename) throws FileNotFoundException, IOException {
-		return new Scenario(basename);
-	}
+    public static Scenario getScenario(String basename) throws FileNotFoundException, IOException {
+        if (Scenario.is3DScenario(basename)) {
+            return new Scenario3D(basename);
+        }
+        else {
+            return new Scenario(basename);
+        }
+    }
 
 
 	protected Scenario(String basename) throws FileNotFoundException, IOException {
@@ -173,6 +197,28 @@ public class Scenario extends App implements Model, ScenarioLink {
 			return false;
 		}
 	}
+	
+    /**
+     * Checks the .params file if the scenario is a 3D scenario
+     * @param basename The name of the scenario to check
+     * @return true if the scenario is a 3D scenario, false otherwise
+     * @throws IOException if the scenario file was not found
+     */
+    protected static boolean is3DScenario(String basename) throws IOException {
+        String line;
+        BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(basename + ".params")));
+        while ((line = in.readLine()) != null) {
+            StringTokenizer st = new StringTokenizer(line, "=");
+            String key = st.nextToken();
+            st.nextToken();
+
+            if (key.equals("z")) {
+                return true;
+            }
+        }
+        in.close();
+        return false;
+    }
 
 	/** Called by subclasses before they generate node movements. */
 	protected void preGeneration() {
@@ -279,9 +325,13 @@ public class Scenario extends App implements Model, ScenarioLink {
 		return r;
 	}
 
+	public int getNumberOfNodes() {
+		return node.length;
+	}
+
 	//vanishes ambulace parking point nodes 
 	public MobileNode[] getNode(String Modelname, String basename){
-		if(Modelname.equals(DisasterArea.MODEL_NAME)){
+		if(Modelname.equals(DisasterArea.getInfo().name)){
 			IntegerHashSet VanishingNodes = searchVanishing(basename);
 			/*Iterator<?> it = VanishingNodes.iterator();
 			while(it.hasNext()){
@@ -311,6 +361,27 @@ public class Scenario extends App implements Model, ScenarioLink {
 	public IntegerHashSet searchVanishing(String basename){
 
 		IntegerHashSet VanishingNodes = new IntegerHashSet();
+		/*
+		String line;
+		String fromFile;
+		try{
+		BufferedReader in = new BufferedReader( new InputStreamReader( new FileInputStream( basename+".changes" ) ) );
+		while ( (line=in.readLine()) != null ) {
+			StringTokenizer st = new StringTokenizer(line);
+			while(st.hasMoreTokens()){
+				fromFile = st.nextToken();
+				//System.out.println(fromFile);
+				Integer node = new Integer(fromFile);
+				VanishingNodes.add(node);
+			}
+		}
+		in.close();
+		}
+		catch(Exception e){
+			System.out.println("Error in searchVanishing of Scenario.java");
+			System.exit(0);
+		}
+		 */
 		return VanishingNodes;
 	}
 
@@ -346,12 +417,13 @@ public class Scenario extends App implements Model, ScenarioLink {
 	public void setNode( MobileNode[] _node ) {
 		node = _node;
 	}
+	
 	public int nodeCount() {
 		return node.length;
 	}
 
 	public int nodeCount(String Modelname, String basename){
-		if(Modelname.equals(DisasterArea.MODEL_NAME)){
+		if(Modelname.equals(DisasterArea.getInfo().name)){
 			return node.length - searchVanishing(basename).size();
 		}
 		return node.length;
@@ -450,12 +522,19 @@ public class Scenario extends App implements Model, ScenarioLink {
 			i = 0;
 			j = 0;
 			while ((line = in.readLine()) != null) {
-				if(!(getModelName().equals(DisasterArea.MODEL_NAME))){
+			    assert !(line.equals("#3D")) : "trying to read 3D scenario file using 2D code";
+			    
+			    //comment prefix
+                if (line.startsWith("#")) {
+                    continue;
+                }
+                
+				if(!(getModelName().equals(DisasterArea.getInfo().name))){
 					node[i] = new MobileNode();
 				}
 				StringTokenizer st = new StringTokenizer(line);
 				while (st.hasMoreTokens()) {
-					if(getModelName().equals(DisasterArea.MODEL_NAME)){
+					if(getModelName().equals(DisasterArea.getInfo().name)){
 						switch(i%4) {
 						case 0:
 							extendedtime = Double.parseDouble(st.nextToken());
@@ -565,6 +644,10 @@ public class Scenario extends App implements Model, ScenarioLink {
 		info.close();
 		PrintWriter movements =	new PrintWriter(new GZIPOutputStream(new FileOutputStream(basename + ".movements.gz")));
 
+		if (this instanceof Scenario3D) {
+		    movements.println("#3D");
+		}
+		
 		for (int i = 0; i < node.length; i++) {
 			movements.println(node[i].movementString());
 		}
@@ -655,11 +738,15 @@ public class Scenario extends App implements Model, ScenarioLink {
 
 	/** Helper function for creating scenarios. */
 	public Position randomNextPosition() {
+	    assert !(this instanceof Scenario3D) : "using 2D method with 3D object";
+	    
 		return randomNextPosition(-1., -1.);
 	}
 
 	/** Helper function for creating scenarios. */
 	public Position randomNextPosition(double fx, double fy) {
+	    assert !(this instanceof Scenario3D) : "using 2D method with 3D object";
+	       
 		double x2 = 0., y2 = 0., r = 0., rx = 0., ry = 0.;
 		if (circular) {
 			x2 = x/2.0;

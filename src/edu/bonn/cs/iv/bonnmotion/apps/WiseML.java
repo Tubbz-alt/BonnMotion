@@ -24,9 +24,34 @@
 package edu.bonn.cs.iv.bonnmotion.apps;
 
 import java.io.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.HashMap;
+
 import edu.bonn.cs.iv.bonnmotion.*;
 
 public class WiseML extends App {
+    private static ModuleInfo info;
+    
+    static {
+        info = new ModuleInfo("WiseML");
+        info.description = "Application converts scenario files to WiseML format";
+        
+        info.major = 1;
+        info.minor = 0;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        
+        info.contacts.add(ModuleInfo.BM_MAILINGLIST);
+        info.authors.add("Matthias Schwamborn");
+		info.affiliation = ModuleInfo.UNIVERSITY_OF_BONN;
+    }
+    
+    public static ModuleInfo getInfo() {
+        return info;
+    }
+    
     static final int COMPRESSION_NONE = 0;
     static final int COMPRESSION_NOTABS = 1;
     static final int COMPRESSION_BEST = 2;
@@ -41,22 +66,34 @@ public class WiseML extends App {
     protected String name = null;
     protected PrintWriter out = null;
     protected int compression = COMPRESSION_NONE;
-    protected double intervalLength = 1.0;
+    protected double intervalLength = -1.0;
     protected double defaultAltitude = 0;
     protected String path_header = null;
     protected String path_footer = null;
     protected String path_nodeId = null;
     protected boolean useIntegerTimes = false;
-
+    protected boolean printOnlyChangingNodes = false;
+	/* transmission range [m] */
+	protected double transmissionRange = -1.0;
+	protected boolean printlinkactions = false;
+    
     public WiseML(String[] args) {
-        go( args );
+        go(args);
     }
 
-    public void go( String[] args ) {
+    public void go(String[] args) {
+    	
+    	List<String> argsList = Arrays.asList(args);
+    	if (!argsList.contains("-L") && !argsList.contains("-r")) {
+    	    printHelp();
+    		System.err.println("\nyou need to provide at least one of:\n\t'-L' for the interval length or\n\t'-r' for the transmission range");
+    		System.exit(-1);
+    	}
+    	
         parse(args);
 
         Scenario s = null;
-        if ( name == null ) {
+        if (name == null) {
             printHelp();
             System.exit(0);
         }
@@ -64,16 +101,11 @@ public class WiseML extends App {
         try {
             s = Scenario.getScenario(name);
         } catch (Exception e) {
-            App.exceptionHandler( "Error reading file", e);
+            App.exceptionHandler("Error reading file", e);
         }
-
-        MobileNode[] node = s.getNode();
-
+        
         printWiseMLHead();
-
-        final double duration = Math.ceil(s.getDuration());
-        printWiseMLNodeMovement(node, duration);
-
+        printWiseMLNodeMovement(s);
         printWiseMLTail();
 
         closeWriter();
@@ -103,35 +135,270 @@ public class WiseML extends App {
             }
         }
     }
-
-    protected void printWiseMLNodeMovement(MobileNode[] _nodes, final double _duration) {
-        double t = 0;
-
-		printWiseMLTimestamp(t);
-		for(int currentNode=0;currentNode<_nodes.length;currentNode++) {
-		    Position p = _nodes[currentNode].positionAt(t);
-		    printWiseMLNodePosition(getNodeId(currentNode),p.x,p.y,this.defaultAltitude);
+    
+    protected List<Double> computeLinkChangeTimes(Scenario s) {
+    	MobileNode[] _nodes = s.getNode();
+    	final double _duration = Math.ceil(s.getDuration());
+    	List<Double> linkChangeTimes = new ArrayList<Double>();
+    	
+		for (int j = 0; j < _nodes.length; j++) {
+			for (int k = j+1; k < _nodes.length; k++) {
+				double[] lsc = null;
+				if (s instanceof Scenario3D) {
+				    lsc = MobileNode3D.pairStatistics(_nodes[j], _nodes[k], 0.0, _duration, transmissionRange, false, ((Scenario3D)s).getBuilding());
+				} else {
+				    lsc = MobileNode.pairStatistics(_nodes[j], _nodes[k], 0.0, _duration, transmissionRange, false, s.getBuilding());
+				}
+				for (int l = 6; l < lsc.length; l += 2) {
+					double linkUp = lsc[l];
+					double linkDown = (l+1 < lsc.length) ? lsc[l+1] : Double.MAX_VALUE ;
+					
+					if (!linkChangeTimes.contains(linkUp))
+						linkChangeTimes.add(linkUp);
+					if (!linkChangeTimes.contains(linkDown))
+						linkChangeTimes.add(linkDown);	
+				}
+			}
 		}
-		t += intervalLength;
 
-        while(t<_duration+1) {
-		    printWiseMLTimestamp(t);
-		    for(int currentNode=0;currentNode<_nodes.length;currentNode++) {
-				Position p = _nodes[currentNode].positionAt(t);
-				Position oldPosition = _nodes[currentNode].positionAt(t-intervalLength);
-				if(oldPosition.equals(p)) {
-				    System.out.println("Omitting output of node " + getNodeId(currentNode) + ". It has not moved since last output at time " + (t-intervalLength) + ".");
+		Collections.sort(linkChangeTimes);
+    	
+    	return linkChangeTimes;
+    }
+    
+    protected List<Double> computeLinkChangeTimes(Scenario s, HashMap<Double, List<ActionItem>> actionsPerTime) {
+    	MobileNode[] _nodes = s.getNode();
+    	final double _duration = Math.ceil(s.getDuration());
+    	List<Double> linkChangeTimes = new ArrayList<Double>();
+    	
+		for (int j = 0; j < _nodes.length; j++) {
+			for (int k = 0; k < _nodes.length; k++) {
+				if (j != k) {	// do not compare node to itself
+	                double[] lsc = null;
+	                if (s instanceof Scenario3D) {
+	                    lsc = MobileNode3D.pairStatistics(_nodes[j], _nodes[k], 0.0, _duration, transmissionRange, false, ((Scenario3D)s).getBuilding());
+	                } else {
+	                    lsc = MobileNode.pairStatistics(_nodes[j], _nodes[k], 0.0, _duration, transmissionRange, false, s.getBuilding());
+	                }
+    				for (int l = 6; l < lsc.length; l += 2) {
+    					double linkUp = lsc[l];
+    					double linkDown = (l+1 < lsc.length) ? lsc[l+1] : Double.MAX_VALUE ;
+    					
+    					if (!linkChangeTimes.contains(linkUp)) linkChangeTimes.add(linkUp);
+    					if (!linkChangeTimes.contains(linkDown)) linkChangeTimes.add(linkDown);	
+    					
+    					List<ActionItem> tmp = actionsPerTime.get(linkUp);
+    					if (tmp == null) {
+    						tmp = new ArrayList<ActionItem>();
+    					}
+    					
+    					tmp.add(new ActionItem(LinkAction.enableLink, j, k));
+    					actionsPerTime.put(linkUp, tmp);
+    					
+    					tmp = actionsPerTime.get(linkDown);
+    					if (tmp == null) {
+    						tmp = new ArrayList<ActionItem>();	
+    					}
+    					
+    					tmp.add(new ActionItem(LinkAction.disableLink, j, k));
+    					actionsPerTime.put(linkDown, tmp);
+    				}
 				}
-				else {
-				    printWiseMLNodePosition(getNodeId(currentNode),p.x,p.y,this.defaultAltitude);
-				}
-		    }
-		    t += intervalLength;
-        }
+			}
+		}
+		
+		Collections.sort(linkChangeTimes);
+		
+    	return linkChangeTimes;
     }
 
+    protected void printWiseMLNodeMovement(Scenario s) {
+    	MobileNode[] _nodes = s.getNode();
+    	final double _duration = Math.ceil(s.getDuration());
+    	
+    	if (intervalLength > 0 && transmissionRange < 0)		/* interval-based */
+    	{
+    	    if (printOnlyChangingNodes) {
+    	        System.err.println("Interval-based mode prints all nodes");
+    	    }
+    	    
+	        double t = 0;
+	
+	        printWiseMLTimestamp(t);
+	        printWiseMLAllNodes(_nodes, t);
+	        
+			t += intervalLength;
+	
+	        while(t < _duration + 1) {
+			    printWiseMLTimestamp(t);
+			    for(int currentNode = 0; currentNode < _nodes.length; currentNode++) {
+					printWiseMLOneNode(_nodes, t, currentNode);
+			    }
+			    t += intervalLength;
+	        }
+    	}
+    	else if (intervalLength < 0 && transmissionRange > 0)	/* contact-based */
+    	{
+            if (!printOnlyChangingNodes) { // print all nodes if a change happens
+                List<Double> linkChangeTimes = null;
+                HashMap<Double, List<ActionItem>> actionsPerTime = null;
+                
+                if (printlinkactions) {
+                    actionsPerTime = new HashMap<Double, List<ActionItem>>();
+                    linkChangeTimes = computeLinkChangeTimes(s, actionsPerTime);
+                } else {
+        			linkChangeTimes = computeLinkChangeTimes(s);
+                }
+
+                for (double timestamp : linkChangeTimes) {
+                    printWiseMLTimestamp(timestamp);
+
+                    if (printlinkactions) {
+                        for (ActionItem item : actionsPerTime.get(timestamp)) {
+                            printWiseMLLinkAction(item.action, getNodeId(item.source), getNodeId(item.target));
+                        }
+                    }
+                    
+                    printWiseMLAllNodes(_nodes, timestamp);
+                }
+    		} else { // print only affected nodes
+        		HashMap<Double, List<ActionItem>> actionsPerTime = new HashMap<Double, List<ActionItem>>();
+        		List<Double> linkChangeTimes = computeLinkChangeTimes(s, actionsPerTime);
+        		
+        		for (double timestamp : linkChangeTimes) {
+        			printWiseMLTimestamp(timestamp);
+
+        			if (printlinkactions) {
+            			for (ActionItem item : actionsPerTime.get(timestamp)) {
+            				printWiseMLLinkAction(item.action, getNodeId(item.source), getNodeId(item.target));
+            			}
+        			}
+        			
+    			    ArrayList<Integer> changedNodes = new ArrayList<Integer>();
+                    for (ActionItem item : actionsPerTime.get(timestamp)) {
+                        if (!changedNodes.contains(item.source)) changedNodes.add(item.source);
+                        if (!changedNodes.contains(item.target)) changedNodes.add(item.target);
+                    }
+                    
+                    Collections.sort(changedNodes);
+                    
+
+                    if (s instanceof Scenario3D) {
+                        for (int i : changedNodes) {
+                            Position3D p = (Position3D)_nodes[i].positionAt(timestamp);
+                            printWiseMLNodePosition(getNodeId(i), p.x, p.y, p.z);
+                        }
+                    } else {
+                        for (int i : changedNodes) {
+                            Position p = _nodes[i].positionAt(timestamp);
+                            printWiseMLNodePosition(getNodeId(i), p.x, p.y, this.defaultAltitude);
+                        }
+                    }
+                }
+            }
+    	}
+    	else if (intervalLength > 0 && transmissionRange > 0)	/* interval- & contact-based */
+    	{
+    		HashMap<Double, List<ActionItem>> actionsPerTime = null;
+    		List<Double> linkChangeTimes = null;
+    		
+    		if (printlinkactions || printOnlyChangingNodes) {
+                actionsPerTime = new HashMap<Double, List<ActionItem>>();
+                linkChangeTimes = computeLinkChangeTimes(s, actionsPerTime);
+    		} else {
+                linkChangeTimes = computeLinkChangeTimes(s);
+    		}
+    		
+	        double t = 0;
+			t += intervalLength;
+			int i = 0;
+			double timestamp = linkChangeTimes.get(i);
+	
+	        while(t < _duration + 1) {
+	        	while (timestamp < t) {
+        			printWiseMLTimestamp(timestamp);
+
+        			if (printlinkactions) {
+            			for (ActionItem item : actionsPerTime.get(timestamp)) {
+            				printWiseMLLinkAction(item.action, getNodeId(item.source), getNodeId(item.target));
+            			}
+        			}
+        			
+        			if (!printOnlyChangingNodes) {
+        			    printWiseMLAllNodes(_nodes, timestamp);
+        			} else {
+                        ArrayList<Integer> changedNodes = new ArrayList<Integer>();
+                        for (ActionItem item : actionsPerTime.get(timestamp)) {
+                            if (!changedNodes.contains(item.source)) changedNodes.add(item.source);
+                            if (!changedNodes.contains(item.target)) changedNodes.add(item.target);
+                        }
+                        
+                        Collections.sort(changedNodes);
+                        
+                        if (s instanceof Scenario3D) {
+                            for (int index : changedNodes) {
+                                Position3D p = (Position3D)_nodes[index].positionAt(timestamp);
+                                printWiseMLNodePosition(getNodeId(index), p.x, p.y, p.z);
+                            }
+                        } else {
+                            for (int index : changedNodes) {
+                                Position p = _nodes[index].positionAt(timestamp);
+                                printWiseMLNodePosition(getNodeId(index), p.x, p.y, this.defaultAltitude);
+                            }
+                        }
+        			}
+        			
+        			i++;
+        			timestamp = linkChangeTimes.get(i);
+        		}
+	        	
+			    printWiseMLTimestamp(t);
+			    for(int currentNode = 0; currentNode < _nodes.length; currentNode++) {
+					printWiseMLOneNode(_nodes, t, currentNode);
+			    }
+			    t += intervalLength;
+	        }
+    	} else {
+    		throw new RuntimeException("interval length or transmission range is = 0");
+    	}
+    }
+
+    protected void printWiseMLOneNode(MobileNode[] _nodes, double t, int nodeIndex) {
+        Position p = _nodes[nodeIndex].positionAt(t);
+        Position oldPosition = _nodes[nodeIndex].positionAt(t - intervalLength);
+        if(oldPosition.equals(p)) {
+            System.out.println("Omitting output of node " + getNodeId(nodeIndex) + ". It has not moved since last output at time " + (t-intervalLength) + ".");
+        }
+        else {
+            if (p instanceof Position3D) {
+                Position3D p2 = (Position3D)p;
+                printWiseMLNodePosition(getNodeId(nodeIndex), p2.x, p2.y, p2.z);
+            } else {
+                printWiseMLNodePosition(getNodeId(nodeIndex), p.x, p.y, this.defaultAltitude);
+            }
+        }
+    }
+    
+	protected void printWiseMLLinkAction(LinkAction action, String source, String target)
+	{
+		print(String.format("<%s source=\"%s\" target=\"%s\" />", action, source, target), OTHER_LEVEL);
+	}
+    
+	protected void printWiseMLAllNodes(MobileNode[] nodes, double time)
+	{
+		for (int i = 0; i < nodes.length; i++)
+		{
+		    Position p = nodes[i].positionAt(time);
+            if (p instanceof Position3D) {
+                Position3D p2 = (Position3D)p;
+                printWiseMLNodePosition(getNodeId(i), p2.x, p2.y, p2.z);
+            } else {
+                printWiseMLNodePosition(getNodeId(i), p.x, p.y, this.defaultAltitude);
+            }
+		}
+	}
+
     protected void printWiseMLTimestamp(final double _value) {
-		print("<timestamp>",OTHER_LEVEL);
 		String timeToPrint;
 		if(this.useIntegerTimes) {
 		    final int value = new Double(_value).intValue();
@@ -140,8 +407,7 @@ public class WiseML extends App {
 		else {
 		    timeToPrint = Double.toString(_value);
 		}
-		print(timeToPrint,OTHER_LEVEL+1);
-		print("</timestamp>",OTHER_LEVEL);
+		print(String.format("<timestamp>%s</timestamp>", timeToPrint), OTHER_LEVEL);
     }
 
     protected void printWiseMLNodePosition(final String _nodeId, final double _posX, final double _posY, final double _posZ) {
@@ -209,9 +475,8 @@ public class WiseML extends App {
     }
 
     protected void closeWriter() {
-        out.close();
-        out = null;
-
+		if (out != null) out.close();
+		out = null;
     }
     
     protected boolean parseArg(char key, String val) {
@@ -245,27 +510,54 @@ public class WiseML extends App {
             case 'N':
                 this.path_nodeId = val;
                 return true;
+			case 'r':
+				this.transmissionRange = Double.parseDouble(val);
+				return true;
+			case 'e':
+				this.printlinkactions = true;
+				return true;
+			case 'o':
+			    this.printOnlyChangingNodes = true;
+			    return true;
             default:
                 return super.parseArg(key, val);
         }
     }
 
     public static void printHelp() {
-        System.out.println();
+        System.out.println(getInfo().toDetailString());
         App.printHelp();
         System.out.println("WiseML:");
-        System.out.println("Outputs node movement in WiseML");
         System.out.println("\t[-a <altitude>]\t(default 0)");
         System.out.println("\t[-c <compressionlevel>]\t(default 0) 0 = NONE, 1 = No tabs, 2 = No tabs, no newlines");
         System.out.println("\t-f <filename>\tScenario");
         System.out.println("\t[-F <path to file>]\tWiseML footer");
         System.out.println("\t[-H <path to file>]\tWiseML header");
-        System.out.println("\t[-I]\t\t\tConvert times to integer values");
-        System.out.println("\t[-L <double>]\t\tTime between two outputs (default 1.0)");
+        System.out.println("\t[-I]\tConvert times to integer values");
+        System.out.println("\t-L <double>\tTime between two outputs [s] (interval-based)");
         System.out.println("\t[-N <path to file>]\tWiseML node ids");
+		System.out.println("\t-r <double>\ttransmission range [m] (contact-based)");
+		System.out.println("\t[-e]\tPrint which links were enabled/disabled (contact-based)");		
+		System.out.println("\t[-o]\tPrint only positions of nodes, which links are changing (contact-based)");
     }
 
     public static void main(String[] args) throws FileNotFoundException, IOException {
         new WiseML(args);
+    }
+    
+    private enum LinkAction { enableLink, disableLink } 
+    
+    private final class ActionItem
+    {
+    	int source; 	// source node id
+    	int target; 	// target node id
+    	LinkAction action;
+    	
+    	ActionItem(LinkAction _action, int _source, int _target)
+    	{
+    		action = _action;
+    		source = _source;
+    		target = _target;
+    	}
     }
 }

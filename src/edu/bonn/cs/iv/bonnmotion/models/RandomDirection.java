@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 
 import edu.bonn.cs.iv.bonnmotion.MobileNode;
+import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
 import edu.bonn.cs.iv.bonnmotion.Position;
 import edu.bonn.cs.iv.bonnmotion.RandomSpeedBase;
 import edu.bonn.cs.iv.bonnmotion.Scenario;
@@ -23,8 +24,25 @@ import edu.bonn.cs.iv.bonnmotion.Waypoint;
  */
 
 public class RandomDirection extends RandomSpeedBase {
-
-	private static final String MODEL_NAME = "RandomDirection";
+    private static ModuleInfo info;
+    
+    static {
+        info = new ModuleInfo("RandomDirection");
+        info.description = "Application to construct Random Direction mobility scenarios";
+        
+        info.major = 1;
+        info.minor = 0;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 252 $");
+        
+        info.contacts.add(ModuleInfo.BM_MAILINGLIST);
+        info.authors.add("Chris Walsh");
+        
+        info.affiliation = ModuleInfo.TOILERS;
+    }
+    
+    public static ModuleInfo getInfo() {
+        return info;
+    }
 
 	protected double minpause = 0.0;
 
@@ -78,7 +96,7 @@ public class RandomDirection extends RandomSpeedBase {
 				Position dst;
 				
 				if (!node[i].add(t, src))
-					throw new RuntimeException(MODEL_NAME + ".go: error while adding waypoint (1)");
+					throw new RuntimeException(getInfo().name + ".go: error while adding waypoint (1)");
 				
 				speed = (maxspeed - minspeed) * randomNextDouble() + minspeed;
 				
@@ -178,13 +196,13 @@ public class RandomDirection extends RandomSpeedBase {
 						angle = (randomNextDouble() * Math.PI/2) + (Math.PI/2);
 					}
 				}
-				else throw new RuntimeException(MODEL_NAME + ".go: error angle didn't fall into any of the four quadrants. (Something blew up?)");
+				else throw new RuntimeException(getInfo().name + ".go: error angle didn't fall into any of the four quadrants. (Something blew up?)");
 				
 				dst = new Position(newX, newY);
 				t += src.distance(dst) / speed;
 				
 				if (!node[i].add(t, dst))
-					throw new RuntimeException(MODEL_NAME + ".go: error while adding waypoint (2)");
+					throw new RuntimeException(getInfo().name + ".go: error while adding waypoint (2)");
 				
 				if ((t < duration) && (maxpause > 0.0)) {
 					double pause = (maxpause-minpause) * randomNextDouble() + minpause;
@@ -223,8 +241,9 @@ public class RandomDirection extends RandomSpeedBase {
 	}
 	
 	public static void printHelp() {
+	    System.out.println(getInfo().toDetailString());
 		RandomSpeedBase.printHelp();
-		System.out.println( MODEL_NAME + ":");
+		System.out.println( getInfo().name + ":");
 		System.out.println("\t-o <minimum pause time>");
 	}
 

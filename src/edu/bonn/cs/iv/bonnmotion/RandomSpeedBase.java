@@ -18,7 +18,6 @@ public abstract class RandomSpeedBase extends Scenario {
 
 	public RandomSpeedBase() {}
 	
-
 	public void write(String basename, String[] params) throws FileNotFoundException, IOException {
 		String[] p = new String[3];
 		p[0] = "minspeed=" + minspeed;

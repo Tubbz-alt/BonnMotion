@@ -23,10 +23,11 @@ package edu.bonn.cs.iv.bonnmotion.models;
 import java.io.*;
 import java.text.DecimalFormat;
 import java.util.StringTokenizer;
-
 import edu.bonn.cs.iv.bonnmotion.BoundingBox;
 import edu.bonn.cs.iv.bonnmotion.HttpMapRequest;
+import edu.bonn.cs.iv.bonnmotion.HttpMapRequest.ORSStartPositionFailedException;
 import edu.bonn.cs.iv.bonnmotion.MobileNode;
+import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
 import edu.bonn.cs.iv.bonnmotion.Position;
 import edu.bonn.cs.iv.bonnmotion.Scenario;
 import edu.bonn.cs.iv.bonnmotion.Waypoint;
@@ -37,7 +38,24 @@ import com.jhlabs.map.proj.*;
 
 public class RandomStreet extends Scenario
 {
-    private static final String MODEL_NAME = "RandomStreet";
+    private static ModuleInfo info;
+    
+    static {
+        info = new ModuleInfo("RandomStreet");
+        info.description = "Application to construct RandomStreet mobility scenarios";
+        
+        info.major = 1;
+        info.minor = 0;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        
+        info.contacts.add(ModuleInfo.BM_MAILINGLIST);
+        info.authors.add("Matthias Schwamborn");
+		info.affiliation = ModuleInfo.UNIVERSITY_OF_BONN;
+    }
+    
+    public static ModuleInfo getInfo() {
+        return info;
+    }
 
     private static final boolean DEBUG = true;
 
@@ -94,7 +112,7 @@ public class RandomStreet extends Scenario
         if (isTransition)
             System.out.println("Warning: Ignoring transition...");
 
-        for (int i = 0; i < node.length; i++)
+out:    for (int i = 0; i < node.length; i++)
         {
             double t = 0.0;
             node[i] = new MobileNode();
@@ -124,8 +142,18 @@ public class RandomStreet extends Scenario
                     
                     Position dst = randomNextMapPosition();
 
-                    // get route waypoints by querying OpenRouteService
-                    route = HttpMapRequest.getORSRouteWaypoints(scenarioToMapPosition(node[i].getLastWaypoint().pos), dst, epsgCode, orsDistMetric, orsUrl);
+                    try {
+                        // get route waypoints by querying OpenRouteService
+                        route = HttpMapRequest.getORSRouteWaypoints(scenarioToMapPosition(node[i].getLastWaypoint().pos), dst, epsgCode, orsDistMetric, orsUrl);
+                    } catch (ORSStartPositionFailedException e) {
+                        if (DEBUG) {
+                            System.err.println(e.getMessage());
+                            System.err.println("ORS failed to generate route. discarding this node.");
+                        }
+                        
+                        i--;
+                        continue out;
+                    }
                     
                     numIterations++;
                 }
@@ -133,6 +161,7 @@ public class RandomStreet extends Scenario
                 // add route to waypoint list (drive to destination)
                 t = addRoute(node[i], t, route);
             }
+            System.out.println("Node " + (i + 1) + " of " + node.length + " done.");
         }
 
         postGeneration();
@@ -176,8 +205,9 @@ public class RandomStreet extends Scenario
 
     public static void printHelp()
     {
+        System.out.println(getInfo().toDetailString());
         Scenario.printHelp();
-        System.out.println( MODEL_NAME + ":");
+        System.out.println( getInfo().name + ":");
         System.out.println("\t-p <parameter file>");
     }
 

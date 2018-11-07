@@ -7,6 +7,25 @@ import java.io.*;
 /** Application that calculates various statistics for movement scenarios. */
 
 public class Visplot extends App {
+    private static ModuleInfo info;
+    
+    static {
+        info = new ModuleInfo("Visplot");
+        info.description = "Application that visualises node movements";
+        
+        info.major = 1;
+        info.minor = 0;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        
+        info.contacts.add(ModuleInfo.BM_MAILINGLIST);
+        info.authors.add("Elmar Gerhards-Padilla");
+		info.affiliation = ModuleInfo.UNIVERSITY_OF_BONN;
+    }
+    
+    public static ModuleInfo getInfo() {
+        return info;
+    }
+    
 	protected String name = null;
 	protected int idx = 0;
 
@@ -27,14 +46,27 @@ public class Visplot extends App {
 
 		PrintWriter gp = new PrintWriter(new FileOutputStream(name + ".visplot" + idx));
 		double[] ct = node.changeTimes();
-		Position p = node.positionAt(0.0);
-		gp.println("" + p.x + " " + p.y);
-		for (int i = 0; i < ct.length; i++) {
-			p = node.positionAt(ct[i]);
-			gp.println("" + p.x + " " + p.y);
-		}
-		p = node.positionAt(duration);
-		gp.println("" + p.x + " " + p.y);
+		
+		if (s instanceof Scenario3D) {
+            Position3D p = (Position3D)node.positionAt(0.0);
+            gp.println("" + p.x + " " + p.y + " " + p.z);
+            for (int i = 0; i < ct.length; i++) {
+                p = (Position3D)node.positionAt(ct[i]);
+                gp.println("" + p.x + " " + p.y + " " + p.z);
+            }
+            p = (Position3D)node.positionAt(duration);
+            gp.println("" + p.x + " " + p.y + " " + p.z);		    
+		} else {
+    		Position p = node.positionAt(0.0);
+    		gp.println("" + p.x + " " + p.y);
+    		for (int i = 0; i < ct.length; i++) {
+    			p = node.positionAt(ct[i]);
+    			gp.println("" + p.x + " " + p.y);
+    		}
+    		p = node.positionAt(duration);
+    		gp.println("" + p.x + " " + p.y);
+    	}
+		
 		gp.close();
 	}
 
@@ -52,6 +84,7 @@ public class Visplot extends App {
 	}
 
 	public static void printHelp() {
+        System.out.println(getInfo().toDetailString());
 		App.printHelp();
 		System.out.println("Visplot:");
 		System.out.println("\t-f <scenario name>");

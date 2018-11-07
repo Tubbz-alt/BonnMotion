@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 
 import edu.bonn.cs.iv.bonnmotion.MobileNode;
+import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
 import edu.bonn.cs.iv.bonnmotion.Position;
 import edu.bonn.cs.iv.bonnmotion.RandomSpeedBase;
 import edu.bonn.cs.iv.bonnmotion.Scenario;
@@ -13,8 +14,25 @@ import edu.bonn.cs.iv.bonnmotion.Waypoint;
 /** Application to construct Randomwaypoint mobility scenarios. */
 
 public class RandomWaypoint extends RandomSpeedBase {
+    private static ModuleInfo info;
+    
+    static {
+        info = new ModuleInfo("RandomWaypoint");
+        info.description = "Application to construct RandomWaypoint mobility scenarios";
+        
+        info.major = 1;
+        info.minor = 0;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        
+        info.contacts.add(ModuleInfo.BM_MAILINGLIST);
+        info.authors.add("University of Bonn");
+		info.affiliation = ModuleInfo.UNIVERSITY_OF_BONN;
+    }
+    
+    public static ModuleInfo getInfo() {
+        return info;
+    }
 
-	private static final String MODEL_NAME = "RandomWaypoint";
 	/** Restrict the mobiles' movements: 1 . */
 	protected int dim = 3;
 	/** distance between neighbouring mesh nodes */
@@ -64,7 +82,7 @@ public class RandomWaypoint extends RandomSpeedBase {
 			while (t < duration) {
 				Position dst;
 				if (!node[i].add(t, src))
-					throw new RuntimeException(MODEL_NAME + ".go: error while adding waypoint (1)");
+					throw new RuntimeException(getInfo().name + ".go: error while adding waypoint (1)");
 				switch (dim) {
 					case 1 :
 						dst = randomNextPosition(-1., src.y);
@@ -79,21 +97,21 @@ public class RandomWaypoint extends RandomSpeedBase {
 								break;
 							default :
 								throw new RuntimeException(
-									MODEL_NAME + ".go: This is impossible - how can (int)(randomNextDouble() * 2.0) be something other than 0 or 1?!");
+									getInfo().name + ".go: This is impossible - how can (int)(randomNextDouble() * 2.0) be something other than 0 or 1?!");
 						}
 						break;
 					case 3 :
 						dst = randomNextPosition();
 						break;
 					default :
-						throw new RuntimeException(MODEL_NAME + ".go: dimension may only be of value 1, 2 or 3.");
+						throw new RuntimeException(getInfo().name + ".go: dimension may only be of value 1, 2 or 3.");
 				}
 				double speed = (maxspeed - minspeed) * randomNextDouble() + minspeed;
 				double dist = src.distance(dst);
 				double time = dist / speed;
 				t += time;
 				if (!node[i].add(t, dst))
-					throw new RuntimeException(MODEL_NAME + ".go: error while adding waypoint (2)");
+					throw new RuntimeException(getInfo().name + ".go: error while adding waypoint (2)");
 				if ((t < duration) && (maxpause > 0.0)) {
 					double pause = maxpause * randomNextDouble();
 					t += pause;
@@ -138,8 +156,9 @@ public class RandomWaypoint extends RandomSpeedBase {
 	}
 	
 	public static void printHelp() {
+	    System.out.println(getInfo().toDetailString());
 		RandomSpeedBase.printHelp();
-		System.out.println( MODEL_NAME + ":");
+		System.out.println( getInfo().name + ":");
 		System.out.println("\t-o <dimension: 1: x only, 2: x or y, 3: x and y>");
 	}
 	

@@ -25,6 +25,25 @@ import java.io.*;
 import edu.bonn.cs.iv.bonnmotion.*;
 
 public class IntervalFormat extends App {
+    private static ModuleInfo info;
+    
+    static {
+        info = new ModuleInfo("IntervalFormat");
+        info.description = "Application that converts scenario file into interval format";
+        
+        info.major = 1;
+        info.minor = 0;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        
+        info.contacts.add(ModuleInfo.BM_MAILINGLIST);
+        info.authors.add("Raphael Ernst");
+		info.affiliation = ModuleInfo.UNIVERSITY_OF_BONN;
+    }
+    
+    public static ModuleInfo getInfo() {
+        return info;
+    }
+    
 	protected static final String filesuffix = ".if";
         
 	protected String name = null;
@@ -49,34 +68,65 @@ public class IntervalFormat extends App {
 		} catch (Exception e) {
 			App.exceptionHandler( "Error reading file", e);
 		}
-
-		MobileNode[] node = s.getNode();
 		
-		PrintWriter out = openPrintWriter(name + filesuffix);
-		if(!skipHead) {
-		    out.println("#X " + s.getX());
-		    out.println("#Y " + s.getY());
-		    out.println("#Nodes " + s.nodeCount());
-		    out.println("#Duration " + s.getDuration());
-		    
-		    for (int i = 0; i < node.length; i++) {
-		    	String nodeMovementString = node[i].movementString();
-		    	out.println("#Waypoints node  " + i + ": " + nodeMovementString);
-		    }
-		    out.println("#Node Time X Y");
-		}
-		
-		double duration = Math.ceil(s.getDuration());
-		for(int i = 0; i < node.length; i++) {
-			double t = 0;
-            while(t<duration+1) {
-            	Position p = node[i].positionAt(t);
-                out.println(i + " " + t + " " + p.x + " " + p.y);
-                t += intervalLength;
+	    if(s instanceof Scenario3D) {
+            MobileNode3D[] node = ((Scenario3D)s).getNode();
+    
+            PrintWriter out = openPrintWriter(name + filesuffix);
+            if(!skipHead) {
+                out.println("#X " + ((Scenario3D)s).getX());
+                out.println("#Y " + ((Scenario3D)s).getY());
+                out.println("#Z " + ((Scenario3D)s).getZ());
+                out.println("#Nodes " + ((Scenario3D)s).nodeCount());
+                out.println("#Duration " + ((Scenario3D)s).getDuration());
+                
+                for(int i = 0; i < node.length; i++) {
+                    String nodeMovementString = node[i].movementString();
+                    out.println("#Waypoints node " + i + ": " + nodeMovementString);
+                }
+                out.println("#Node Time X Y Z");
             }
-		}
-
-		out.close();
+            
+            double duration = Math.ceil(s.getDuration());
+    
+            for(int i = 0; i < node.length; i++){
+                double t = 0.0;
+                while(t < duration + 1.0){
+                    Position3D p = (Position3D)node[i].positionAt(t);
+                    out.println(i + " " + t + " " + p.x + " " + p.y + " " + p.z);
+                    t += intervalLength;
+                }
+            }
+            out.close();
+        } else if(s instanceof Scenario) {
+    		MobileNode[] node = s.getNode();
+    		
+    		PrintWriter out = openPrintWriter(name + filesuffix);
+    		if(!skipHead) {
+    		    out.println("#X " + s.getX());
+    		    out.println("#Y " + s.getY());
+    		    out.println("#Nodes " + s.nodeCount());
+    		    out.println("#Duration " + s.getDuration());
+    		    
+    		    for (int i = 0; i < node.length; i++) {
+    		    	String nodeMovementString = node[i].movementString();
+    		    	out.println("#Waypoints node  " + i + ": " + nodeMovementString);
+    		    }
+    		    out.println("#Node Time X Y");
+    		}
+    		
+    		double duration = Math.ceil(s.getDuration());
+    		for(int i = 0; i < node.length; i++) {
+    			double t = 0;
+                while(t<duration+1) {
+                	Position p = node[i].positionAt(t);
+                    out.println(i + " " + t + " " + p.x + " " + p.y);
+                    t += intervalLength;
+                }
+    		}
+    
+    		out.close();
+        }
 	}
 
 	protected boolean parseArg(char key, String val) {
@@ -96,10 +146,9 @@ public class IntervalFormat extends App {
 	}
 
 	public static void printHelp() {
-		System.out.println();
+        System.out.println(getInfo().toDetailString());
 		App.printHelp();
 		System.out.println("IntervalFormat:");
-		System.out.println("Outputs node movement as interval");
 		System.out.println("\t-f <filename> (Scenario)");
 		System.out.println("\t-l <double> (Intervallength, Optional)");
 		System.out.println("\t-s (Skip head of outputfile, Optional)");

@@ -9,7 +9,7 @@ set BONNMOTION=H:\Eigene-Daten\Uni\AG_RN\bonnmotion\bonnmotion
 REM *********************************************
 
 echo BonnMotion - mobility scenario generation and analysis tool
-echo Copyright (C) 2002-2005 University of Bonn
+echo Copyright (C) 2002-2011 University of Bonn
 echo.
 echo This program is free software; you can redistribute it and/or modify
 echo it under the terms of the GNU General Public License as published by
@@ -61,7 +61,8 @@ echo %FILE%
 if exist bin\%FILE% del bin\%FILE%
 echo @echo off >> bin\%FILE%
 echo cd %BONNMOTION% >> bin\%FILE%
-echo %JAVA% -cp %BONNMOTION%\classes %PACKAGE%.run.BM %%1 %%2 %%3 %%4 %%5 %%6 %%7 %%8 %%9 >> bin\%FILE%
+echo %JAVA% -cp %BONNMOTION%\classes;%BONNMOTION%\lib\javaproj-1.0.4.jar %PACKAGE%.run.BM %%1 %%2 %%3 %%4 %%5 %%6 %%7 %%8 %%9 >> bin\%FILE%
+echo cd bin >> bin\%FILE%
 
 REM compile
 set FILE=compile.bat
@@ -71,7 +72,7 @@ echo @echo off >> bin\%FILE%
 echo cd %BONNMOTION% >> bin\%FILE%
 echo if not exist classes mkdir classes >> bin\%FILE%
 echo echo on >> bin\%FILE%
-echo for /r %%%%i in (*.java) do %JAVAC% -d classes -sourcepath src -classpath classes %%%%i >> bin\%FILE%
+echo for /r %%%%i in (*.java) do %JAVAC% -d classes -sourcepath src -classpath classes;lib\javaproj-1.0.4.jar %%%%i >> bin\%FILE%
 
 REM makedoc
 set FILE=makedoc.bat
@@ -83,4 +84,12 @@ echo if not exist doc mkdir doc >> bin\%FILE%
 echo %JAVADOC% -quiet -d doc -use -windowtitle "BonnMotion" -sourcepath %BONNMOTION%\src edu.bonn.cs.iv.bonnmotion edu.bonn.cs.iv.bonnmotion.apps edu.bonn.cs.iv.bonnmotion.run edu.bonn.cs.iv.bonnmotion.models >> bin\%FILE%
 
 echo done.
+echo Starting compilation ...
+call bin\compile.bat
+@echo off
+echo compilation done ...
+echo.
+echo \bin\bm.bat -h
+call bin\bm.bat
+
 :Ende

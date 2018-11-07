@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 
 import edu.bonn.cs.iv.bonnmotion.MobileNode;
+import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
 import edu.bonn.cs.iv.bonnmotion.Position;
 import edu.bonn.cs.iv.bonnmotion.Scenario;
 import edu.bonn.cs.iv.bonnmotion.ScenarioLinkException;
@@ -12,8 +13,24 @@ import edu.bonn.cs.iv.bonnmotion.Waypoint;
 /** Manhattan Grid mobility scenario. */
 
 public class ManhattanGrid extends Scenario {
-
-	private static final String MODEL_NAME = "ManhattanGrid";
+    private static ModuleInfo info;
+    
+    static {
+        info = new ModuleInfo("ManhattanGrid");
+        info.description = "Application to construct ManhattanGrid mobility scenarios";
+        
+        info.major = 1;
+        info.minor = 0;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        
+        info.contacts.add(ModuleInfo.BM_MAILINGLIST);
+        info.authors.add("University of Bonn");
+		info.affiliation = ModuleInfo.UNIVERSITY_OF_BONN;
+    }
+    
+    public static ModuleInfo getInfo() {
+        return info;
+    }
 
 	/** Number of blocks on x-axis. */
 	protected int xblocks = 10;
@@ -135,7 +152,7 @@ public class ManhattanGrid extends Scenario {
 						griddist = ydim - griddist;
 				}
 				if (!node[i].add(0.0, src)) {
-					System.out.println(MODEL_NAME + ".<init>: error while adding node movement (1)");
+					System.out.println(getInfo().name + ".<init>: error while adding node movement (1)");
 					System.exit(0);
 				}
 			}
@@ -162,12 +179,12 @@ public class ManhattanGrid extends Scenario {
 					if (!src.equals(dst)) {
 						// this is of concern when xdim or ydim are multiple of updateDist
 						if (outOfBounds(dst)) {
-							System.out.println(MODEL_NAME + ".<init>: out of bounds (2)");
+							System.out.println(getInfo().name + ".<init>: out of bounds (2)");
 							System.exit(0);
 						}
 						if (!node[i].add(t, dst))
 							if (!nodeAddErrorHandler(i, t, dst)) {
-								System.out.println(MODEL_NAME + ".<init>: error while adding node movement (2)");
+								System.out.println(getInfo().name + ".<init>: error while adding node movement (2)");
 								System.exit(0);
 							}
 						src = dst;
@@ -208,12 +225,12 @@ public class ManhattanGrid extends Scenario {
 						if (!src.equals(dst)) {
 							// this is of concern when xdim or ydim are multiple of updateDist
 							if (outOfBounds(dst)) {
-								System.out.println(MODEL_NAME + ".<init>: out of bounds (3)");
+								System.out.println(getInfo().name + ".<init>: out of bounds (3)");
 								System.exit(0);
 							}
 							if (!node[i].add(t, dst))
 								if (!nodeAddErrorHandler(i, t, dst)) {
-									System.out.println(MODEL_NAME + ".<init>: error while adding node movement (3)");
+									System.out.println(getInfo().name + ".<init>: error while adding node movement (3)");
 									System.exit(0);
 								}
 							src = dst;
@@ -223,12 +240,12 @@ public class ManhattanGrid extends Scenario {
 						else {
 							st = t += randomNextDouble() * maxPause;
 							if (outOfBounds(dst)) {
-								System.out.println(MODEL_NAME + ".<init>: out of bounds (5)");
+								System.out.println(getInfo().name + ".<init>: out of bounds (5)");
 								System.exit(0);
 							}
 							if (!node[i].add(t, dst))
 								if (!nodeAddErrorHandler(i, t, dst)) {
-									System.out.println(MODEL_NAME + ".<init>: error while adding node movement (5)");
+									System.out.println(getInfo().name + ".<init>: error while adding node movement (5)");
 									System.exit(0);
 								}
 						}
@@ -241,11 +258,11 @@ public class ManhattanGrid extends Scenario {
 			if (st < duration) {
 				Position dst = getNewPos(src, src.distance(pos) * (duration - st) / (t - st), dir);
 				if (outOfBounds(dst)) {
-					System.out.println(MODEL_NAME + ".<init>: out of bounds (4)");
+					System.out.println(getInfo().name + ".<init>: out of bounds (4)");
 					System.exit(0);
 				}
 				if (!node[i].add(duration, dst)) {
-					System.out.println(MODEL_NAME + ".<init>: error while adding node movement (4)");
+					System.out.println(getInfo().name + ".<init>: error while adding node movement (4)");
 					System.exit(0);
 				}
 			}
@@ -332,7 +349,7 @@ public class ManhattanGrid extends Scenario {
 			if (node[i].add(t, dst))
 				return true;
 		}
-		System.out.println(MODEL_NAME + ".<init>: error while adding node movement");
+		System.out.println(getInfo().name + ".<init>: error while adding node movement");
 		return false;
 	}
 
@@ -390,8 +407,9 @@ public class ManhattanGrid extends Scenario {
 	}
 
 	public static void printHelp() {
+	    System.out.println(getInfo().toDetailString());
 		Scenario.printHelp();
-		System.out.println(MODEL_NAME + ":");
+		System.out.println(getInfo().name + ":");
 		System.out.println("\t-c <speed change probability>");
 		System.out.println("\t-e <min. speed>");
 		System.out.println("\t-m <mean speed>");

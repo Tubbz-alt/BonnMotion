@@ -30,6 +30,27 @@ import edu.bonn.cs.iv.bonnmotion.*;
  * @author schwambo
  */
 public class TheONEFile extends App {
+    private static ModuleInfo info;
+    
+    static {
+        info = new ModuleInfo("TheONEFile");
+        info.description = "Application that converts scenarios to the ONE file format";
+        
+        info.major = 1;
+        info.minor = 0;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        
+        info.contacts.add(ModuleInfo.BM_MAILINGLIST);
+        info.authors.add("Matthias Schwamborn");
+		info.affiliation = ModuleInfo.UNIVERSITY_OF_BONN;
+        info.references.add("http://www.netlab.tkk.fi/tutkimus/dtn/theone/");
+        info.references.add("http://www.netlab.tkk.fi/tutkimus/dtn/theone/javadoc/input/ExternalMovementReader.html");
+    }
+    
+    public static ModuleInfo getInfo() {
+        return info;
+    }
+    
 	protected static final String fileSuffix = ".one";
 
 	protected String name = null;
@@ -59,18 +80,33 @@ public class TheONEFile extends App {
 		/** print header line:
 		 * minTime maxTime minX maxX minY maxY [minZ maxZ]
 		 * */
-		out.println(0.0 + " " + s.getDuration() + " " + 0.0 + " " + s.getX() + " " + 0.0 + " " + s.getY());
+		if (s instanceof Scenario3D) {
+            out.println(0.0 + " " + s.getDuration() + " " + 0.0 + " " + s.getX() + " " + 0.0 + " " + s.getY() + " " + 0.0 + " " + ((Scenario3D)s).getZ()); 		    
+		} else {
+		    out.println(0.0 + " " + s.getDuration() + " " + 0.0 + " " + s.getX() + " " + 0.0 + " " + s.getY());
+		}
 
 		MobileNode[] node = s.getNode();
 		double duration = s.getDuration();
 		double t = 0.0;
-		while (t < duration) {
-			for (int i = 0; i < node.length; i++) {
-				Position p = node[i].positionAt(t);
-				out.println(t + " " + i + " " + p.x + " " + p.y);
-			}
-			t += intervalLength;
-		}
+		
+	    if (s instanceof Scenario3D) {
+	        while (t < duration) {
+	            for (int i = 0; i < node.length; i++) {
+	                Position3D p = (Position3D)node[i].positionAt(t);
+                    out.println(t + " " + i + " " + p.x + " " + p.y + " " + p.z);
+	            }
+	            t += intervalLength;
+	        }
+        } else {
+    		while (t < duration) {
+    			for (int i = 0; i < node.length; i++) {
+    				Position p = node[i].positionAt(t);
+    				out.println(t + " " + i + " " + p.x + " " + p.y);
+    			}
+    			t += intervalLength;
+    		}
+        }
 
 		out.close();
 	}
@@ -89,10 +125,9 @@ public class TheONEFile extends App {
 	}
 
 	public static void printHelp() {
-		System.out.println();
+        System.out.println(getInfo().toDetailString());
 		App.printHelp();
 		System.out.println("TheONEFile:");
-		System.out.println("Outputs node movement in The ONE format");
 		System.out.println("\t-f <filename> (scenario)");
 		System.out.println("\t-l <double> (sample interval length, default is 1s)");
 	}

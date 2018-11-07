@@ -8,19 +8,37 @@ import java.util.Vector;
 
 import edu.bonn.cs.iv.bonnmotion.MobileNode;
 import edu.bonn.cs.iv.bonnmotion.Model;
+import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
 import edu.bonn.cs.iv.bonnmotion.Scenario;
 import edu.bonn.cs.iv.bonnmotion.run.BM;
 
 public class ChainScenario implements Model {
-
-	protected static final String MODEL_NAME = "ChainScenario";
+    private static ModuleInfo info;
+    
+    static {
+        info = new ModuleInfo("ChainScenario");
+        info.description = "Application which links different scenarios";
+        
+        info.major = 1;
+        info.minor = 0;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        
+        info.contacts.add(ModuleInfo.BM_MAILINGLIST);
+        info.authors.add("University of Bonn");
+		info.affiliation = ModuleInfo.UNIVERSITY_OF_BONN;
+    }
+    
+    public static ModuleInfo getInfo() {
+        return info;
+    }
 
 	protected Vector<Scenario> scenarios = new Vector<Scenario>();
 	protected int mode = 0;
 	protected boolean writeParts = false;
 
 	public static void printHelp() {
-		System.out.println(MODEL_NAME + ":");
+	    System.out.println(getInfo().toDetailString());
+		System.out.println(getInfo().name + ":");
 		System.out.println("\t-m <mode>");
 		System.out.println("\t  0: Fast mode (default)");
 		System.out.println("\t  1: Move mode - nodes get 2 sec. to get to their new pos");
@@ -109,7 +127,7 @@ public class ChainScenario implements Model {
 	}
 
 	public String getModelName() {
-		return MODEL_NAME;
+		return getInfo().name;
 	}
 
 	public Scenario makeMixedScenario() {
@@ -133,7 +151,7 @@ public class ChainScenario implements Model {
 		}
 
 		Scenario mixedS = new Scenario(s.getNode().length, x, y, duration, s.getIgnore(), s.getRandomSeed());
-		mixedS.setModelName(MODEL_NAME);
+		mixedS.setModelName(getInfo().name);
 		mixedS.setNode(mixedSmn);
 		return mixedS;
 	}

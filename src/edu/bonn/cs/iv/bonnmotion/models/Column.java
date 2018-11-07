@@ -6,14 +6,33 @@ import java.util.Vector;
 
 import edu.bonn.cs.iv.bonnmotion.GroupNode;
 import edu.bonn.cs.iv.bonnmotion.MobileNode;
+import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
 import edu.bonn.cs.iv.bonnmotion.Position;
 import edu.bonn.cs.iv.bonnmotion.RandomSpeedBase;
 
 /** Application to create movement scenarios according to the Column model. */
 
 public class Column extends RandomSpeedBase {
-
-	private static final String MODEL_NAME = "Column";
+    private static ModuleInfo info;
+    
+    static {
+        info = new ModuleInfo("Column");
+        info.description = "Application to create movement scenarios according to the Column model";
+        
+        info.major = 1;
+        info.minor = 0;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        
+        info.contacts.add(ModuleInfo.BM_MAILINGLIST);
+        info.authors.add("Chris Walsh");
+		
+		info.affiliation = ModuleInfo.TOILERS;
+    }
+    
+    public static ModuleInfo getInfo() {
+        return info;
+    }
+    
 	/** Maximum deviation from group center [m]. */
 	protected double maxdist = 2.5;
 	/** Number of Groups */
@@ -47,12 +66,12 @@ public class Column extends RandomSpeedBase {
 		nodesPerGroup = node.length / numGroups;
 		
 		if (node.length % numGroups != 0) {
-			System.out.println(MODEL_NAME+ ".go: Error: Must use an even multiple of nodes for the number of groups specified.");
+			System.out.println(getInfo().name+ ".go: Error: Must use an even multiple of nodes for the number of groups specified.");
 			System.exit(1);
 		}
 		
 		if ((nodesPerGroup - 1) * refPtSeparation > x || (nodesPerGroup - 1) * refPtSeparation > y) {
-			throw new RuntimeException(MODEL_NAME+ ".go: Error: The line of reference points with " +
+			throw new RuntimeException(getInfo().name+ ".go: Error: The line of reference points with " +
 					"the given parameters (nodes, numGroups, and refPtSeparation) exceeds the dimensions of " +
 					"the simulation. Please either increase the size of the simulation or decrese " +
 					"the nodesPerGroup, or decrease the refPtSeparation");
@@ -102,7 +121,7 @@ public class Column extends RandomSpeedBase {
 				}
 				
 				if (!ref.add(0.0, src)) {
-					System.out.println(MODEL_NAME + ".generate: error while adding group movement (1)");
+					System.out.println(getInfo().name + ".generate: error while adding group movement (1)");
 					System.exit(0);
 				}
 			}
@@ -124,7 +143,7 @@ public class Column extends RandomSpeedBase {
 				{	
 					src = new Position(rpoints.get(i).get(j).positionAt(t).x, rpoints.get(i).get(j).positionAt(t).y);
 					if (!rpoints.get(i).get(j).add(t, src)) {
-						System.out.println(MODEL_NAME + ".generate: error while adding group movement (2)");
+						System.out.println(getInfo().name + ".generate: error while adding group movement (2)");
 						System.exit(0);
 					}
 					
@@ -155,7 +174,7 @@ public class Column extends RandomSpeedBase {
 					t += src.distance(dst) / speed;
 					
 					if (!rpoints.get(i).get(j).add(t, dst)) {
-						System.out.println(MODEL_NAME + ".generate: error while adding group movement (3)");
+						System.out.println(getInfo().name + ".generate: error while adding group movement (3)");
 						System.exit(0);
 					}
 					
@@ -165,7 +184,7 @@ public class Column extends RandomSpeedBase {
 							t += pause;
 							
 							if (!rpoints.get(i).get(j).add(t, dst)) {
-								System.out.println(MODEL_NAME + ".generate: error while adding node movement (4)");
+								System.out.println(getInfo().name + ".generate: error while adding node movement (4)");
 								System.exit(0);
 							}
 						}
@@ -191,7 +210,7 @@ public class Column extends RandomSpeedBase {
 			src = group.positionAt(t).rndprox(maxdist, randomNextDouble(), randomNextDouble());
 			
 			if (!node[i].add(0.0, src)) {
-				System.out.println(MODEL_NAME + ".generate: error while adding node movement (5)");
+				System.out.println(getInfo().name + ".generate: error while adding node movement (5)");
 				System.exit(0);
 			}
 			
@@ -219,7 +238,7 @@ public class Column extends RandomSpeedBase {
 						t = next;
 						
 						if (!node[i].add(t, dst)) {
-							System.out.println(MODEL_NAME + ".generate: error while adding group movement (2)");
+							System.out.println(getInfo().name + ".generate: error while adding group movement (2)");
 							System.exit(0);
 						}
 					} else { //ref pt is pausing, we don't have to time = next
@@ -227,7 +246,7 @@ public class Column extends RandomSpeedBase {
 						t += src.distance(dst) / speed;
 						
 						if (!node[i].add(t, dst)) {
-							System.out.println(MODEL_NAME + ".generate: error while adding group movement (2)");
+							System.out.println(getInfo().name + ".generate: error while adding group movement (2)");
 							System.exit(0);
 						}
 						
@@ -239,7 +258,7 @@ public class Column extends RandomSpeedBase {
 								else t += nodePause;
 								
 								if (!node[i].add(t, dst)) {
-									System.out.println(MODEL_NAME + ".generate: error while adding node movement (3)");
+									System.out.println(getInfo().name + ".generate: error while adding node movement (3)");
 									System.exit(0);
 								}
 							}
@@ -251,7 +270,7 @@ public class Column extends RandomSpeedBase {
 					t += src.distance(dst) / speed;
 					
 					if (!node[i].add(t, dst)) {
-						System.out.println(MODEL_NAME + ".generate: error while adding group movement (2)");
+						System.out.println(getInfo().name + ".generate: error while adding group movement (2)");
 						System.exit(0);
 					}
 
@@ -264,7 +283,7 @@ public class Column extends RandomSpeedBase {
 							else t += nodePause;
 							
 							if (!node[i].add(t, dst)) {
-								System.out.println(MODEL_NAME + ".generate: error while adding node movement (3)");
+								System.out.println(getInfo().name + ".generate: error while adding node movement (3)");
 								System.exit(0);
 							}
 						}
@@ -321,8 +340,9 @@ public class Column extends RandomSpeedBase {
 	}
 
 	public static void printHelp() {
+	    System.out.println(getInfo().toDetailString());
 		RandomSpeedBase.printHelp();
-		System.out.println( MODEL_NAME + ":" );
+		System.out.println( getInfo().name + ":" );
 		System.out.println("\t-a <number of groups>");
 		System.out.println("\t-r <reference point separation>");
 		System.out.println("\t-s <max. distance to group center>");

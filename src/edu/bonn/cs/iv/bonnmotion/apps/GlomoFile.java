@@ -6,7 +6,25 @@ import edu.bonn.cs.iv.bonnmotion.*;
 
 /** Application that creates a movement file for Glomosim (2.0.3) and Qualnet (3.5.1). */
 public class GlomoFile extends App {
-
+    private static ModuleInfo info;
+    
+    static {
+        info = new ModuleInfo("GlomoFile");
+        info.description = "Application that creates a movement file for Glomosim (2.0.3) and Qualnet (3.5.1)";
+        
+        info.major = 1;
+        info.minor = 0;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        
+        info.contacts.add(ModuleInfo.BM_MAILINGLIST);
+        info.authors.add("University of Bonn");
+		info.affiliation = ModuleInfo.UNIVERSITY_OF_BONN;
+    }
+    
+    public static ModuleInfo getInfo() {
+        return info;
+    }
+    
 	protected String name = null;
 	protected boolean qualnet = false;
 
@@ -61,7 +79,7 @@ public class GlomoFile extends App {
 	}
 
 	public static void printHelp() {
-		System.out.println();
+        System.out.println(getInfo().toDetailString());
 		App.printHelp();
 		System.out.println("GlomoFile:");
 		System.out.println("\t-f <filename>");

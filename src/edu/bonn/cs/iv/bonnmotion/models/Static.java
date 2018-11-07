@@ -7,7 +7,23 @@ import edu.bonn.cs.iv.bonnmotion.*;
 /** Application to construct static scenarios. */
 
 public class Static extends Scenario {
-	private static final String MODEL_NAME = "Static";
+    private static ModuleInfo info;
+    
+    static {
+        info = new ModuleInfo("Static");
+        info.description = "Application to construct static scenarios with no movement at all";
+        
+        info.major = 1;
+        info.minor = 0;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 252 $");
+        
+        info.contacts.add(ModuleInfo.BM_MAILINGLIST);
+        info.authors.add("BonnMotion Team");
+    }
+    
+    public static ModuleInfo getInfo() {
+        return info;
+    }
 
 	protected int densityLevels = 1;
 
@@ -53,7 +69,7 @@ public class Static extends Scenario {
 						pos = randomNextPosition();
 					} while (pos.x > x); // this may happen because of the attractor field
 					if (! (node[i] = new MobileNode()).add(0.0, pos))
-						throw new RuntimeException(MODEL_NAME + ".go: error while adding waypoint");
+						throw new RuntimeException(getInfo().name + ".go: error while adding waypoint");
 				}
 				x = xSave;
 				n = hn;
@@ -87,8 +103,9 @@ public class Static extends Scenario {
 	}
 	
 	public static void printHelp() {
+	    System.out.println(getInfo().toDetailString());
 		Scenario.printHelp();
-		System.out.println( MODEL_NAME + ":" );
+		System.out.println( getInfo().name + ":" );
 		System.out.println("\t-l <no. density levels>");
 	}
 }

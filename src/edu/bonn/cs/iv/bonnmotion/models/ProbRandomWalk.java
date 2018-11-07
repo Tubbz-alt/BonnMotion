@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 
 import edu.bonn.cs.iv.bonnmotion.MobileNode;
+import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
 import edu.bonn.cs.iv.bonnmotion.Position;
 import edu.bonn.cs.iv.bonnmotion.Scenario;
 import edu.bonn.cs.iv.bonnmotion.ScenarioLinkException;
@@ -18,8 +19,25 @@ import edu.bonn.cs.iv.bonnmotion.Waypoint;
  */
 
 public class ProbRandomWalk extends Scenario {
-	
-	private static final String MODEL_NAME = "ProbRandomWalk";
+    private static ModuleInfo info;
+    
+    static {
+        info = new ModuleInfo("ProbRandomWalk");
+        info.description = "Application to construct Probabilistic Random Walk mobility scenarios";
+        
+        info.major = 1;
+        info.minor = 0;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 252 $");
+        
+        info.contacts.add(ModuleInfo.BM_MAILINGLIST);
+        info.authors.add("Chris Walsh");
+        
+        info.affiliation = ModuleInfo.TOILERS;
+    }
+    
+    public static ModuleInfo getInfo() {
+        return info;
+    }
 	
 	private double interval = 1;
 
@@ -69,7 +87,7 @@ public class ProbRandomWalk extends Scenario {
 			else src = randomNextPosition();
 			
 			if (!node[i].add(t, src))		// add source waypoint
-				throw new RuntimeException(MODEL_NAME + ".go: error while adding waypoint (1)");
+				throw new RuntimeException(getInfo().name + ".go: error while adding waypoint (1)");
 			
 			while (t < duration) {
 				Position dst;
@@ -131,7 +149,7 @@ public class ProbRandomWalk extends Scenario {
 				t += interval;
 				
 				if (!node[i].add(t, dst))
-					throw new RuntimeException(MODEL_NAME + ".go: error while adding waypoint (1)");
+					throw new RuntimeException(getInfo().name + ".go: error while adding waypoint (1)");
 		
 				src = dst;
 			}
@@ -164,8 +182,9 @@ public class ProbRandomWalk extends Scenario {
 	}
 	
 	public static void printHelp() {
+	    System.out.println(getInfo().toDetailString());
 		Scenario.printHelp();
-		System.out.println( MODEL_NAME + ":");
+		System.out.println( getInfo().name + ":");
 		System.out.println("\t-t <time interval to advance by>");
 	}
 	

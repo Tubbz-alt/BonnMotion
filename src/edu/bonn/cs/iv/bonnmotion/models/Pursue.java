@@ -5,14 +5,33 @@ import java.io.IOException;
 
 import edu.bonn.cs.iv.bonnmotion.GroupNode;
 import edu.bonn.cs.iv.bonnmotion.MobileNode;
+import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
 import edu.bonn.cs.iv.bonnmotion.Position;
 import edu.bonn.cs.iv.bonnmotion.Scenario;
 
 /** Application to create movement scenarios according to the Pursue Mobility model. */
 
 public class Pursue extends Scenario {
+    private static ModuleInfo info;
+    
+    static {
+        info = new ModuleInfo("Pursue");
+        info.description = "Application to create movement scenarios according to the Pursue Mobility model";
+        
+        info.major = 1;
+        info.minor = 0;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 252 $");
+        
+        info.contacts.add(ModuleInfo.BM_MAILINGLIST);
+        info.authors.add("Chris Walsh");
+        
+        info.affiliation = ModuleInfo.TOILERS;
+    }
+    
+    public static ModuleInfo getInfo() {
+        return info;
+    }
 
-	private static final String MODEL_NAME = "Pursue";
 	protected double maxspeed = 1.5;
 	protected double minspeed = 0.5;
 	protected double aggressiveness = 0.5;
@@ -27,15 +46,15 @@ public class Pursue extends Scenario {
 		this.pursueRandomnessMagnitude = pursueRandomnessMagnitude; 
 		
 		if (aggressiveness < 0 || aggressiveness > 1) {
-			throw new RuntimeException(MODEL_NAME+ ".go: Error: aggressiveness must be between 0 and 1");
+			throw new RuntimeException(getInfo().name+ ".go: Error: aggressiveness must be between 0 and 1");
 		}
 		
 		if (pursueRandomnessMagnitude < 0 || pursueRandomnessMagnitude > 1) {
-			throw new RuntimeException(MODEL_NAME+ ".go: Error: pursueRandomnessMagnitude must be between 0 and 1");
+			throw new RuntimeException(getInfo().name+ ".go: Error: pursueRandomnessMagnitude must be between 0 and 1");
 		}
 		
 		if (minspeed > maxspeed) {
-			throw new RuntimeException(MODEL_NAME+ ".go: Error: minspeed must not be greater than maxspeed");
+			throw new RuntimeException(getInfo().name+ ".go: Error: minspeed must not be greater than maxspeed");
 		}
 		
 		generate();
@@ -61,7 +80,7 @@ public class Pursue extends Scenario {
 		Position src = new Position(x * randomNextDouble(), y * randomNextDouble());
 		
 		if (!ref.add(0.0, src)) {
-			System.out.println(MODEL_NAME + ".generate: error while adding group movement (1)");
+			System.out.println(getInfo().name + ".generate: error while adding group movement (1)");
 			System.exit(0);
 		}
 		
@@ -72,7 +91,7 @@ public class Pursue extends Scenario {
 			t += src.distance(dst) / speed;
 			
 			if (!ref.add(t, dst)) {
-				System.out.println(MODEL_NAME + ".generate: error while adding group movement (2)");
+				System.out.println(getInfo().name + ".generate: error while adding group movement (2)");
 				System.exit(0);
 			}
 			
@@ -87,7 +106,7 @@ public class Pursue extends Scenario {
 			src = randomNextPosition();
 			
 			if (!node[i].add(0.0, src)) {
-				System.out.println(MODEL_NAME + ".generate: error while adding node movement (1)");
+				System.out.println(getInfo().name + ".generate: error while adding node movement (1)");
 				System.exit(0);
 			}
 			
@@ -120,7 +139,7 @@ public class Pursue extends Scenario {
 					t = next;
 					
 					if (!node[i].add(t, dst)) {
-						System.out.println(MODEL_NAME + ".generate: error while adding group movement (2)");
+						System.out.println(getInfo().name + ".generate: error while adding group movement (2)");
 						System.exit(0);
 					}
 				}
@@ -129,7 +148,7 @@ public class Pursue extends Scenario {
 					t += src.distance(dst) / speed;
 					
 					if (!node[i].add(t, dst)) {
-						System.out.println(MODEL_NAME + ".generate: error while adding group movement (2)");
+						System.out.println(getInfo().name + ".generate: error while adding group movement (2)");
 						System.exit(0);
 					}
 				}
@@ -190,8 +209,9 @@ public class Pursue extends Scenario {
 	}
 
 	public static void printHelp() {
+	    System.out.println(getInfo().toDetailString());
 		Scenario.printHelp();
-		System.out.println( MODEL_NAME + ":" );
+		System.out.println( getInfo().name + ":" );
 		System.out.println("\t-o <maxspeed>");
 		System.out.println("\t-p <minspeed>");
 		System.out.println("\t-k <aggressiveness (0-1)>");

@@ -6,6 +6,27 @@ import java.io.*;
 
 /** Application that generates a motion file according to Horst Hellbrcks XML schema. */
 public class SPPXml extends App {
+    private static ModuleInfo info;
+    
+    static {
+        info = new ModuleInfo("SPPXml");
+        info.description = "Application that converts scenarios according to Horst Hellbruecks XML schema";
+        
+        info.major = 1;
+        info.minor = 0;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        
+        info.contacts.add(ModuleInfo.BM_MAILINGLIST);
+        info.authors.add("Christoph Scholz");
+		info.affiliation = ModuleInfo.UNIVERSITY_OF_BONN;
+        
+        info.references.add("http://www.cosa.fh-luebeck.de/ansim/index.php?title=General");
+    }
+    
+    public static ModuleInfo getInfo() {
+        return info;
+    }
+    
 	protected String name = null;
 	protected double node_range = 250;
 	protected int idx = 0;
@@ -28,6 +49,11 @@ public class SPPXml extends App {
 		} catch (Exception e) {
 			App.exceptionHandler( "Error reading file", e);
 		}
+		
+		if(s instanceof Scenario3D){
+            System.err.println("No 3D version implemented yet");
+            System.exit(-1);
+        }
 
 		MobileNode[] nodes = s.getNode();
 		
@@ -46,7 +72,7 @@ public class SPPXml extends App {
     private void print_header(PrintWriter m) {
 		m.println("<?xml version=\"1.0\" ?>");
 		m.print("<simulation xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"");
-        m.println(" xsi:noNamespaceSchemaLocation=\"http://www.i-u.de/schools/hellbrueck/ansim/xml/sppmobtrace.xsd\">");
+        m.println(" xsi:noNamespaceSchemaLocation=\"http://cosa.fh-luebeck.de/ansim/xml/sppmobtrace.xsd\">");
     }
 
     private void print_footer(PrintWriter m) {
@@ -148,6 +174,7 @@ public class SPPXml extends App {
 	}
 
 	public static void printHelp() {
+        System.out.println(getInfo().toDetailString());
 		App.printHelp();
 		System.out.println("SPPXml:");
 		System.out.println("\t-f <scenario name>");

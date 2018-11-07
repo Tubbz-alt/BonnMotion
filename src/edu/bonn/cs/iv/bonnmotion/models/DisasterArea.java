@@ -14,8 +14,9 @@ import java.awt.geom.Line2D;
 import java.awt.Rectangle;
 
 import edu.bonn.cs.iv.bonnmotion.CatastropheNode;
+import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
 import edu.bonn.cs.iv.bonnmotion.Position;
-import edu.bonn.cs.iv.bonnmotion.RandomSpeedBaseDisasterArea;
+import edu.bonn.cs.iv.bonnmotion.RandomSpeedBase;
 import edu.bonn.cs.iv.bonnmotion.CatastropheArea;
 import edu.bonn.cs.iv.bonnmotion.Obstacle;
 import edu.bonn.cs.iv.util.PositionHashMap;
@@ -23,10 +24,26 @@ import edu.bonn.cs.iv.util.IntegerHashMap;
 
 /** Application to create movement scenarios according to the Disaster Area model. */
 
-public class DisasterArea extends RandomSpeedBaseDisasterArea {
-
-	public static final String MODEL_NAME = "DisasterArea";
-
+public class DisasterArea extends RandomSpeedBase {
+    private static ModuleInfo info;
+    
+    static {
+        info = new ModuleInfo("DisasterArea");
+        info.description = "Application to create extended catastrophe scenarios according to the Disaster Area model";
+        
+        info.major = 1;
+        info.minor = 0;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        
+        info.contacts.add(ModuleInfo.BM_MAILINGLIST);
+        info.authors.add("University of Bonn");
+		info.affiliation = ModuleInfo.UNIVERSITY_OF_BONN;
+    }
+    
+    public static ModuleInfo getInfo() {
+        return info;
+    }
+    
 	private static boolean debug = false;
 
 	/** Maximum deviation from group center [m]. */
@@ -203,7 +220,7 @@ public class DisasterArea extends RandomSpeedBaseDisasterArea {
 			//for (int t = 0; t < 5; t++) { // for each type of area
 			for(int j = 0; j < obstacles[catastropheAreas[i].type].size(); j++) {
 				if(catastropheAreas[i].intersects(obstacles[catastropheAreas[i].type].get(j).getBounds())) {
-					System.out.println("NOTE: in " + MODEL_NAME + ", one Obstacle's ("+j+") Bounds intersect a Catastrophe Area - type "+catastropheAreas[i].type+" \n");
+					System.out.println("NOTE: in " + getInfo().name + ", one Obstacle's ("+j+") Bounds intersect a Catastrophe Area - type "+catastropheAreas[i].type+" \n");
 					//System.exit(0);
 				}
 			}
@@ -267,7 +284,7 @@ public class DisasterArea extends RandomSpeedBaseDisasterArea {
 			Position src = DetRandDst(catastropheAreas[((CatastropheNode)ref).belongsto].getBounds().x, catastropheAreas[((CatastropheNode)ref).belongsto].getBounds().x + catastropheAreas[((CatastropheNode)ref).belongsto].getBounds().width, catastropheAreas[((CatastropheNode)ref).belongsto].getBounds().y + catastropheAreas[((CatastropheNode)ref).belongsto].getBounds().height, catastropheAreas[((CatastropheNode)ref).belongsto].getBounds().y, catastropheAreas[((CatastropheNode)ref).belongsto]);
 
 			if (! ref.add(0.0, src)) {
-				System.out.println(MODEL_NAME + ".generate: error while adding group movement (1)");
+				System.out.println(getInfo().name + ".generate: error while adding group movement (1)");
 				System.exit(0);
 			}
 			
@@ -288,7 +305,7 @@ public class DisasterArea extends RandomSpeedBaseDisasterArea {
 					double pause = initial_maxpause * randomNextDouble();
 					t += pause;
 					if (! ref.add(t, src)) {
-						System.out.println(MODEL_NAME + ".generate: error while adding group movement (2)");
+						System.out.println(getInfo().name + ".generate: error while adding group movement (2)");
 						System.exit(0);
 					}
 				}
@@ -298,7 +315,7 @@ public class DisasterArea extends RandomSpeedBaseDisasterArea {
 					dst = movementcycle.get(i);
 					t += src.distance(dst) / speed;
 					if (! ref.add(t, dst)) {
-						System.out.println(MODEL_NAME + ".generate: error while adding group movement (2)");
+						System.out.println(getInfo().name + ".generate: error while adding group movement (2)");
 						System.exit(0);
 					}
 					if ((t < duration) && (maxpause > 0.0)) {
@@ -306,7 +323,7 @@ public class DisasterArea extends RandomSpeedBaseDisasterArea {
 						if (pause > 0.0) {
 							t += pause;
 							if (! ref.add(t, dst)) {
-								System.out.println(MODEL_NAME + ".generate: error while adding node movement (3)");
+								System.out.println(getInfo().name + ".generate: error while adding node movement (3)");
 								System.exit(0);
 							}
 						}
@@ -345,7 +362,7 @@ public class DisasterArea extends RandomSpeedBaseDisasterArea {
 			src = group.positionAt(t).rndprox(maxdist, randomNextDouble(), randomNextDouble());
 
 			if (! node[i].add(0.0, src)) {
-				System.out.println(MODEL_NAME + ".generate: error while adding node movement (1)");
+				System.out.println(getInfo().name + ".generate: error while adding node movement (1)");
 				System.exit(0);
 			}
 			while (t < duration) {
@@ -377,7 +394,7 @@ public class DisasterArea extends RandomSpeedBaseDisasterArea {
 				}
 				
 				if (! node[i].add(next, dst)) {
-					System.out.println(MODEL_NAME + ".generate: error while adding node movement (4)");
+					System.out.println(getInfo().name + ".generate: error while adding node movement (4)");
 					System.exit(0);
 				}
 				
@@ -584,8 +601,9 @@ public class DisasterArea extends RandomSpeedBaseDisasterArea {
 	}
 
 	public static void printHelp() {
-		RandomSpeedBaseDisasterArea.printHelp();
-		System.out.println( MODEL_NAME + ":" );
+	    System.out.println(getInfo().toDetailString());
+		RandomSpeedBase.printHelp();
+		System.out.println( getInfo().name + ":" );
 		System.out.println("\t-a <average no. of nodes per group>");
 		System.out.println("\t-b <catastrophe area (can be used multiple times for several catastrophe areas)>");
 		System.out.println("\t-c <group change probability>");
@@ -754,7 +772,7 @@ public class DisasterArea extends RandomSpeedBaseDisasterArea {
 				break;
 			default: 
 				//should not be reached
-				System.out.println("Error in " + MODEL_NAME + ", couldn't determine way");
+				System.out.println("Error in " + getInfo().name + ", couldn't determine way");
 			System.exit(0);
 			}
 			if(src != null && toreach != null){
@@ -837,7 +855,7 @@ public class DisasterArea extends RandomSpeedBaseDisasterArea {
 				}
 				break;
 			default: //should not be reached
-				System.out.println("Error in " + MODEL_NAME + ", couldn't determine Areas to visit");
+				System.out.println("Error in " + getInfo().name + ", couldn't determine Areas to visit");
 			System.exit(0);
 		}
 		return Areastovisit;
@@ -1023,7 +1041,7 @@ public class DisasterArea extends RandomSpeedBaseDisasterArea {
 			while(movePhase != 0);
 			break;
 		default:	//should not be reached
-			System.out.println("Error in " + MODEL_NAME + ", couldn't determine Movement Cycle");
+			System.out.println("Error in " + getInfo().name + ", couldn't determine Movement Cycle");
 			System.exit(0);
 		}
 		return cycle;

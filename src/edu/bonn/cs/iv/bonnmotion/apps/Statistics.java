@@ -10,6 +10,25 @@ import java.util.Vector;
 /** Application that calculates various statistics for movement scenarios. */
 
 public class Statistics extends App {
+    private static ModuleInfo info;
+    
+    static {
+        info = new ModuleInfo("Statistics");
+        info.description = "Application that calculates various statistics for movement scenarios";
+        
+        info.major = 1;
+        info.minor = 0;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        
+        info.contacts.add(ModuleInfo.BM_MAILINGLIST);
+        info.authors.add("University of Bonn");
+		info.affiliation = ModuleInfo.UNIVERSITY_OF_BONN;
+    }
+    
+    public static ModuleInfo getInfo() {
+        return info;
+    }
+    
 	public static final int STATS_NODEDEG = 0x00000001;
 	public static final int STATS_PARTITIONS = 0x00000002;
 	public static final int STATS_MINCUT = 0x00000004;
@@ -52,29 +71,30 @@ public class Statistics extends App {
 		Scenario s = Scenario.getScenario(name);
 		System.out.println("name " + s.getModelName());
 
-		if (radius != null) {
-			if (flags > 0)
-				for (int i = 0; i < radius.length; i++) {
-					Heap sched = new Heap();
-					Heap oosched = new Heap();
-					System.out.println("radius=" + radius[i]);
-					schedule(s, sched, radius[i], false, name, oosched);
-					String basename = name + ".stats_" + radius[i];
-					if (basename.endsWith(".0"))
-						basename = basename.substring(0, basename.length() - 2);
-					progressive(s.nodeCount(s.getModelName(), basename), s.getDuration(), s, sched, true, flags, basename, oosched);
-				}
-			else
-				overall(s, radius, name);
-		}
+        if (radius != null) {
+            if (flags > 0) {
+                for (int i = 0; i < radius.length; i++) {
+                    Heap sched = new Heap();
+                    Heap oosched = new Heap();
+                    System.out.println("radius=" + radius[i]);
+                    schedule(s, sched, radius[i], false, name, oosched);
+                    String basename = name + ".stats_" + radius[i];
+                    if (basename.endsWith(".0"))
+                        basename = basename.substring(0, basename.length() - 2);
+                    progressive(s.nodeCount(s.getModelName(), basename), s.getDuration(), s, sched, true, flags, basename, oosched);
+                }
+            } else {
+                overall(s, radius, name);
+            }
+        }
 
-		if (calc_velo_over_time) {
-			calcVelocity(name, s);
-		}
-		if (calc_and_distri) {
-			calcAverageNodeDegDistri(name, s);
-		}
-	}
+        if (calc_velo_over_time) {
+            calcVelocity(name, s);
+        }
+        if (calc_and_distri) {
+            calcAverageNodeDegDistri(name, s);
+        }
+    }
 
 	/** Calculates statistics' devolution over time. */
 	public static void progressive(int nodes, double duration, Scenario s, Heap sched, boolean bidirectional,
@@ -166,10 +186,8 @@ public class Statistics extends App {
 							Node n = g.nodeAt(i);
 							ne += n.outDeg();
 						}
-						if (ne != edges) {
-							edges = ne;
-							fDeg.println(time + " " + ((double)edges / (double)g.nodeCount()));
-						}
+
+						fDeg.println(time + " " + ((double)ne / (double)g.nodeCount()));
 					}
 				}
 				else {
@@ -306,9 +324,15 @@ public class Statistics extends App {
 			System.err.println("Error when opening file: " + basename);
 		}
 
-		for (int i = 0; i < node.length; i++) {
-			velos_over_time[i] = MobileNode.getSpeedoverTime(node[i], 0.0, duration, secV);
-		}
+        if (node instanceof MobileNode3D[]) {
+            for (int i = 0; i < node.length; i++) {
+                velos_over_time[i] = MobileNode3D.getSpeedoverTime(node[i], 0.0, duration, secV);
+            }
+        } else {
+            for (int i = 0; i < node.length; i++) {
+                velos_over_time[i] = MobileNode.getSpeedoverTime(node[i], 0.0, duration, secV);
+            }
+        }
 
 		int l = (int)((duration / secV) + 1);
 
@@ -352,7 +376,11 @@ public class Statistics extends App {
 				and_per_node[i] = 0.0;
 				for (int j = 0; j < node.length; j++) {
 					if (i != j) {
-						conn_time_help = MobileNode.get_connection_time(node[i], node[j], 0.0, duration, secA[r]);
+					    if (node instanceof MobileNode3D[]) {
+	                        conn_time_help = MobileNode3D.getConnectionTime(node[i], node[j], 0.0, duration, secA[r]);
+					    } else {
+	                        conn_time_help = MobileNode.getConnectionTime(node[i], node[j], 0.0, duration, secA[r]); 
+					    }
 						and_per_node[i] = and_per_node[i] + (conn_time_help[1] / conn_time_help[0]);
 					}
 				}
@@ -384,6 +412,7 @@ public class Statistics extends App {
 		for (int i = 0; i < node.length; i++) {
 			// put on off events in a seperate heap
 			double[] onoffChanges = MobileNode.getOnOffChanges(node[i]);
+			
 			Integer ooidx = new Integer(i);
 			for (int m = 0; m < onoffChanges.length; m++) {
 				onoffsched.add(ooidx, onoffChanges[m]);
@@ -396,7 +425,14 @@ public class Statistics extends App {
 				}
 				done++;
 				IndexPair idx = new IndexPair(i, j);
-				double[] linkStatusChanges = MobileNode.pairStatistics(node[i], node[j], 0.0, duration, radius, calculateMobility);
+				double[] linkStatusChanges;
+				
+	            if (node instanceof MobileNode3D[]) {
+	                linkStatusChanges = MobileNode3D.pairStatistics(node[i], node[j], 0.0, duration, radius, calculateMobility);
+	            } else {
+	                linkStatusChanges = MobileNode.pairStatistics(node[i], node[j], 0.0, duration, radius, calculateMobility);
+	            }
+	            
 				mobility_pairs[i][j] = linkStatusChanges[0];
 				on_time_pairs[i][j] = linkStatusChanges[1];
 				D_spatial += linkStatusChanges[2];
@@ -404,14 +440,16 @@ public class Statistics extends App {
 				Relative_speed += linkStatusChanges[4];
 				Relative_speed_count += linkStatusChanges[5];
 
-				if (linkStatusChanges.length > 6)
+				if (linkStatusChanges.length > 6) {
 					connectedPairs++;
+				}
 
 				for (int l = 6; l < linkStatusChanges.length; l++)
 					sched.add(idx, linkStatusChanges[l]);
-				if ((linkStatusChanges.length & 1) == 0)
+				if ((linkStatusChanges.length & 1) == 0) {
 					// explicitely add "disconnect" at the end
 					sched.add(idx, duration);
+				}
 			}
 
 		}
@@ -424,9 +462,9 @@ public class Statistics extends App {
 			}
 		}
 
-		for (int i = 0; i < node.length; i++) {
-			on_time_node = on_time_node + MobileNode.getNodesOnTime(node[i], duration);
-		}
+        for (int i = 0; i < node.length; i++) {
+            on_time_node = on_time_node + MobileNode.getNodesOnTime(node[i], duration);
+        }
 
 		result[0] = mobility / on_time;
 		result[1] = on_time_node;
@@ -757,7 +795,11 @@ public class Statistics extends App {
 		double D_temporal = 0.0;
 		double D_temporal_count = 0.0;
 		for (int i = 0; i < nodes.length; i++) {
-			temp = MobileNode.getDegreeOfTemporalDependence(nodes[i], 0.0, s.getDuration(), temporalDependenceC);
+		    if (nodes instanceof MobileNode3D[]) {
+	            temp = MobileNode3D.getDegreeOfTemporalDependence(nodes[i], 0.0, s.getDuration(), temporalDependenceC);
+		    } else {
+		        temp = MobileNode.getDegreeOfTemporalDependence(nodes[i], 0.0, s.getDuration(), temporalDependenceC);        
+		    }
 			D_temporal += temp[0];
 			D_temporal_count += temp[1];
 		}
@@ -872,6 +914,7 @@ public class Statistics extends App {
 	}
 
 	public static void printHelp() {
+        System.out.println(getInfo().toDetailString());
 		App.printHelp();
 		System.out.println("Statistics:");
 		System.out.println("\t-f <scenario name>");

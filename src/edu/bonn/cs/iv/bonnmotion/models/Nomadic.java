@@ -5,14 +5,33 @@ import java.io.IOException;
 
 import edu.bonn.cs.iv.bonnmotion.GroupNode;
 import edu.bonn.cs.iv.bonnmotion.MobileNode;
+import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
 import edu.bonn.cs.iv.bonnmotion.Position;
 import edu.bonn.cs.iv.bonnmotion.RandomSpeedBase;
 
 /** Application to create movement scenarios according to the Nomadic Mobility model. */
 
 public class Nomadic extends RandomSpeedBase {
-
-	private static final String MODEL_NAME = "Nomadic";
+    private static ModuleInfo info;
+    
+    static {
+        info = new ModuleInfo("Nomadic");
+        info.description = "Application to create movement scenarios according to the Nomadic community Mobility model";
+        
+        info.major = 1;
+        info.minor = 0;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 252 $");
+        
+        info.contacts.add(ModuleInfo.BM_MAILINGLIST);
+        info.authors.add("Chris Walsh");
+        
+        info.affiliation = ModuleInfo.TOILERS;
+    }
+    
+    public static ModuleInfo getInfo() {
+        return info;
+    }
+    
 	/** Maximum deviation from group center [m]. */
 	protected double maxdist = 2.5;
 	/** Average nodes per group. */
@@ -56,7 +75,7 @@ public class Nomadic extends RandomSpeedBase {
 			Position src = new Position((x - 2 * maxdist) * randomNextDouble() + maxdist, (y - 2 * maxdist) * randomNextDouble() + maxdist);
 			
 			if (!ref.add(0.0, src)) {
-				System.out.println(MODEL_NAME + ".generate: error while adding group movement (1)");
+				System.out.println(getInfo().name + ".generate: error while adding group movement (1)");
 				System.exit(0);
 			}
 
@@ -66,7 +85,7 @@ public class Nomadic extends RandomSpeedBase {
 				t += src.distance(dst) / speed;
 				
 				if (!ref.add(t, dst)) {
-					System.out.println(MODEL_NAME + ".generate: error while adding group movement (2)");
+					System.out.println(getInfo().name + ".generate: error while adding group movement (2)");
 					System.exit(0);
 				}
 				if ((t < duration) && (refmaxpause > 0.0)) {
@@ -75,7 +94,7 @@ public class Nomadic extends RandomSpeedBase {
 						t += pause;
 						
 						if (!ref.add(t, dst)) {
-							System.out.println(MODEL_NAME + ".main: error while adding node movement (3)");
+							System.out.println(getInfo().name + ".main: error while adding node movement (3)");
 							System.exit(0);
 						}
 					}
@@ -102,7 +121,7 @@ public class Nomadic extends RandomSpeedBase {
 			Position src = group.positionAt(t).rndprox(maxdist, randomNextDouble(), randomNextDouble());
 			
 			if (!node[i].add(0.0, src)) {
-				System.out.println(MODEL_NAME + ".main: error while adding node movement (1)");
+				System.out.println(getInfo().name + ".main: error while adding node movement (1)");
 				System.exit(0);
 			}
 			
@@ -130,7 +149,7 @@ public class Nomadic extends RandomSpeedBase {
 						t = next;
 						
 						if (!node[i].add(t, dst)) {
-							System.out.println(MODEL_NAME + ".generate: error while adding group movement (2)");
+							System.out.println(getInfo().name + ".generate: error while adding group movement (2)");
 							System.exit(0);
 						}
 					} else {      //ref pt is pausing, we don't have to time = next
@@ -138,7 +157,7 @@ public class Nomadic extends RandomSpeedBase {
 						t += src.distance(dst) / speed;
 						
 						if (!node[i].add(t, dst)) {
-							System.out.println(MODEL_NAME + ".generate: error while adding group movement (2)");
+							System.out.println(getInfo().name + ".generate: error while adding group movement (2)");
 							System.exit(0);
 						}
 
@@ -151,7 +170,7 @@ public class Nomadic extends RandomSpeedBase {
                                 else t += nodePause;
 								
 								if (!node[i].add(t, dst)) {
-									System.out.println(MODEL_NAME + ".main: error while adding node movement (3)");
+									System.out.println(getInfo().name + ".main: error while adding node movement (3)");
 									System.exit(0);
 								}
 							}
@@ -163,7 +182,7 @@ public class Nomadic extends RandomSpeedBase {
 					t += src.distance(dst) / speed;
 					
 					if (!node[i].add(t, dst)) {
-						System.out.println(MODEL_NAME + ".generate: error while adding group movement (2)");
+						System.out.println(getInfo().name + ".generate: error while adding group movement (2)");
 						System.exit(0);
 					}
 
@@ -176,7 +195,7 @@ public class Nomadic extends RandomSpeedBase {
 							else t += nodePause;
 							
 							if (!node[i].add(t, dst)) {
-								System.out.println(MODEL_NAME + ".main: error while adding node movement (3)");
+								System.out.println(getInfo().name + ".main: error while adding node movement (3)");
 								System.exit(0);
 							}
 						}
@@ -240,8 +259,9 @@ public class Nomadic extends RandomSpeedBase {
 	}
 
 	public static void printHelp() {
+	    System.out.println(getInfo().toDetailString());
 		RandomSpeedBase.printHelp();
-		System.out.println( MODEL_NAME + ":" );
+		System.out.println( getInfo().name + ":" );
 		System.out.println("\t-a <average no. of nodes per group>");
 		System.out.println("\t-r <max. distance to group center [m]>");
 		System.out.println("\t-s <group size standard deviation>");

@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 
 import edu.bonn.cs.iv.bonnmotion.MobileNode;
+import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
 import edu.bonn.cs.iv.bonnmotion.Position;
 import edu.bonn.cs.iv.bonnmotion.Scenario;
 import edu.bonn.cs.iv.bonnmotion.ScenarioLinkException;
@@ -12,10 +13,26 @@ import edu.bonn.cs.iv.bonnmotion.Waypoint;
 /** Application to construct Gauss-Markov mobility scenarios. */
 
 public class GaussMarkov extends Scenario {
-
+    private static ModuleInfo info;
+    
+    static {
+        info = new ModuleInfo("GaussMarkov");
+        info.description = "Application to construct GaussMarkov mobility scenarios";
+        
+        info.major = 1;
+        info.minor = 0;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        
+        info.contacts.add(ModuleInfo.BM_MAILINGLIST);
+        info.authors.add("University of Bonn");
+		info.affiliation = ModuleInfo.UNIVERSITY_OF_BONN;
+    }
+    
+    public static ModuleInfo getInfo() {
+        return info;
+    }
+    
 	private static final double twoPi = 2. * Math.PI;
-
-	private static final String MODEL_NAME = "GaussMarkov";
 
 	/** Update frequency [s]. */
 	protected double updateFrequency = 2.5;
@@ -166,7 +183,7 @@ public class GaussMarkov extends Scenario {
 			else {
 				src = new Position(x * randomNextDouble(), y * randomNextDouble());
 				if (!node[i].add(0.0, src)) {
-					System.out.println(MODEL_NAME + ".<init>: error while adding node movement (1)");
+					System.out.println(getInfo().name + ".<init>: error while adding node movement (1)");
 					System.exit(0);
 				}
 			}
@@ -275,7 +292,7 @@ public class GaussMarkov extends Scenario {
 					}
 
 					if (!node[i].add(t1, dst)) {
-						System.out.println(MODEL_NAME + ".<init>: error while adding node movement (2)");
+						System.out.println(getInfo().name + ".<init>: error while adding node movement (2)");
 						System.exit(0);
 					}
 					src = dst;
@@ -365,8 +382,9 @@ public class GaussMarkov extends Scenario {
 	}
 
 	public static void printHelp() {
+	    System.out.println(getInfo().toDetailString());
 		Scenario.printHelp();
-		System.out.println(MODEL_NAME + ":");
+		System.out.println(getInfo().name + ":");
 		System.out.println("\t-a <angle standard deviation>");
 		System.out.println("\t-h <max. speed>");
 		System.out.println("\t-q <speed, angle update frequency>");

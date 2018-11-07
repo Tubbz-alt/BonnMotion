@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 
 import edu.bonn.cs.iv.bonnmotion.MobileNode;
+import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
 import edu.bonn.cs.iv.bonnmotion.Position;
 import edu.bonn.cs.iv.bonnmotion.Scenario;
 import edu.bonn.cs.iv.bonnmotion.ScenarioLinkException;
@@ -11,7 +12,24 @@ import edu.bonn.cs.iv.bonnmotion.Waypoint;
 
 /** Application to construct Gauss-Markov mobility scenarios. */
 public class OriginalGaussMarkov extends Scenario {
-	private static final String MODEL_NAME = "OriginalGaussMarkov";
+    private static ModuleInfo info;
+    
+    static {
+        info = new ModuleInfo("OriginalGaussMarkov");
+        info.description = "Application to construct mobility scenarios according to the original Gauss-Markov model";
+        
+        info.major = 1;
+        info.minor = 0;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        
+        info.contacts.add(ModuleInfo.BM_MAILINGLIST);
+        info.authors.add("University of Bonn");
+		info.affiliation = ModuleInfo.UNIVERSITY_OF_BONN;
+    }
+    
+    public static ModuleInfo getInfo() {
+        return info;
+    }
 
 	/** Update frequency [s]. */
 	protected double updateFrequency = 2.5;
@@ -130,7 +148,7 @@ public class OriginalGaussMarkov extends Scenario {
 			} else {
 				src = new Position(x * randomNextDouble(), y * randomNextDouble());
 				if (!node[i].add(0.0, src)) {
-					System.out.println(MODEL_NAME + ".<init>: error while adding node movement (1)");
+					System.out.println(getInfo().name + ".<init>: error while adding node movement (1)");
 					System.exit(0);
 				}
 			}
@@ -201,7 +219,7 @@ public class OriginalGaussMarkov extends Scenario {
 						velocityMean = new Position(-velocityMean.x, velocityMean.y);
 					}
 					if ((wNew < 0.) || (tbounce > remaining)) {
-						System.out.println(MODEL_NAME + ".generate: Obviously, something is going wrong here! wNew=" + wNew + " tbounce=" + tbounce + " remaining=" + remaining);
+						System.out.println(getInfo().name + ".generate: Obviously, something is going wrong here! wNew=" + wNew + " tbounce=" + tbounce + " remaining=" + remaining);
 						System.exit(0);
 					}
 					t1 = t + tbounce;
@@ -217,7 +235,7 @@ public class OriginalGaussMarkov extends Scenario {
 					}
 				}
 				if (!node[i].add(t1, dst)) {
-					System.out.println(MODEL_NAME + ".<init>: error while adding node movement (2)");
+					System.out.println(getInfo().name + ".<init>: error while adding node movement (2)");
 					System.exit(0);
 				}
 				src = dst;
@@ -245,8 +263,9 @@ public class OriginalGaussMarkov extends Scenario {
 	}
 
 	public static void printHelp() {
+	    System.out.println(getInfo().toDetailString());
 		Scenario.printHelp();
-		System.out.println( MODEL_NAME + ":" );
+		System.out.println( getInfo().name + ":" );
 		System.out.println("\t-a <avg speed (default=0)>");
 		System.out.println("\t-m <max speed (default=infinite)>");
 		System.out.println("\t-q <velocity update frequency>");

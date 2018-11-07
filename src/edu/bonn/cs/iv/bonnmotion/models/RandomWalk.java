@@ -6,6 +6,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 import edu.bonn.cs.iv.bonnmotion.MobileNode;
+import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
 import edu.bonn.cs.iv.bonnmotion.Position;
 import edu.bonn.cs.iv.bonnmotion.RandomSpeedBase;
 import edu.bonn.cs.iv.bonnmotion.Scenario;
@@ -32,8 +33,25 @@ import edu.bonn.cs.iv.bonnmotion.Waypoint;
  */
 
 public class RandomWalk extends RandomSpeedBase {
-
-	private static final String MODEL_NAME = "RandomWalk";
+    private static ModuleInfo info;
+    
+    static {
+        info = new ModuleInfo("RandomWalk");
+        info.description = "Application to construct RandomWalk mobility scenarios";
+        
+        info.major = 1;
+        info.minor = 0;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 252 $");
+        
+        info.contacts.add(ModuleInfo.BM_MAILINGLIST);
+        info.authors.add("Chris Walsh");
+        
+        info.affiliation = ModuleInfo.TOILERS;
+    }
+    
+    public static ModuleInfo getInfo() {
+        return info;
+    }
 	
 	protected char mode = 'x';
 	protected double modeDelta = 60;
@@ -86,7 +104,7 @@ public class RandomWalk extends RandomSpeedBase {
 			else src = randomNextPosition();
 			
 			if (!node[i].add(t, src))   		// add source Waypoint
-				throw new RuntimeException(MODEL_NAME + ".go: error while adding waypoint");
+				throw new RuntimeException(getInfo().name + ".go: error while adding waypoint");
 			
 			while (t < duration) {
 				Position dst = null;
@@ -130,7 +148,7 @@ public class RandomWalk extends RandomSpeedBase {
 						}
 						break;
 					default: 
-						throw new RuntimeException(MODEL_NAME + ".go: error calculating next destination - mode is not 't' or 's'. Please supply -t or -s flag");
+						throw new RuntimeException(getInfo().name + ".go: error calculating next destination - mode is not 't' or 's'. Please supply -t or -s flag");
 				}
 				
 				dstList = checkReflection(dstList, src, dX, dY, angle, t, duration, 0, maxDist, speed);
@@ -139,7 +157,7 @@ public class RandomWalk extends RandomSpeedBase {
 				{
 			    	t = key;
 			    	dst = dstList.get(key);
-			    	if (!node[i].add(t, dst)) throw new RuntimeException(MODEL_NAME + ".go: error while adding waypoint (2t)");
+			    	if (!node[i].add(t, dst)) throw new RuntimeException(getInfo().name + ".go: error while adding waypoint (2t)");
 				}
 				
 				dstList.clear();
@@ -188,8 +206,9 @@ public class RandomWalk extends RandomSpeedBase {
 	}
 	
 	public static void printHelp() {
+	    System.out.println(getInfo().toDetailString());
 		RandomSpeedBase.printHelp();
-		System.out.println( MODEL_NAME + ":");
+		System.out.println( getInfo().name + ":");
 		System.out.println("\t-t x (mode: [T]ime. Nodes will walk until time interval x is up)");
 		System.out.println("\tOR (do not use both -t and -s)");
 		System.out.println("\t-s x (mode: Di[s]tance. Nodes will walk until distance x has been covered)");

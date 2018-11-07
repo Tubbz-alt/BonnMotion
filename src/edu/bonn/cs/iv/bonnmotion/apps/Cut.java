@@ -4,10 +4,30 @@ import java.io.*;
 
 import edu.bonn.cs.iv.bonnmotion.App;
 import edu.bonn.cs.iv.bonnmotion.Scenario;
+import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
 
 /** Application to save a certain timeframe from one scenario into a new file. */
 
 public class Cut extends App {
+    private static ModuleInfo info;
+    
+    static {
+        info = new ModuleInfo("Cut");
+        info.description = "Application to save a certain timeframe from one scenario into a new file";
+        
+        info.major = 1;
+        info.minor = 0;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        
+        info.contacts.add(ModuleInfo.BM_MAILINGLIST);
+        info.authors.add("University of Bonn");
+		info.affiliation = ModuleInfo.UNIVERSITY_OF_BONN;
+    }
+    
+    public static ModuleInfo getInfo() {
+        return info;
+    }
+    
 	protected double begin = 0.0;
 	protected double end = 0.0;
 	protected String source = null;
@@ -50,6 +70,7 @@ public class Cut extends App {
 	}
 
 	public static void printHelp() {
+        System.out.println(getInfo().toDetailString());
 		App.printHelp();
 		System.out.println("Cut:");
 		System.out.println("\t-b <beginning of timeframe>");
