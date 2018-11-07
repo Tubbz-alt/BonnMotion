@@ -1,3 +1,23 @@
+/*******************************************************************************
+ ** BonnMotion - a mobility scenario generation and analysis tool             **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2015 University of Osnabrueck                          **
+ **                                                                           **
+ ** This program is free software; you can redistribute it and/or modify      **
+ ** it under the terms of the GNU General Public License as published by      **
+ ** the Free Software Foundation; either version 2 of the License, or         **
+ ** (at your option) any later version.                                       **
+ **                                                                           **
+ ** This program is distributed in the hope that it will be useful,           **
+ ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
+ ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
+ ** GNU General Public License for more details.                              **
+ **                                                                           **
+ ** You should have received a copy of the GNU General Public License         **
+ ** along with this program; if not, write to the Free Software               **
+ ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
+ *******************************************************************************/
+
 package edu.bonn.cs.iv.bonnmotion.models;
 
 import java.io.FileNotFoundException;
@@ -21,7 +41,7 @@ public class Column extends RandomSpeedBase {
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 379 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 650 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("Chris Walsh");
@@ -63,14 +83,14 @@ public class Column extends RandomSpeedBase {
 	}
 
 	public void generate() {
-		nodesPerGroup = node.length / numGroups;
+		nodesPerGroup = parameterData.nodes.length / numGroups;
 		
-		if (node.length % numGroups != 0) {
+		if (parameterData.nodes.length % numGroups != 0) {
 			System.out.println(getInfo().name+ ".go: Error: Must use an even multiple of nodes for the number of groups specified.");
 			System.exit(1);
 		}
 		
-		if ((nodesPerGroup - 1) * refPtSeparation > x || (nodesPerGroup - 1) * refPtSeparation > y) {
+		if ((nodesPerGroup - 1) * refPtSeparation > parameterData.x || (nodesPerGroup - 1) * refPtSeparation > parameterData.y) {
 			throw new RuntimeException(getInfo().name+ ".go: Error: The line of reference points with " +
 					"the given parameters (nodes, numGroups, and refPtSeparation) exceeds the dimensions of " +
 					"the simulation. Please either increase the size of the simulation or decrese " +
@@ -79,7 +99,7 @@ public class Column extends RandomSpeedBase {
 		
 		preGeneration();
 
-		GroupNode[] node = new GroupNode[this.node.length];
+		GroupNode[] node = new GroupNode[this.parameterData.nodes.length];
 		Vector<Vector<MobileNode>> rpoints = new Vector<Vector<MobileNode>>();
 
 		// create groups of ref points
@@ -102,7 +122,7 @@ public class Column extends RandomSpeedBase {
 					dir = (Math.PI * 2 * randomNextDouble());
 					refPtSeparationX = refPtSeparation * Math.cos(dir);
 					refPtSeparationY = refPtSeparation * Math.sin(dir);
-					src = new Position((x - 2 * maxdist) * randomNextDouble() + maxdist, (y - 2 * maxdist) * randomNextDouble() + maxdist);
+					src = new Position((parameterData.x - 2 * maxdist) * randomNextDouble() + maxdist, (parameterData.y - 2 * maxdist) * randomNextDouble() + maxdist);
 				} else {
 					// All other following refPts in this group. Location based on head refPt + some offset
 					double groupHeadX = rpoints.get(i).get(0).positionAt(0.0).x;
@@ -111,10 +131,10 @@ public class Column extends RandomSpeedBase {
 					double srcY = groupHeadY + (j * refPtSeparationY);
 					
 					//If refPt is placed outside of simulation, put it at the edge instead.
-					if (srcX > x) srcX = x;
+					if (srcX > parameterData.x) srcX = parameterData.x;
 					else if (srcX < 0) srcX = 0;
 					
-					if (srcY > y) srcY = y;
+					if (srcY > parameterData.y) srcY = parameterData.y;
 					else if (srcY < 0) srcY = 0;
 					
 					src = new Position(srcX, srcY);
@@ -131,7 +151,7 @@ public class Column extends RandomSpeedBase {
 		Position dst, src;
 		double t = 0.0;
 		
-		while (t < duration)
+		while (t < parameterData.duration)
 		{
 			for (int i = 0; i < numGroups; i++)
 			{
@@ -152,7 +172,7 @@ public class Column extends RandomSpeedBase {
 						dir = (Math.PI * 2 * randomNextDouble());
 						refPtSeparationX = refPtSeparation * Math.cos(dir);
 						refPtSeparationY = refPtSeparation * Math.sin(dir);
-						dst = new Position((x - 2 * maxdist) * randomNextDouble() + maxdist, (y - 2 * maxdist) * randomNextDouble() + maxdist);
+						dst = new Position((parameterData.x - 2 * maxdist) * randomNextDouble() + maxdist, (parameterData.y - 2 * maxdist) * randomNextDouble() + maxdist);
 					} else {
 						// All other following refPts in this group. Location based on head refPt + some offset
 						double groupHeadX = rpoints.get(i).get(0).positionAt(t).x;
@@ -161,10 +181,10 @@ public class Column extends RandomSpeedBase {
 						double srcY = groupHeadY + (j * refPtSeparationY);
 						
 						//If refPt is placed outside of simulation, put it at the edge instead.
-						if (srcX > x) srcX = x;
+						if (srcX > parameterData.x) srcX = parameterData.x;
 						else if (srcX < 0) srcX = 0;
 						
-						if (srcY > y) srcY = y;
+						if (srcY > parameterData.y) srcY = parameterData.y;
 						else if (srcY < 0) srcY = 0;
 						
 						dst = new Position(srcX, srcY);
@@ -178,7 +198,7 @@ public class Column extends RandomSpeedBase {
 						System.exit(0);
 					}
 					
-					if ((t < duration) && (maxpause > 0.0)) {
+					if ((t < parameterData.duration) && (maxpause > 0.0)) {
 						double pause = maxpause * randomNextDouble();
 						if (pause > 0.0) {
 							t += pause;
@@ -207,7 +227,7 @@ public class Column extends RandomSpeedBase {
 			t = 0.0;
 			MobileNode group = node[i].group();
 
-			src = group.positionAt(t).rndprox(maxdist, randomNextDouble(), randomNextDouble());
+			src = group.positionAt(t).rndprox(maxdist, randomNextDouble(), randomNextDouble(),parameterData.calculationDim);
 			
 			if (!node[i].add(0.0, src)) {
 				System.out.println(getInfo().name + ".generate: error while adding node movement (5)");
@@ -216,15 +236,15 @@ public class Column extends RandomSpeedBase {
 			
 			double[] gm = group.changeTimes();
 			
-			while (t < duration) {
+			while (t < parameterData.duration) {
 				
 				int gmi = 0;
 				while ((gmi < gm.length) && (gm[gmi] <= t)) gmi++;
 				
 				/* next absolute time a change happens or the simulation time is over */
-				double next = (gmi < gm.length) ? gm[gmi] : duration;
+				double next = (gmi < gm.length) ? gm[gmi] : parameterData.duration;
 				
-				dst = group.positionAt(next).rndprox(maxdist, randomNextDouble(), randomNextDouble());
+				dst = group.positionAt(next).rndprox(maxdist, randomNextDouble(), randomNextDouble(), parameterData.calculationDim);
 				double speed = src.distance(dst) / (next - t);
 
 				if (speed > maxspeed) {
@@ -250,7 +270,7 @@ public class Column extends RandomSpeedBase {
 							System.exit(0);
 						}
 						
-						if ((t < duration) && (maxpause > 0.0)) {
+						if ((t < parameterData.duration) && (maxpause > 0.0)) {
 							double nodePause = maxpause * randomNextDouble();
 							if (nodePause > 0.0) {
 								// check if our pause time is larger than when our ref pt changes
@@ -274,7 +294,7 @@ public class Column extends RandomSpeedBase {
 						System.exit(0);
 					}
 
-					if ((t < duration) && (maxpause > 0.0)) {
+					if ((t < parameterData.duration) && (maxpause > 0.0)) {
 						double nodePause = maxpause * randomNextDouble();
 						
 						if (nodePause > 0.0) {
@@ -295,7 +315,7 @@ public class Column extends RandomSpeedBase {
 		}
 
 		// write the nodes into our base
-		this.node = node;
+		this.parameterData.nodes = node;
 
 		postGeneration();
 	}

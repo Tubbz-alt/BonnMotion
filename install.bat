@@ -9,7 +9,8 @@ set BONNMOTION=H:\Eigene-Daten\Uni\AG_RN\bonnmotion\bonnmotion
 REM *********************************************
 
 echo BonnMotion - mobility scenario generation and analysis tool
-echo Copyright (C) 2002-2011 University of Bonn
+echo Copyright (C) 2002-2012 University of Bonn
+echo Copyright (C) 2012-2015 University of Osnabrueck 
 echo.
 echo This program is free software; you can redistribute it and/or modify
 echo it under the terms of the GNU General Public License as published by
@@ -31,6 +32,10 @@ set PACKAGE=edu.bonn.cs.iv.bonnmotion
 set JAVA=%JAVAPATH%\bin\java.exe
 set JAVAC=%JAVAPATH%\bin\javac.exe
 set JAVADOC=%JAVAPATH%\bin\javadoc.exe
+
+setlocal enableDelayedExpansion
+set LIBRARYPATH=
+for /r %%i in (lib\*.jar) DO set LIBRARYPATH=!LIBRARYPATH!%%i;
 
 if not exist %JAVA% (
 	echo Don't forget to configure this script.
@@ -61,7 +66,7 @@ echo %FILE%
 if exist bin\%FILE% del bin\%FILE%
 echo @echo off >> bin\%FILE%
 echo cd %BONNMOTION% >> bin\%FILE%
-echo %JAVA% -cp %BONNMOTION%\classes;%BONNMOTION%\lib\javaproj-1.0.4.jar;%BONNMOTION%\lib\proj4j-0.1.0.jar;%BONNMOTION%\lib\proj4j-support-0.1.0.jar %PACKAGE%.run.BM %%* >> bin\%FILE%
+echo %JAVA% -cp %BONNMOTION%\classes;%LIBRARYPATH% %PACKAGE%.run.BM %%* >> bin\%FILE%
 echo cd bin >> bin\%FILE%
 
 REM compile
@@ -72,7 +77,7 @@ echo @echo off >> bin\%FILE%
 echo cd %BONNMOTION% >> bin\%FILE%
 echo if not exist classes mkdir classes >> bin\%FILE%
 echo echo on >> bin\%FILE%
-echo for /r %%%%i in (*.java) do %JAVAC% -d classes -sourcepath src -classpath classes;lib\javaproj-1.0.4.jar;lib\proj4j-0.1.0.jar;lib\proj4j-support-0.1.0.jar %%%%i >> bin\%FILE%
+echo for /r %%%%i in (*.java) do %JAVAC% -d classes -sourcepath src -classpath classes;%LIBRARYPATH% %%%%i >> bin\%FILE%
 
 REM makedoc
 set FILE=makedoc.bat

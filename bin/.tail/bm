@@ -3,5 +3,4 @@ if [ ! -d "${BONNMOTION}/classes" ]; then
 	exit;
 fi
 
-$JAVA -Xmx512m -server -cp "$CLASSPATH" $PACKAGE.run.BM "$@"
-		
+$JAVA -Xmx512m -Xss10m -server -ea -cp "$CLASSPATH" $PACKAGE.run.BM "$@"

@@ -1,22 +1,27 @@
 #!/usr/bin/python
 
 # -*- coding: utf-8 -*-
-#    A validation script for Bonnmotion (http://net.cs.uni-bonn.de/wg/cs/applications/bonnmotion/)
-#    Copyright (C) 2011 University of Bonn
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
+################################################################################
+## A validation script for                                                    ##
+## BonnMotion - a mobility scenario generation and analysis tool              ##
+## Copyright (C) 2002-2012 University of Bonn                                 ##
+## Copyright (C) 2012-2015 University of Osnabrueck                           ##
+##                                                                            ##
+## This program is free software; you can redistribute it and/or modify       ##
+## it under the terms of the GNU General Public License as published by       ##
+## the Free Software Foundation; either version 2 of the License, or          ##
+## (at your option) any later version.                                        ##
+##                                                                            ##
+## This program is distributed in the hope that it will be useful,            ##
+## but WITHOUT ANY WARRANTY; without even the implied warranty of             ##
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the              ##
+## GNU General Public License for more details.                               ##
+##                                                                            ##
+## You should have received a copy of the GNU General Public License          ##
+## along with this program; if not, write to the Free Software                ##
+## Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA  ##
+################################################################################
+
 #
 # TODO:
 #    compare only hashes that are actually saved in the DB (if only MD5 OR sha1 value exists)
@@ -174,7 +179,7 @@ def main():
                     
         n = 0
         for x in result:
-            f = open(config.readConfigEntry('tempoutputparamsfile').replace('INDEX', str(n)), 'w')
+            f = open(os.path.join(Config().readConfigEntry('bonnmotionvalidatepath'), config.readConfigEntry('tempoutputparamsfile').replace('INDEX', str(n))), 'w')
             f.write(x['bmparamsfile']) 
             f.close()
             n += 1
@@ -195,7 +200,7 @@ def main():
                 generator2.setModeltestFilename(params['paramsfile'])
                 generator2.createBonnmotionParamsFiles()  
                 log("starting app determination: " + filename + ", modeltest: " + params['paramsfile'])    
-                bmd = BonnmotionDispatcher(generator2.noOfFilesCreated, config.readConfigEntry('bonnmotionpath'))
+                bmd = BonnmotionDispatcher(generator2.noOfFilesCreated, config.readConfigEntry('bonnmotionvalidatepath'))
                 add = AppDeterminationDispatcher(generator2.noOfFilesCreated, params)
                 log("done")
                 add.cleanup()
@@ -206,7 +211,7 @@ def main():
                         generator2.setModeltestFilename(os.path.join(params['paramsfile'], file))
                         generator2.createBonnmotionParamsFiles()
                         log("starting app determination: " + filename + ", modeltest: " + file)
-                        bmd = BonnmotionDispatcher(generator2.noOfFilesCreated, config.readConfigEntry('bonnmotionpath'))
+                        bmd = BonnmotionDispatcher(generator2.noOfFilesCreated, config.readConfigEntry('bonnmotionvalidatepath'))
                         add = AppDeterminationDispatcher(generator2.noOfFilesCreated, params)
                         add.cleanup()        
                         log("done")        
@@ -220,7 +225,7 @@ def main():
             
         n = 0
         for x in result:
-            f = open(config.readConfigEntry('tempoutputparamsfile').replace('INDEX', str(n)), 'w')
+            f = open(os.path.join(Config().readConfigEntry('bonnmotionvalidatepath'), config.readConfigEntry('tempoutputparamsfile').replace('INDEX', str(n))), 'w')
             f.write(x['bmparamsfile'])
             f.close()
             n += 1

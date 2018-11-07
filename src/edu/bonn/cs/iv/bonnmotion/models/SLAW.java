@@ -1,7 +1,8 @@
 /*******************************************************************************
  ** BonnMotion - a mobility scenario generation and analysis tool             **
  ** Copyright (C) 2002-2010 University of Bonn                                **
- ** Code: Zia-Ul-Huda, Gufron Atokhojaev                                      **
+ ** Code: Zia-Ul-Huda                                                         **
+ **       Gufron Atokhojaev                                                   **       
  **                                                                           **
  ** This program is free software; you can redistribute it and/or modify      **
  ** it under the terms of the GNU General Public License as published by      **
@@ -34,10 +35,13 @@ import edu.bonn.cs.iv.bonnmotion.Waypoint;
 import edu.bonn.cs.iv.bonnmotion.models.slaw.Cluster;
 import edu.bonn.cs.iv.bonnmotion.models.slaw.ClusterMember;
 import edu.bonn.cs.iv.bonnmotion.models.slaw.SLAWBase;
+import edu.bonn.cs.iv.bonnmotion.printer.Dimension;
+import edu.bonn.cs.iv.bonnmotion.printer.Printer;
+import edu.bonn.cs.iv.bonnmotion.printer.PrinterStyle;
 
 /** Application to construct SLAW mobility scenarios. */
 
-public class SLAW extends SLAWBase {
+public class SLAW extends Scenario {
     private static ModuleInfo info;
     
     static {
@@ -45,13 +49,14 @@ public class SLAW extends SLAWBase {
         info.description = "Application to construct mobility scenarios according to the Self-similar Least Action Walk model";
         
         info.major = 1;
-        info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 408 $");
+        info.minor = 1;
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 650 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("Zia-Ul-Huda");
         info.authors.add("Gufron Atokhojaev");
 		info.authors.add("Florian Schmitt");
+		info.authors.add("Raphael Ernst");
         info.references.add("http://research.csc.ncsu.edu/netsrv/?q=content/slaw-self-similar-least-action-walk");
 		info.affiliation = ModuleInfo.UNIVERSITY_OF_BONN;
     }
@@ -59,6 +64,19 @@ public class SLAW extends SLAWBase {
     public static ModuleInfo getInfo() {
         return info;
     }
+    
+    /** SLAW parameters */
+    private int noOfWaypoints = 1000;
+    private int cluster_ratio = 5;
+    private int waypoint_ratio = 5;
+    private double minpause = 10;
+    private double maxpause = 50;
+    private double beta = 1;
+    private double hurst = 0.75;
+    private double dist_weight = 3;
+    private double cluster_range = 50;
+    private String waypoints_filename = null;
+    private Position[] waypoints;
 
     public SLAW(int nodes, double x, double y, double duration, double ignore, long randomSeed, int waypoints, double minpause,
             double maxpause, double beta, double hurst, double dist_weight, double cluster_range, int cr, int wr) {
@@ -107,7 +125,7 @@ public class SLAW extends SLAWBase {
         }
         
         System.out.println("Generating Clusters.\n\n");
-        Cluster[] clusters = generate_clusters(this.waypoints);
+        Cluster[] clusters = SLAWBase.generate_clusters(this.waypoints, this.cluster_range);
         System.out.println(clusters.length + " Clusters found.");
 
         // These variables have values same as in the matlab implementation of
@@ -119,24 +137,25 @@ public class SLAW extends SLAWBase {
         if (clusters.length > 1){
             System.out.println("Trace generation started.\n");
 
-            for (int user = 0; user < node.length; user++) {
-                node[user] = new MobileNode();
+            for (int user = 0; user < parameterData.nodes.length; user++) {
+            	parameterData.nodes[user] = new MobileNode();
                 double t = 0.0;
                 // get random clusters and waypoints
-                Cluster[] clts = make_selection(clusters, null, false);
+                Cluster[] clts = SLAWBase.make_selection(clusters, null, false, cluster_ratio, noOfWaypoints, waypoint_ratio, this);
                 // total list of waypoints assigned
-                ClusterMember[] wlist = get_waypoint_list(clts);
+                ClusterMember[] wlist = SLAWBase.get_waypoint_list(clts);
 
                 // random source node
                 int src = (int)Math.floor(randomNextDouble() * wlist.length);
                 int dst = -1;
                 int count;
                 
-                while (t < duration) {
+                while (t < parameterData.duration) {
                     count = 0;
-                    Position source = wlist[src].pos;
                     
-                    if (!node[user].add(t, source)) {
+                    Position source = (Position)wlist[src].pos;
+                    
+                    if (!parameterData.nodes[user].add(t, source)) {
                         throw new RuntimeException(getInfo().name + ".generate: error while adding waypoint (1)");
                     }
                     wlist[src].is_visited = true;
@@ -152,8 +171,8 @@ public class SLAW extends SLAWBase {
                     // waypoints. Destructive mode of original SLAW matlab
                     // implementation by Seongik Hong, NCSU, US (3/10/2009)
                     while (count == 0) {
-                        clts = make_selection(clusters, clts, true);
-                        wlist = get_waypoint_list(clts);
+                        clts = SLAWBase.make_selection(clusters, clts, true, cluster_ratio, noOfWaypoints, waypoint_ratio, this);
+                        wlist = SLAWBase.get_waypoint_list(clts);
                         for (int i = 0; i < wlist.length; i++) {
                             if (!wlist[i].is_visited) {
                                 if (source.distance(wlist[i].pos) != 0.0) {
@@ -212,18 +231,18 @@ public class SLAW extends SLAWBase {
                     double distance = source.distance(wlist[dst].pos);
                     t += distance / speed;
 
-                    if (!node[user].add(t, wlist[dst].pos)) {
+                    if (!parameterData.nodes[user].add(t, (Position)wlist[dst].pos)) {
                         throw new RuntimeException(getInfo().name + ".generate: error while adding waypoint (2)");
                     }
                     
                     // select pause time by power law formula
-                    if ((t < duration) && (this.maxpause > 0.0)) {
-                        t += random_powerlaw(powerlaw_step, levy_scale_factor, powerlaw_mode)[0];
+                    if ((t < parameterData.duration) && (this.maxpause > 0.0)) {
+                        t += SLAWBase.random_powerlaw(powerlaw_step, levy_scale_factor, powerlaw_mode, minpause, maxpause, beta, this)[0];
                     }
                     // change destination to next source
                     src = dst;
                 }
-                System.out.println("Trace generation for node " + (user + 1) + " of " + node.length + " done.");
+                System.out.println("Trace generation for node " + (user + 1) + " of " + parameterData.nodes.length + " done.");
             }
             System.out.println("\n");
             postGeneration();
@@ -271,8 +290,8 @@ public class SLAW extends SLAWBase {
             System.out.println("Level " + (level + 1) + " of " + levels + " started.");
             // Number of squares at current level
             double n_squares = Math.pow(4, level);
-            Xwind = x / Math.pow(2, level);
-            Ywind = y / Math.pow(2, level);
+            Xwind = parameterData.x / Math.pow(2, level);
+            Ywind = parameterData.y / Math.pow(2, level);
 
             for (int square = 0; square < n_squares; square++) {
                 if (square % 2000 == 0 && square != 0) {
@@ -308,7 +327,7 @@ public class SLAW extends SLAWBase {
                     }
                 } else if (level == 0) {
                     // first level
-                    int[] num = devide_waypoints(wp, level_variances[level]);
+                    int[] num = SLAWBase.divide_waypoints(wp, level_variances[level], this);
                     for (int i = 0; i < 4; i++) {
                         wpoints.put((level + 1) + "," + (4 * square + i), num[i]);
                     }
@@ -319,14 +338,14 @@ public class SLAW extends SLAWBase {
                         cur_wp[i] = wpoints.get(level + "," + i);
                     }
 
-                    double avg = calculate_average(cur_wp);
+                    double avg = SLAWBase.calculate_average(cur_wp);
 
                     for (int i = 0; i < Math.pow(4, level); i++) {
                         cur_wp[i] /= avg;
                     }
 
-                    double var = calculate_var(cur_wp) + 1;
-                    int[] num = devide_waypoints(wp, ((level_variances[level] + 1) / var) - 1);
+                    double var = SLAWBase.calculate_var(cur_wp) + 1;
+                    int[] num = SLAWBase.divide_waypoints(wp, ((level_variances[level] + 1) / var) - 1, this);
                     for (int i = 0; i < 4; i++) {
                         wpoints.put((level + 1) + "," + (4 * square + i), num[i]);
                     }
@@ -335,8 +354,8 @@ public class SLAW extends SLAWBase {
         }// for level
 
         // create waypoints
-        Xwind = x / Math.sqrt(Math.pow(4, levels));
-        Ywind = y / Math.sqrt(Math.pow(4, levels));
+        Xwind = parameterData.x / Math.sqrt(Math.pow(4, levels));
+        Ywind = parameterData.y / Math.sqrt(Math.pow(4, levels));
         int total_squares = (int)Math.pow(4, levels);
 
         double theta, xx, yy;
@@ -369,13 +388,13 @@ public class SLAW extends SLAWBase {
         p[6] = "cluster_range=" + this.cluster_range;
         p[7] = "cluster_ratio=" + this.cluster_ratio;
         p[8] = "waypoint_ratio=" + this.waypoint_ratio;
-        super.write(_name, p);
+        super.writeParametersAndMovement(_name, p);
 
         try {
             PrintWriter csv = new PrintWriter(new FileOutputStream(_name + "_waypoints.csv"));
-            
+            Printer printer = new Printer(PrinterStyle.MovementString, Dimension.TWOD);
             for (Position pos : this.waypoints) {
-                csv.println(pos.getMovementStringPart());
+                csv.println(printer.print(pos));
             }
 
             csv.close();
@@ -449,7 +468,7 @@ public class SLAW extends SLAWBase {
             case 'r': // "Range for cluster"
                 cluster_range = Double.parseDouble(val);
                 return true;
-            case 'C': // "Number of clusters to be selected"
+            case 'Q': // "Number of clusters to be selected"
                 cluster_ratio = Integer.parseInt(val);
                 return true;
             case 'W': // "Number of waypoints to be selected"
@@ -474,7 +493,7 @@ public class SLAW extends SLAWBase {
                 		   "\t-h <Hurst parameter for self-similarity of waypoints>\n" +
                 		   "\t-l <distance weight>\n" +
                 		   "\t-r <clustering range (meter)>\n" +
-                		   "\t-C <Cluster ratio>\n" +
+                		   "\t-Q <Cluster ratio>\n" +
         				   "\t-W <waypoint ratio>\n");
     }
     
@@ -483,18 +502,18 @@ public class SLAW extends SLAWBase {
         
         if (this.waypoints_filename != null) {
             System.out.println("Loading waypoints from file: " + this.waypoints_filename + "\n");
-            this.waypoints = readWaypointsFromFile(this.waypoints_filename);
+            this.waypoints = SLAWBase.readWaypointsFromFile(this.waypoints_filename);
             this.noOfWaypoints = this.waypoints.length;
         }
     }
 
     protected void postGeneration() {
-        for (int i = 0; i < node.length; i++) {
-            Waypoint l = node[i].getLastWaypoint();
-            if (l.time > duration) {
-                Position p = node[i].positionAt(duration);
-                node[i].removeLastElement();
-                node[i].add(duration, p);
+        for (int i = 0; i < parameterData.nodes.length; i++) {
+            Waypoint l = parameterData.nodes[i].getLastWaypoint();
+            if (l.time > parameterData.duration) {
+                Position p = parameterData.nodes[i].positionAt(parameterData.duration);
+                parameterData.nodes[i].removeLastElement();
+                parameterData.nodes[i].add(parameterData.duration, p);
             }
         }
         super.postGeneration();

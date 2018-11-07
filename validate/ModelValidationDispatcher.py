@@ -1,18 +1,24 @@
-#    A validation script for Bonnmotion (http://net.cs.uni-bonn.de/wg/cs/applications/bonnmotion/)
-#    Copyright (C) 2011 University of Bonn
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# -*- coding: utf-8 -*-
+################################################################################
+## A validation script for                                                    ##
+## BonnMotion - a mobility scenario generation and analysis tool              ##
+## Copyright (C) 2002-2012 University of Bonn                                 ##
+## Copyright (C) 2012-2015 University of Osnabrueck                           ##
+##                                                                            ##
+## This program is free software; you can redistribute it and/or modify       ##
+## it under the terms of the GNU General Public License as published by       ##
+## the Free Software Foundation; either version 2 of the License, or          ##
+## (at your option) any later version.                                        ##
+##                                                                            ##
+## This program is distributed in the hope that it will be useful,            ##
+## but WITHOUT ANY WARRANTY; without even the implied warranty of             ##
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the              ##
+## GNU General Public License for more details.                               ##
+##                                                                            ##
+## You should have received a copy of the GNU General Public License          ##
+## along with this program; if not, write to the Free Software                ##
+## Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA  ##
+################################################################################
 
 from Config import Config
 from Common import readModelnameFromParamsFile, runBonnmotionModel, Hashes, log
@@ -65,8 +71,7 @@ class ModelValidationDispatcher(object):
             for i in t.Seq:
                 os.remove(os.path.join(Config().readConfigEntry('bonnmotionvalidatepath'), Config().readConfigEntry('tempoutputmovementsfile').replace('INDEX', str(i))))
                 os.remove(os.path.join(Config().readConfigEntry('bonnmotionvalidatepath'), Config().readConfigEntry('tempoutputparamsfile').replace('INDEX', str(i))))
-                os.remove(Config().readConfigEntry('tempoutputparamsfile').replace('INDEX', str(i))) 
-        
+                        
     class ModelValidationThread(threading.Thread):
         def __init__(self, seq, md5, sha1):
             threading.Thread.__init__(self)
@@ -77,18 +82,17 @@ class ModelValidationDispatcher(object):
         def run(self):
             j = 0
             for i in self.Seq:
-                modelname = readModelnameFromParamsFile(Config().readConfigEntry('tempoutputparamsfile').replace('INDEX', str(i)))
+                modelname = readModelnameFromParamsFile(os.path.join(Config().readConfigEntry('bonnmotionvalidatepath'), Config().readConfigEntry('tempoutputparamsfile').replace('INDEX', str(i))))
                 
                 runBonnmotionModel(Config().readConfigEntry('bonnmotionvalidatepath'), i, modelname)
                 
                 movementsfilename = os.path.join(Config().readConfigEntry('bonnmotionvalidatepath'), Config().readConfigEntry('tempoutputmovementsfile').replace('INDEX', str(i)))
-                
                 f = gzip.open(movementsfilename, 'rb')
                 movements_content = f.read()
                 f.close()    
                 
                 if (self.Md5[j] <> Hashes().md5(movements_content) or self.Sha1[j] <> Hashes().sha1(movements_content)):
-                    f2 = open(Config().readConfigEntry('tempoutputparamsfile').replace('INDEX', str(i)), 'r')
+                    f2 = open(os.path.join(Config().readConfigEntry('bonnmotionvalidatepath'), Config().readConfigEntry('tempoutputparamsfile').replace('INDEX', str(i))), 'r')
                     self.ReturnValue.append(f2.read())
                     f2.close()
                 

@@ -1,7 +1,7 @@
 /*******************************************************************************
  ** BonnMotion - a mobility scenario generation and analysis tool             **
- ** Copyright (C) 2002-2010 University of Bonn                                **
- ** Code: Matthias Schwamborn                                                 **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2015 University of Osnabrueck                          **
  **                                                                           **
  ** This program is free software; you can redistribute it and/or modify      **
  ** it under the terms of the GNU General Public License as published by      **
@@ -21,7 +21,9 @@
 package edu.bonn.cs.iv.bonnmotion.apps;
 
 import java.io.*;
+
 import edu.bonn.cs.iv.bonnmotion.*;
+import edu.bonn.cs.iv.bonnmotion.printer.Dimension;
 
 /** The ONE file format
  * according to:
@@ -38,7 +40,7 @@ public class TheONEFile extends App {
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 650 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("Matthias Schwamborn");
@@ -80,8 +82,8 @@ public class TheONEFile extends App {
 		/** print header line:
 		 * minTime maxTime minX maxX minY maxY [minZ maxZ]
 		 * */
-		if (s instanceof Scenario3D) {
-            out.println(0.0 + " " + s.getDuration() + " " + 0.0 + " " + s.getX() + " " + 0.0 + " " + s.getY() + " " + 0.0 + " " + ((Scenario3D)s).getZ()); 		    
+		if (s.getScenarioParameters().outputDim == Dimension.THREED) {
+            out.println(0.0 + " " + s.getDuration() + " " + 0.0 + " " + s.getX() + " " + 0.0 + " " + s.getY() + " " + 0.0 + " " + s.getZ()); 		    
 		} else {
 		    out.println(0.0 + " " + s.getDuration() + " " + 0.0 + " " + s.getX() + " " + 0.0 + " " + s.getY());
 		}
@@ -90,10 +92,10 @@ public class TheONEFile extends App {
 		double duration = s.getDuration();
 		double t = 0.0;
 		
-	    if (s instanceof Scenario3D) {
+	    if (s.getScenarioParameters().outputDim == Dimension.THREED) {
 	        while (t < duration) {
 	            for (int i = 0; i < node.length; i++) {
-	                Position3D p = (Position3D)node[i].positionAt(t);
+	                Position p = node[i].positionAt(t);
                     out.println(t + " " + i + " " + p.x + " " + p.y + " " + p.z);
 	            }
 	            t += intervalLength;

@@ -1,3 +1,23 @@
+/*******************************************************************************
+ ** BonnMotion - a mobility scenario generation and analysis tool             **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2015 University of Osnabrueck                          **
+ **                                                                           **
+ ** This program is free software; you can redistribute it and/or modify      **
+ ** it under the terms of the GNU General Public License as published by      **
+ ** the Free Software Foundation; either version 2 of the License, or         **
+ ** (at your option) any later version.                                       **
+ **                                                                           **
+ ** This program is distributed in the hope that it will be useful,           **
+ ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
+ ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
+ ** GNU General Public License for more details.                              **
+ **                                                                           **
+ ** You should have received a copy of the GNU General Public License         **
+ ** along with this program; if not, write to the Free Software               **
+ ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
+ *******************************************************************************/
+
 package edu.bonn.cs.iv.bonnmotion.models;
 
 import java.io.FileNotFoundException;
@@ -41,7 +61,7 @@ public class RandomWalk extends RandomSpeedBase {
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 252 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 650 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("Chris Walsh");
@@ -86,8 +106,8 @@ public class RandomWalk extends RandomSpeedBase {
 		
 		preGeneration();
 
-		for (int i = 0; i < node.length; i++) {
-			node[i] = new MobileNode();
+		for (int i = 0; i < parameterData.nodes.length; i++) {
+			parameterData.nodes[i] = new MobileNode();
 			double t = 0.0;
 			Position src = null;
 			
@@ -103,10 +123,10 @@ public class RandomWalk extends RandomSpeedBase {
 			} 
 			else src = randomNextPosition();
 			
-			if (!node[i].add(t, src))   		// add source Waypoint
+			if (!parameterData.nodes[i].add(t, src))   		// add source Waypoint
 				throw new RuntimeException(getInfo().name + ".go: error while adding waypoint");
 			
-			while (t < duration) {
+			while (t < parameterData.duration) {
 				Position dst = null;
 				double angle, dX, dY;
 
@@ -119,11 +139,11 @@ public class RandomWalk extends RandomSpeedBase {
 					case 't': //Time is the limiter
 						// Compute how far we are allowed to travel in time T, where T = modeDelta. Then add the necessary destinations.
 						maxDist = speed * modeDelta;
-						if((duration - t) < (maxDist / speed))
+						if((parameterData.duration - t) < (maxDist / speed))
 						{
-							maxDist = speed * (duration - t);
-							dX = (duration - t) * speed * Math.cos(angle);
-							dY = (duration - t) * speed * Math.sin(angle);
+							maxDist = speed * (parameterData.duration - t);
+							dX = (parameterData.duration - t) * speed * Math.cos(angle);
+							dY = (parameterData.duration - t) * speed * Math.sin(angle);
 						}
 						else
 						{
@@ -135,11 +155,11 @@ public class RandomWalk extends RandomSpeedBase {
 					case 's': //diStance is the limiter
 						// We know how far we're allowed to travel (modeDelta), now compute the necessary destinations
 						maxDist = modeDelta;
-						if((duration - t) < (maxDist / speed))
+						if((parameterData.duration - t) < (maxDist / speed))
 						{
-							maxDist = speed * (duration - t);
-							dX = (duration - t) * speed * Math.cos(angle);
-							dY = (duration - t) * speed * Math.sin(angle);
+							maxDist = speed * (parameterData.duration - t);
+							dX = (parameterData.duration - t) * speed * Math.cos(angle);
+							dY = (parameterData.duration - t) * speed * Math.sin(angle);
 						}
 						else
 						{
@@ -151,13 +171,13 @@ public class RandomWalk extends RandomSpeedBase {
 						throw new RuntimeException(getInfo().name + ".go: error calculating next destination - mode is not 't' or 's'. Please supply -t or -s flag");
 				}
 				
-				dstList = checkReflection(dstList, src, dX, dY, angle, t, duration, 0, maxDist, speed);
+				dstList = checkReflection(dstList, src, dX, dY, angle, t, parameterData.duration, 0, maxDist, speed);
 				
 				for (double key : dstList.keySet())
 				{
 			    	t = key;
 			    	dst = dstList.get(key);
-			    	if (!node[i].add(t, dst)) throw new RuntimeException(getInfo().name + ".go: error while adding waypoint (2t)");
+			    	if (!parameterData.nodes[i].add(t, dst)) throw new RuntimeException(getInfo().name + ".go: error while adding waypoint (2t)");
 				}
 				
 				dstList.clear();
@@ -257,11 +277,11 @@ public class RandomWalk extends RandomSpeedBase {
 		Position potentialDst = new Position(src.x + dX, src.y + dY);
 		Position newSrc;
 		
-		if(potentialDst.x > x && potentialDst.y < y && potentialDst.y > 0) // case 0
+		if(potentialDst.x > parameterData.x && potentialDst.y < parameterData.y && potentialDst.y > 0) // case 0
 		{
 			//calculate destination (the wall collision)
-			xTime = (x - src.x)/(speed*Math.cos(dir));
-			newX = x;
+			xTime = (parameterData.x - src.x)/(speed*Math.cos(dir));
+			newX = parameterData.x;
 			newY = (speed*xTime*Math.sin(dir)) + src.y;
 			distTraveled += Math.sqrt((newX-src.x)*(newX-src.x) + (newY-src.y)*(newY-src.y));
 			//put the collision with the wall into the list
@@ -278,15 +298,15 @@ public class RandomWalk extends RandomSpeedBase {
 			//call recursively to check if the reflection dst will hit a wall
 			return checkReflection(list, newSrc, newX, newY, newDir, time, dur, distTraveled, maxDist, speed);
 		}
-		else if(potentialDst.x > x && potentialDst.y > y) // case 1
+		else if(potentialDst.x > parameterData.x && potentialDst.y > parameterData.y) // case 1
 		{
-			xTime = (x - src.x)/(speed*Math.cos(dir));
-			yTime = (y - src.y)/(speed*Math.sin(dir));
+			xTime = (parameterData.x - src.x)/(speed*Math.cos(dir));
+			yTime = (parameterData.y - src.y)/(speed*Math.sin(dir));
 			
 			if(xTime < yTime) //hit the side first
 			{
 				//calculate destination (the wall collision)
-				newX = x;
+				newX = parameterData.x;
 				newY = (speed*xTime*Math.sin(dir)) + src.y;
 				distTraveled += Math.sqrt((newX-src.x)*(newX-src.x) + (newY-src.y)*(newY-src.y));
 				//put the collision with the wall into the list
@@ -306,7 +326,7 @@ public class RandomWalk extends RandomSpeedBase {
 			else if(xTime > yTime) // hit the top first
 			{
 				//calculate destination (the wall collision)
-				newY = y;
+				newY = parameterData.y;
 				newX = (speed*yTime*Math.cos(dir)) + src.x;
 				distTraveled += Math.sqrt((newX-src.x)*(newX-src.x) + (newY-src.y)*(newY-src.y));
 				//put the collision with the wall into the list
@@ -326,8 +346,8 @@ public class RandomWalk extends RandomSpeedBase {
 			else // hit corner
 			{
 				//calculate destination (the wall collision)
-				newY = y;
-				newX = x;
+				newY = parameterData.y;
+				newX = parameterData.x;
 				distTraveled += Math.sqrt((newX-src.x)*(newX-src.x) + (newY-src.y)*(newY-src.y));
 				//put the collision with the wall into the list
 				newSrc = new Position(newX, newY);
@@ -343,11 +363,11 @@ public class RandomWalk extends RandomSpeedBase {
 				return checkReflection(list, newSrc, newX, newY, newDir, time, dur, distTraveled, maxDist, speed);
 			}
 		}
-		else if(potentialDst.y > y && potentialDst.x < x && potentialDst.x > 0) // case 2
+		else if(potentialDst.y > parameterData.y && potentialDst.x < parameterData.x && potentialDst.x > 0) // case 2
 		{
 			//calculate destination (the wall collision)
-			yTime = (y - src.y)/(speed*Math.sin(dir));
-			newY = y;
+			yTime = (parameterData.y - src.y)/(speed*Math.sin(dir));
+			newY = parameterData.y;
 			newX = (speed*yTime*Math.cos(dir)) + src.x;
 			distTraveled += Math.sqrt((newX-src.x)*(newX-src.x) + (newY-src.y)*(newY-src.y));
 			//put the collision with the wall into the list
@@ -364,10 +384,10 @@ public class RandomWalk extends RandomSpeedBase {
 			//call recursively to check if the reflection dst will hit a wall
 			return checkReflection(list, newSrc, newX, newY, newDir, time, dur, distTraveled, maxDist, speed);
 		}
-		else if(potentialDst.x < 0 && potentialDst.y > y) // case 3
+		else if(potentialDst.x < 0 && potentialDst.y > parameterData.y) // case 3
 		{
 			xTime = (0 - src.x)/(speed*Math.cos(dir));
-			yTime = (y - src.y)/(speed*Math.sin(dir));
+			yTime = (parameterData.y - src.y)/(speed*Math.sin(dir));
 			
 			if(xTime < yTime) //hit the side first
 			{
@@ -392,7 +412,7 @@ public class RandomWalk extends RandomSpeedBase {
 			else if(xTime > yTime) // hit the top first
 			{
 				//calculate destination (the wall collision)
-				newY = y;
+				newY = parameterData.y;
 				newX = (speed*yTime*Math.cos(dir)) + src.x;
 				distTraveled += Math.sqrt((newX-src.x)*(newX-src.x) + (newY-src.y)*(newY-src.y));
 				//put the collision with the wall into the list
@@ -412,7 +432,7 @@ public class RandomWalk extends RandomSpeedBase {
 			else // hit corner
 			{
 				//calculate destination (the wall collision)
-				newY = y;
+				newY = parameterData.y;
 				newX = 0;
 				distTraveled += Math.sqrt((newX-src.x)*(newX-src.x) + (newY-src.y)*(newY-src.y));
 				//put the collision with the wall into the list
@@ -429,7 +449,7 @@ public class RandomWalk extends RandomSpeedBase {
 				return checkReflection(list, newSrc, newX, newY, newDir, time, dur, distTraveled, maxDist, speed);
 			}
 		}
-		else if(potentialDst.x < 0 && potentialDst.y < y && potentialDst.y > 0) // case 4
+		else if(potentialDst.x < 0 && potentialDst.y < parameterData.y && potentialDst.y > 0) // case 4
 		{
 			//calculate destination (the wall collision)
 			xTime = (0 - src.x)/(speed*Math.cos(dir));
@@ -515,7 +535,7 @@ public class RandomWalk extends RandomSpeedBase {
 				return checkReflection(list, newSrc, newX, newY, newDir, time, dur, distTraveled, maxDist, speed);
 			}
 		}
-		else if(potentialDst.y < 0 && potentialDst.x < x && potentialDst.x > 0) // case 6
+		else if(potentialDst.y < 0 && potentialDst.x < parameterData.x && potentialDst.x > 0) // case 6
 		{
 			//calculate destination (the wall collision)
 			yTime = (0 - src.y)/(speed*Math.sin(dir));
@@ -536,15 +556,15 @@ public class RandomWalk extends RandomSpeedBase {
 			//call recursively to check if the reflection dst will hit a wall
 			return checkReflection(list, newSrc, newX, newY, newDir, time, dur, distTraveled, maxDist, speed);
 		}
-		else if(potentialDst.x > x && potentialDst.y < 0) // case 7
+		else if(potentialDst.x > parameterData.x && potentialDst.y < 0) // case 7
 		{
-			xTime = (x - src.x)/(speed*Math.cos(dir));
+			xTime = (parameterData.x - src.x)/(speed*Math.cos(dir));
 			yTime = (0 - src.y)/(speed*Math.sin(dir));
 			
 			if(xTime < yTime) //hit the side first
 			{
 				//calculate destination (the wall collision)
-				newX = x;
+				newX = parameterData.x;
 				newY = (speed*xTime*Math.sin(dir)) + src.y;
 				distTraveled += Math.sqrt((newX-src.x)*(newX-src.x) + (newY-src.y)*(newY-src.y));
 				//put the collision with the wall into the list
@@ -585,7 +605,7 @@ public class RandomWalk extends RandomSpeedBase {
 			{
 				//calculate destination (the wall collision)
 				newY = 0;
-				newX = x;
+				newX = parameterData.x;
 				distTraveled += Math.sqrt((newX-src.x)*(newX-src.x) + (newY-src.y)*(newY-src.y));
 				//put the collision with the wall into the list
 				newSrc = new Position(newX, newY);
@@ -610,13 +630,13 @@ public class RandomWalk extends RandomSpeedBase {
 	}
 
 	protected void postGeneration() {
-		for ( int i = 0; i < node.length; i++ ) 
+		for ( int i = 0; i < parameterData.nodes.length; i++ ) 
 		{
-			Waypoint l = node[i].getLastWaypoint();
-			if (l.time > duration) {
-				Position p = node[i].positionAt(duration);
-				node[i].removeLastElement();
-				node[i].add(duration, p);
+			Waypoint l = parameterData.nodes[i].getLastWaypoint();
+			if (l.time > parameterData.duration) {
+				Position p = parameterData.nodes[i].positionAt(parameterData.duration);
+				parameterData.nodes[i].removeLastElement();
+				parameterData.nodes[i].add(parameterData.duration, p);
 			}
 		}
 		super.postGeneration();

@@ -1,3 +1,23 @@
+/*******************************************************************************
+ ** BonnMotion - a mobility scenario generation and analysis tool             **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2015 University of Osnabrueck                          **
+ **                                                                           **
+ ** This program is free software; you can redistribute it and/or modify      **
+ ** it under the terms of the GNU General Public License as published by      **
+ ** the Free Software Foundation; either version 2 of the License, or         **
+ ** (at your option) any later version.                                       **
+ **                                                                           **
+ ** This program is distributed in the hope that it will be useful,           **
+ ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
+ ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
+ ** GNU General Public License for more details.                              **
+ **                                                                           **
+ ** You should have received a copy of the GNU General Public License         **
+ ** along with this program; if not, write to the Free Software               **
+ ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
+ *******************************************************************************/
+
 package edu.bonn.cs.iv.bonnmotion.models;
 
 import java.io.FileNotFoundException;
@@ -21,7 +41,7 @@ public class GaussMarkov extends Scenario {
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 650 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("University of Bonn");
@@ -67,17 +87,17 @@ public class GaussMarkov extends Scenario {
 			speedStdDev = Double.parseDouble(value);
 			return true;
 		} else if (key.equals("randomSeed")) {
-			randomSeed = Long.parseLong(value);
+			parameterData.randomSeed = Long.parseLong(value);
 			return true;
 		} else if (key.equals("x")) {
 			return true;
 		} else if (key.equals("y")) {
 			return true;
 		} else if (key.equals("inputX")) {
-			x = Double.parseDouble(value);
+			parameterData.x = Double.parseDouble(value);
 			return true;
 		} else if (key.equals("inputY")) {
-			y = Double.parseDouble(value);
+			parameterData.y = Double.parseDouble(value);
 			return true;
 		} else if (key.equals("bounce")) {
 			if (value.equals("true")) checkBounds = true;
@@ -155,8 +175,8 @@ public class GaussMarkov extends Scenario {
 	public void generate() {
 		preGeneration();
 
-		double maxX = x;
-		double maxY = y;
+		double maxX = parameterData.x;
+		double maxY = parameterData.y;
 		double minX = 0;
 		double minY = 0;
 
@@ -166,8 +186,8 @@ public class GaussMarkov extends Scenario {
 			maxspeed = tempspeed;
 		}
 
-		for (int i = 0; i < node.length; i++) {
-			node[i] = new MobileNode();
+		for (int i = 0; i < parameterData.nodes.length; i++) {
+			parameterData.nodes[i] = new MobileNode();
 			double t = 0.0;
 			Position src = null;
 			if (isTransition) {
@@ -181,8 +201,8 @@ public class GaussMarkov extends Scenario {
 				}
 			}
 			else {
-				src = new Position(x * randomNextDouble(), y * randomNextDouble());
-				if (!node[i].add(0.0, src)) {
+				src = new Position(parameterData.x * randomNextDouble(), parameterData.y * randomNextDouble());
+				if (!parameterData.nodes[i].add(0.0, src)) {
 					System.out.println(getInfo().name + ".<init>: error while adding node movement (1)");
 					System.exit(0);
 				}
@@ -196,7 +216,7 @@ public class GaussMarkov extends Scenario {
 
 			boolean intervalShortened = false;
 
-			while (t < duration) {
+			while (t < parameterData.duration) {
 				double t1 = t + updateFrequency;
 
 				if (!checkBounds) {
@@ -218,7 +238,7 @@ public class GaussMarkov extends Scenario {
 
 					if (checkBounds) {
 						/* check if node will leave the simulation area */
-						if ((dst.x < 0) || (dst.x > x) || (dst.y < 0) || (dst.y > y)) {
+						if ((dst.x < 0) || (dst.x > parameterData.x) || (dst.y < 0) || (dst.y > parameterData.y)) {
 							/* calculate intersection with boundarys */
 							double yR, yL, xU, xL, ratio;
 							ratio = (dst.y - src.y) / (dst.x - src.x);
@@ -228,7 +248,7 @@ public class GaussMarkov extends Scenario {
 							 * get y for dst on boundary ratio = (yR-src.y)/x-src.x <=> ratio *
 							 * (x-src.x) + src.y = yr
 							 */
-							yR = ratio * (x - src.x) + src.y;
+							yR = ratio * (parameterData.x - src.x) + src.y;
 							/* left boundary */
 							/* get y for dst on boundary */
 							yL = ratio * (-src.x) + src.y;
@@ -240,28 +260,28 @@ public class GaussMarkov extends Scenario {
 							xU = (-src.y) / ratio + src.x;
 							/* lower boundary */
 							/* get x for dst on boundary */
-							xL = (y - src.y) / ratio + src.x;
+							xL = (parameterData.y - src.y) / ratio + src.x;
 
 							double newX = 0.0, newY = 0.0;
-							if ((yL >= 0) && (yL <= y) && (dir > 0.5 * Math.PI) && (dir < 1.5 * Math.PI)) {
+							if ((yL >= 0) && (yL <= parameterData.y) && (dir > 0.5 * Math.PI) && (dir < 1.5 * Math.PI)) {
 								newY = yL;
 								newX = 0;
 								dir = (twoPi + Math.PI - dir) % twoPi;
 							}
-							else if ((yR >= 0) && (yR <= y) && ((dir > 1.5 * Math.PI) || (dir < 0.5 * Math.PI))) {
+							else if ((yR >= 0) && (yR <= parameterData.y) && ((dir > 1.5 * Math.PI) || (dir < 0.5 * Math.PI))) {
 								newY = yR;
-								newX = x;
+								newX = parameterData.x;
 								dir = (twoPi + Math.PI - dir) % twoPi;
 							}
 
-							if ((xU >= 0) && (xU <= x) && (dir > Math.PI) && (dir < 2.0 * Math.PI)) {
+							if ((xU >= 0) && (xU <= parameterData.x) && (dir > Math.PI) && (dir < 2.0 * Math.PI)) {
 								newX = xU;
 								newY = 0;
 								dir = (twoPi + twoPi - dir) % twoPi;
 							}
-							else if ((xL >= 0) && (xL <= x) && (dir > 0.0 * Math.PI) && (dir < Math.PI)) {
+							else if ((xL >= 0) && (xL <= parameterData.x) && (dir > 0.0 * Math.PI) && (dir < Math.PI)) {
 								newX = xL;
-								newY = y;
+								newY = parameterData.y;
 								dir = (twoPi + twoPi - dir) % twoPi;
 							}
 
@@ -291,7 +311,7 @@ public class GaussMarkov extends Scenario {
 							maxY = dst.y;
 					}
 
-					if (!node[i].add(t1, dst)) {
+					if (!parameterData.nodes[i].add(t1, dst)) {
 						System.out.println(getInfo().name + ".<init>: error while adding node movement (2)");
 						System.exit(0);
 					}
@@ -301,15 +321,15 @@ public class GaussMarkov extends Scenario {
 			}
 		}
 
-		inputX = x;
-		inputY = y;
+		inputX = parameterData.x;
+		inputY = parameterData.y;
 		// setting new borders and shifting the waypoints ...
 		double shiftX = Math.abs(minX);
 		double shiftY = Math.abs(minY);
-		x = Math.ceil(maxX + shiftX);
-		y = Math.ceil(maxY + shiftY);
-		for (int i = 0; i < node.length; i++)
-			node[i].shiftPos(shiftX, shiftY);
+		parameterData.x = Math.ceil(maxX + shiftX);
+		parameterData.y = Math.ceil(maxY + shiftY);
+		for (int i = 0; i < parameterData.nodes.length; i++)
+			parameterData.nodes[i].shiftPos(shiftX, shiftY);
 
 		postGeneration();
 	}
@@ -327,20 +347,20 @@ public class GaussMarkov extends Scenario {
 			if (pos.x < 0)
 				if (pos.y < 0)
 					oldDir = 0.25 * Math.PI;
-				else if (pos.y > y)
+				else if (pos.y > parameterData.y)
 					oldDir = 1.75 * Math.PI;
 				else
 					oldDir = 0.0;
-			else if (pos.x > x)
+			else if (pos.x > parameterData.x)
 				if (pos.y < 0)
 					oldDir = 0.75 * Math.PI;
-				else if (pos.y > y)
+				else if (pos.y > parameterData.y)
 					oldDir = 1.25 * Math.PI;
 				else
 					oldDir = Math.PI;
 			else if (pos.y < 0)
 				oldDir = 0.5 * Math.PI;
-			else if (pos.y > y)
+			else if (pos.y > parameterData.y)
 				oldDir = 1.5 * Math.PI;
 			return randomNextGaussian() * angleStdDev + oldDir;
 		}
@@ -378,7 +398,7 @@ public class GaussMarkov extends Scenario {
 		p[7] = "initGauss=" + gaussSpeed;
 		p[8] = "uniformSpeed=" + uniformSpeed;
 
-		super.write(_name, p);
+		super.writeParametersAndMovement(_name, p);
 	}
 
 	public static void printHelp() {

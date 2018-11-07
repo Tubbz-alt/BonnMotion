@@ -1,3 +1,23 @@
+/*******************************************************************************
+ ** BonnMotion - a mobility scenario generation and analysis tool             **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2015 University of Osnabrueck                          **
+ **                                                                           **
+ ** This program is free software; you can redistribute it and/or modify      **
+ ** it under the terms of the GNU General Public License as published by      **
+ ** the Free Software Foundation; either version 2 of the License, or         **
+ ** (at your option) any later version.                                       **
+ **                                                                           **
+ ** This program is distributed in the hope that it will be useful,           **
+ ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
+ ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
+ ** GNU General Public License for more details.                              **
+ **                                                                           **
+ ** You should have received a copy of the GNU General Public License         **
+ ** along with this program; if not, write to the Free Software               **
+ ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
+ *******************************************************************************/
+
 package edu.bonn.cs.iv.bonnmotion.run;
 
 import edu.bonn.cs.iv.bonnmotion.App;
@@ -8,7 +28,7 @@ import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
 
 public class BM {
     private final static String PROG_NAME = "BonnMotion";
-    private final static String PROG_VER = "2.1.3";
+    private final static String PROG_VER = "3.0.0";
     private final static String MODELS_PACK = "edu.bonn.cs.iv.bonnmotion.models";
     private final static String MODELS[] =
         {
@@ -28,14 +48,15 @@ public class BM {
         "RandomStreet",
         "RandomWalk",
         "RandomWaypoint",
-        "RandomWaypoint3D",
         "RPGM",
         "SLAW",
         "SMOOTH",
         "Static",
         "StaticDrift",
         "SteadyStateRandomWaypoint",
+        "SWIM",
         "TIMM",
+        "TLW",
         };
 
     private final static String APPS_PACK = "edu.bonn.cs.iv.bonnmotion.apps";
@@ -46,11 +67,11 @@ public class BM {
         "Dwelltime",
         "GlomoFile",
         "GPXImport",
+		"InRangePrinter",
         "IntervalFormat",
         "LinkDump",
         "LongestLink",
         "NSFile",
-        "ScenarioConverter",
         "SPPXml",
         "Statistics",
         "TheONEFile",
@@ -112,6 +133,8 @@ public class BM {
 
     private void printHeader() {
         System.out.println(PROG_NAME + " " + PROG_VER + "\n");
+        System.out.println("OS: " + System.getProperty("os.name") + " " + System.getProperty("os.version"));
+        System.out.println("Java: " + System.getProperty("java.vendor") + " " + System.getProperty("java.version") + "\n\n");
     }
 
     private void printModels() {

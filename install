@@ -1,7 +1,8 @@
 #!/bin/bash
 
 echo "BonnMotion - a mobility scenario generation and analysis tool"
-echo "Copyright (C) 2002-2011 University of Bonn"
+echo "Copyright (C) 2002-2012 University of Bonn"
+echo "Copyright (C) 2012-2015 University of Osnabrueck"
 echo
 echo "This program is free software; you can redistribute it and/or modify"
 echo "it under the terms of the GNU General Public License as published by"
@@ -59,7 +60,10 @@ then
 		DOCPATH=`cmd.exe /c cd`
 	fi
 	
-	LIBRARYPATH="$BONNMOTION/lib/javaproj-1.0.4.jar:$BONNMOTION/lib/proj4j-0.1.0.jar:$BONNMOTION/lib/proj4j-support-0.1.0.jar"
+	for l in $BONNMOTION/lib/*.jar
+	do
+		LIBRARYPATH=$LIBRARYPATH:$l
+	done
 
 	cd "${BONNMOTION}/bin/.tail"
 	APPS=`ls`

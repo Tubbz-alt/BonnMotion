@@ -1,6 +1,27 @@
+/*******************************************************************************
+ ** BonnMotion - a mobility scenario generation and analysis tool             **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2015 University of Osnabrueck                          **
+ **                                                                           **
+ ** This program is free software; you can redistribute it and/or modify      **
+ ** it under the terms of the GNU General Public License as published by      **
+ ** the Free Software Foundation; either version 2 of the License, or         **
+ ** (at your option) any later version.                                       **
+ **                                                                           **
+ ** This program is distributed in the hope that it will be useful,           **
+ ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
+ ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
+ ** GNU General Public License for more details.                              **
+ **                                                                           **
+ ** You should have received a copy of the GNU General Public License         **
+ ** along with this program; if not, write to the Free Software               **
+ ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
+ *******************************************************************************/
+
 package edu.bonn.cs.iv.bonnmotion.apps;
 
 import edu.bonn.cs.iv.bonnmotion.*;
+import edu.bonn.cs.iv.bonnmotion.printer.Dimension;
 
 import java.io.*;
 
@@ -15,7 +36,7 @@ public class Visplot extends App {
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 650 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("Elmar Gerhards-Padilla");
@@ -47,14 +68,14 @@ public class Visplot extends App {
 		PrintWriter gp = new PrintWriter(new FileOutputStream(name + ".visplot" + idx));
 		double[] ct = node.changeTimes();
 		
-		if (s instanceof Scenario3D) {
-            Position3D p = (Position3D)node.positionAt(0.0);
+		if (s.getScenarioParameters().outputDim == Dimension.THREED) {
+            Position p = node.positionAt(0.0);
             gp.println("" + p.x + " " + p.y + " " + p.z);
             for (int i = 0; i < ct.length; i++) {
-                p = (Position3D)node.positionAt(ct[i]);
+                p = node.positionAt(ct[i]);
                 gp.println("" + p.x + " " + p.y + " " + p.z);
             }
-            p = (Position3D)node.positionAt(duration);
+            p = node.positionAt(duration);
             gp.println("" + p.x + " " + p.y + " " + p.z);		    
 		} else {
     		Position p = node.positionAt(0.0);

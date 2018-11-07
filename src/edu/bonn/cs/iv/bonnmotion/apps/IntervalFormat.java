@@ -1,7 +1,7 @@
 /*******************************************************************************
  ** BonnMotion - a mobility scenario generation and analysis tool             **
- ** Copyright (C) 2002-2009 University of Bonn
- ** Code: Raphael Ernst
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2015 University of Osnabrueck                          **
  **                                                                           **
  ** This program is free software; you can redistribute it and/or modify      **
  ** it under the terms of the GNU General Public License as published by      **
@@ -23,6 +23,7 @@ package edu.bonn.cs.iv.bonnmotion.apps;
 import java.io.*;
 
 import edu.bonn.cs.iv.bonnmotion.*;
+import edu.bonn.cs.iv.bonnmotion.printer.Dimension;
 
 public class IntervalFormat extends App {
     private static ModuleInfo info;
@@ -33,7 +34,7 @@ public class IntervalFormat extends App {
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 650 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("Raphael Ernst");
@@ -69,64 +70,39 @@ public class IntervalFormat extends App {
 			App.exceptionHandler( "Error reading file", e);
 		}
 		
-	    if(s instanceof Scenario3D) {
-            MobileNode3D[] node = ((Scenario3D)s).getNode();
-    
-            PrintWriter out = openPrintWriter(name + filesuffix);
-            if(!skipHead) {
-                out.println("#X " + ((Scenario3D)s).getX());
-                out.println("#Y " + ((Scenario3D)s).getY());
-                out.println("#Z " + ((Scenario3D)s).getZ());
-                out.println("#Nodes " + ((Scenario3D)s).nodeCount());
-                out.println("#Duration " + ((Scenario3D)s).getDuration());
-                
-                for(int i = 0; i < node.length; i++) {
-                    String nodeMovementString = node[i].movementString();
-                    out.println("#Waypoints node " + i + ": " + nodeMovementString);
-                }
-                out.println("#Node Time X Y Z");
+		MobileNode[] node = s.getNode();
+		
+		PrintWriter out = openPrintWriter(name + filesuffix);
+		Dimension outputDim = s.getScenarioParameters().outputDim;
+		
+		if(!skipHead) {
+            out.println("#X " + s.getX());
+            out.println("#Y " + s.getY());
+            if (outputDim == Dimension.THREED){
+            	out.println("#Z " + s.getZ());
             }
+            out.println("#Nodes " + s.nodeCount());
+            out.println("#Duration " + s.getDuration());
             
-            double duration = Math.ceil(s.getDuration());
-    
-            for(int i = 0; i < node.length; i++){
-                double t = 0.0;
-                while(t < duration + 1.0){
-                    Position3D p = (Position3D)node[i].positionAt(t);
-                    out.println(i + " " + t + " " + p.x + " " + p.y + " " + p.z);
-                    t += intervalLength;
-                }
+            for(int i = 0; i < node.length; i++) {
+                String nodeMovementString = node[i].movementString(outputDim);
+                out.println("#Waypoints node " + i + ": " + nodeMovementString);
             }
-            out.close();
-        } else if(s instanceof Scenario) {
-    		MobileNode[] node = s.getNode();
-    		
-    		PrintWriter out = openPrintWriter(name + filesuffix);
-    		if(!skipHead) {
-    		    out.println("#X " + s.getX());
-    		    out.println("#Y " + s.getY());
-    		    out.println("#Nodes " + s.nodeCount());
-    		    out.println("#Duration " + s.getDuration());
-    		    
-    		    for (int i = 0; i < node.length; i++) {
-    		    	String nodeMovementString = node[i].movementString();
-    		    	out.println("#Waypoints node  " + i + ": " + nodeMovementString);
-    		    }
-    		    out.println("#Node Time X Y");
-    		}
-    		
-    		double duration = Math.ceil(s.getDuration());
-    		for(int i = 0; i < node.length; i++) {
-    			double t = 0;
-                while(t<duration+1) {
-                	Position p = node[i].positionAt(t);
-                    out.println(i + " " + t + " " + p.x + " " + p.y);
-                    t += intervalLength;
-                }
-    		}
-    
-    		out.close();
+            out.println("#Node Time X Y" + (outputDim == Dimension.THREED ? " Z" : ""));
         }
+	    
+		double duration = Math.ceil(s.getDuration());
+	    
+        for(int i = 0; i < node.length; i++){
+            double t = 0.0;
+            while(t < duration + 1.0){
+                Position p = node[i].positionAt(t);
+                out.println(i + " " + t + " " + p.x + " " + p.y + (outputDim == Dimension.THREED ? " "+p.z : ""));
+                t += intervalLength;
+            }
+        }
+        
+		out.close();
 	}
 
 	protected boolean parseArg(char key, String val) {

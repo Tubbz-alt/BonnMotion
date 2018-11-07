@@ -1,3 +1,23 @@
+/*******************************************************************************
+ ** BonnMotion - a mobility scenario generation and analysis tool             **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2015 University of Osnabrueck                          **
+ **                                                                           **
+ ** This program is free software; you can redistribute it and/or modify      **
+ ** it under the terms of the GNU General Public License as published by      **
+ ** the Free Software Foundation; either version 2 of the License, or         **
+ ** (at your option) any later version.                                       **
+ **                                                                           **
+ ** This program is distributed in the hope that it will be useful,           **
+ ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
+ ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
+ ** GNU General Public License for more details.                              **
+ **                                                                           **
+ ** You should have received a copy of the GNU General Public License         **
+ ** along with this program; if not, write to the Free Software               **
+ ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
+ *******************************************************************************/
+
 package edu.bonn.cs.iv.bonnmotion.models;
 
 import java.io.FileNotFoundException;
@@ -21,7 +41,7 @@ public class ManhattanGrid extends Scenario {
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 269 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 650 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("University of Bonn");
@@ -108,16 +128,16 @@ public class ManhattanGrid extends Scenario {
 	public void generate() {
 		preGeneration();
 
-		xdim = x / (double) xblocks;
-		ydim = y / (double) yblocks;
+		xdim = parameterData.x / (double) xblocks;
+		ydim = parameterData.y / (double) yblocks;
 
 		pauseProb += speedChangeProb;
 
-		double init_xh = x * (double)(xblocks+1);
-		double init_xr = init_xh / (init_xh + (y * (double)(yblocks+1)));
+		double init_xh = parameterData.x * (double)(xblocks+1);
+		double init_xr = init_xh / (init_xh + (parameterData.y * (double)(yblocks+1)));
 
-		for (int i = 0; i < node.length; i++) {
-			node[i] = new MobileNode();
+		for (int i = 0; i < parameterData.nodes.length; i++) {
+			parameterData.nodes[i] = new MobileNode();
 
 			double t = 0.0, st = 0.0;
 			Position src = null;
@@ -130,7 +150,7 @@ public class ManhattanGrid extends Scenario {
 					src = lastW.pos;
 					st = t = lastW.time;
 				
-					if ( src.y >= y ) // Stop node leaving the simulation area
+					if ( src.y >= parameterData.y ) // Stop node leaving the simulation area
 						dir = 1;
 
 				} catch (ScenarioLinkException e) {
@@ -139,19 +159,19 @@ public class ManhattanGrid extends Scenario {
 				}
 			} else {
 				if (randomNextDouble() < init_xr) { // move along x-axis
-					src = new Position(randomNextDouble() * x, (double)((int)(randomNextDouble() * (double)(yblocks+1))) * ydim);
+					src = new Position(randomNextDouble() * parameterData.x, (double)((int)(randomNextDouble() * (double)(yblocks+1))) * ydim);
 					dir = (int)(randomNextDouble() * 2.) + 2;
 					griddist = src.x - (double)((int)(src.x / xdim) * xdim);
 					if (dir == 2)
 						griddist = xdim - griddist;
 				} else { // move along y-axis
-					src = new Position((double)((int)(randomNextDouble() * (double)(xblocks+1))) * xdim, randomNextDouble() * y);
+					src = new Position((double)((int)(randomNextDouble() * (double)(xblocks+1))) * xdim, randomNextDouble() * parameterData.y);
 					dir = (int)(randomNextDouble() * 2.);
 					griddist = src.y - (double)((int)(src.y / ydim) * ydim);
 					if (dir == 0)
 						griddist = ydim - griddist;
 				}
-				if (!node[i].add(0.0, src)) {
+				if (!parameterData.nodes[i].add(0.0, src)) {
 					System.out.println(getInfo().name + ".<init>: error while adding node movement (1)");
 					System.exit(0);
 				}
@@ -160,7 +180,7 @@ public class ManhattanGrid extends Scenario {
 			Position pos = src;
 			double speed = meanSpeed;
 			double dist = updateDist;
-			while (t < duration) {
+			while (t < parameterData.duration) {
 				Position dst = getNewPos(pos, dist, dir);
 				boolean exactHit = false;
 				if (outOfBounds(dst) || (exactHit = mustTurn(dst, dir)) || ((griddist <= dist) && (randomNextDouble() < turnProb))) { // turn
@@ -182,7 +202,7 @@ public class ManhattanGrid extends Scenario {
 							System.out.println(getInfo().name + ".<init>: out of bounds (2)");
 							System.exit(0);
 						}
-						if (!node[i].add(t, dst))
+						if (!parameterData.nodes[i].add(t, dst))
 							if (!nodeAddErrorHandler(i, t, dst)) {
 								System.out.println(getInfo().name + ".<init>: error while adding node movement (2)");
 								System.exit(0);
@@ -193,14 +213,14 @@ public class ManhattanGrid extends Scenario {
 					st = t;
 					if (dir < 2)
 						if (pos.x > 0.0)
-							if (pos.x < x)
+							if (pos.x < parameterData.x)
 								dir = (int) (randomNextDouble() * 2) + 2;
 							else
 								dir = 3;
 						else
 							dir = 2;
 					else if (pos.y > 0.0)
-						if (pos.y < y)
+						if (pos.y < parameterData.y)
 							dir = (int) (randomNextDouble() * 2);
 						else
 							dir = 1;
@@ -228,7 +248,7 @@ public class ManhattanGrid extends Scenario {
 								System.out.println(getInfo().name + ".<init>: out of bounds (3)");
 								System.exit(0);
 							}
-							if (!node[i].add(t, dst))
+							if (!parameterData.nodes[i].add(t, dst))
 								if (!nodeAddErrorHandler(i, t, dst)) {
 									System.out.println(getInfo().name + ".<init>: error while adding node movement (3)");
 									System.exit(0);
@@ -243,7 +263,7 @@ public class ManhattanGrid extends Scenario {
 								System.out.println(getInfo().name + ".<init>: out of bounds (5)");
 								System.exit(0);
 							}
-							if (!node[i].add(t, dst))
+							if (!parameterData.nodes[i].add(t, dst))
 								if (!nodeAddErrorHandler(i, t, dst)) {
 									System.out.println(getInfo().name + ".<init>: error while adding node movement (5)");
 									System.exit(0);
@@ -255,13 +275,13 @@ public class ManhattanGrid extends Scenario {
 					}
 				}
 			}
-			if (st < duration) {
-				Position dst = getNewPos(src, src.distance(pos) * (duration - st) / (t - st), dir);
+			if (st < parameterData.duration) {
+				Position dst = getNewPos(src, src.distance(pos) * (parameterData.duration - st) / (t - st), dir);
 				if (outOfBounds(dst)) {
 					System.out.println(getInfo().name + ".<init>: out of bounds (4)");
 					System.exit(0);
 				}
-				if (!node[i].add(duration, dst)) {
+				if (!parameterData.nodes[i].add(parameterData.duration, dst)) {
 					System.out.println(getInfo().name + ".<init>: error while adding node movement (4)");
 					System.exit(0);
 				}
@@ -303,21 +323,21 @@ public class ManhattanGrid extends Scenario {
 			maxPause = Double.parseDouble(value);
 			return true;
 		} else if (key.equals("ignore")) {
-			ignore = Double.parseDouble(value);
+			parameterData.ignore = Double.parseDouble(value);
 			return true;
 		} else if (key.equals("randomSeed")) {
-			randomSeed = Long.parseLong(value);
+			parameterData.randomSeed = Long.parseLong(value);
 			return true;
 		} else
 			return super.parseArg(key, value);
 	}
 
 	public boolean outOfBounds(Position pos) {
-		return ((pos.x < 0.0) || (pos.y < 0.0) || (pos.x > x) || (pos.y > y));
+		return ((pos.x < 0.0) || (pos.y < 0.0) || (pos.x > parameterData.x) || (pos.y > parameterData.y));
 	}
 
 	protected boolean mustTurn(Position pos, int dir) {
-		boolean r = (((dir == 0) && (pos.y == y)) || ((dir == 1) && (pos.y == 0.)) || ((dir == 2) && (pos.x == x)) || ((dir == 3) && (pos.x == 0.)));
+		boolean r = (((dir == 0) && (pos.y == parameterData.y)) || ((dir == 1) && (pos.y == 0.)) || ((dir == 2) && (pos.x == parameterData.x)) || ((dir == 3) && (pos.x == 0.)));
 		return r;
 	}
 
@@ -342,11 +362,11 @@ public class ManhattanGrid extends Scenario {
 	}
 
 	public boolean nodeAddErrorHandler(int i, double t, Position dst) {
-		Waypoint last = node[i].getLastWaypoint();
+		Waypoint last = parameterData.nodes[i].getLastWaypoint();
 		double distance = Math.abs(dst.x - last.pos.x + dst.y - last.pos.y);
 		if ((t == last.time) && (distance < 0.1)) {
-			node[i].removeLastElement();
-			if (node[i].add(t, dst))
+			parameterData.nodes[i].removeLastElement();
+			if (parameterData.nodes[i].add(t, dst))
 				return true;
 		}
 		System.out.println(getInfo().name + ".<init>: error while adding node movement");
@@ -366,7 +386,7 @@ public class ManhattanGrid extends Scenario {
 		p[7] = "speedStdDev=" + speedStdDev;
 		p[8] = "pauseProb=" + (pauseProb - speedChangeProb);
 		p[9] = "maxPause=" + maxPause;
-		super.write(_name, p);
+		super.writeParametersAndMovement(_name, p);
 	}
 
 	protected boolean parseArg(char key, String val) {

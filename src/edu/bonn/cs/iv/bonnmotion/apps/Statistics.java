@@ -1,3 +1,23 @@
+/*******************************************************************************
+ ** BonnMotion - a mobility scenario generation and analysis tool             **
+ ** Copyright (C) 2002-2012 University of Bonn                                **
+ ** Copyright (C) 2012-2015 University of Osnabrueck                          **
+ **                                                                           **
+ ** This program is free software; you can redistribute it and/or modify      **
+ ** it under the terms of the GNU General Public License as published by      **
+ ** the Free Software Foundation; either version 2 of the License, or         **
+ ** (at your option) any later version.                                       **
+ **                                                                           **
+ ** This program is distributed in the hope that it will be useful,           **
+ ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
+ ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
+ ** GNU General Public License for more details.                              **
+ **                                                                           **
+ ** You should have received a copy of the GNU General Public License         **
+ ** along with this program; if not, write to the Free Software               **
+ ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
+ *******************************************************************************/
+
 package edu.bonn.cs.iv.bonnmotion.apps;
 
 import edu.bonn.cs.iv.bonnmotion.*;
@@ -10,6 +30,7 @@ import java.util.Vector;
 /** Application that calculates various statistics for movement scenarios. */
 
 public class Statistics extends App {
+
     private static ModuleInfo info;
     
     static {
@@ -18,7 +39,7 @@ public class Statistics extends App {
         
         info.major = 1;
         info.minor = 0;
-        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 412 $");
+        info.revision = ModuleInfo.getSVNRevisionStringValue("$LastChangedRevision: 650 $");
         
         info.contacts.add(ModuleInfo.BM_MAILINGLIST);
         info.authors.add("University of Bonn");
@@ -84,7 +105,7 @@ public class Statistics extends App {
                     progressive(s.nodeCount(s.getModelName(), basename), s.getDuration(), s, sched, true, flags, basename, oosched);
                 }
             } else {
-                overall(s, radius, name);
+                overall(s, radius, name); 
             }
         }
 
@@ -323,15 +344,9 @@ public class Statistics extends App {
 		} catch (IOException ie) {
 			System.err.println("Error when opening file: " + basename);
 		}
-
-        if (node instanceof MobileNode3D[]) {
-            for (int i = 0; i < node.length; i++) {
-                velos_over_time[i] = MobileNode3D.getSpeedoverTime(node[i], 0.0, duration, secV);
-            }
-        } else {
-            for (int i = 0; i < node.length; i++) {
-                velos_over_time[i] = MobileNode.getSpeedoverTime(node[i], 0.0, duration, secV);
-            }
+		
+        for (int i = 0; i < node.length; i++) {
+            velos_over_time[i] = MobileNode.getSpeedoverTime(node[i], 0.0, duration, secV);
         }
 
 		int l = (int)((duration / secV) + 1);
@@ -376,11 +391,7 @@ public class Statistics extends App {
 				and_per_node[i] = 0.0;
 				for (int j = 0; j < node.length; j++) {
 					if (i != j) {
-					    if (node instanceof MobileNode3D[]) {
-	                        conn_time_help = MobileNode3D.getConnectionTime(node[i], node[j], 0.0, duration, secA[r]);
-					    } else {
-	                        conn_time_help = MobileNode.getConnectionTime(node[i], node[j], 0.0, duration, secA[r]); 
-					    }
+						conn_time_help = MobileNode.getConnectionTime(node[i], node[j], 0.0, duration, secA[r], s.getScenarioParameters().calculationDim);
 						and_per_node[i] = and_per_node[i] + (conn_time_help[1] / conn_time_help[0]);
 					}
 				}
@@ -426,12 +437,7 @@ public class Statistics extends App {
 				done++;
 				IndexPair idx = new IndexPair(i, j);
 				double[] linkStatusChanges;
-				
-	            if (node instanceof MobileNode3D[]) {
-	                linkStatusChanges = MobileNode3D.pairStatistics(node[i], node[j], 0.0, duration, radius, calculateMobility);
-	            } else {
-	                linkStatusChanges = MobileNode.pairStatistics(node[i], node[j], 0.0, duration, radius, calculateMobility);
-	            }
+				linkStatusChanges = MobileNode.pairStatistics(node[i], node[j], 0.0, duration, radius, calculateMobility, s.getScenarioParameters().calculationDim);
 	            
 				mobility_pairs[i][j] = linkStatusChanges[0];
 				on_time_pairs[i][j] = linkStatusChanges[1];
@@ -451,7 +457,7 @@ public class Statistics extends App {
 					sched.add(idx, duration);
 				}
 			}
-
+			
 		}
 
 		// calc mobility
@@ -631,11 +637,13 @@ public class Statistics extends App {
 					pdSince = tOld;
 				}
 				if (ls[idx.i][idx.j - idx.i - 1] < 0.0) { // connect
-					connections++;
-					ls[idx.i][idx.j - idx.i - 1] = tNew;
-					if (pIdx[idx.i] != pIdx[idx.j]) {
-						partitions--;
-						pmerge(pIdx, pSize, idx.i, idx.j);
+					if (tNew < duration) {
+					    connections++;
+					    ls[idx.i][idx.j - idx.i - 1] = tNew;
+					    if (pIdx[idx.i] != pIdx[idx.j]) {
+						    partitions--;
+						    pmerge(pIdx, pSize, idx.i, idx.j);
+					    }
 					}
 				} else { // disconnect
 					connections--;
@@ -687,7 +695,7 @@ public class Statistics extends App {
 			double expDuration = timeToLinkBreak / (double)linkbreaks;
 			double varDuration = 0.0;
 			for (int i = 0; i < linkbreaks; i++) {
-				double tmp = ((Double)linkDurations.elementAt(i)).doubleValue() - expDuration;
+				double tmp = linkDurations.elementAt(i).doubleValue() - expDuration;
 				varDuration += tmp * tmp;
 			}
 			varDuration = Math.sqrt(varDuration / (double)(linkbreaks - 1));
@@ -697,7 +705,7 @@ public class Statistics extends App {
 			// get relative speed
 			double R_speed = res_help[3];
 			// get the number of node pairs that were ever linked
-			double connectedPairs = res_help[3];
+			double connectedPairs = res_help[4];
 			// get path availability
 			double P_availability = getAveragePathAvailability(available, node.length, duration);
 
@@ -771,11 +779,7 @@ public class Statistics extends App {
 		double D_temporal = 0.0;
 		double D_temporal_count = 0.0;
 		for (int i = 0; i < nodes.length; i++) {
-		    if (nodes instanceof MobileNode3D[]) {
-	            temp = MobileNode3D.getDegreeOfTemporalDependence(nodes[i], 0.0, s.getDuration(), temporalDependenceC);
-		    } else {
-		        temp = MobileNode.getDegreeOfTemporalDependence(nodes[i], 0.0, s.getDuration(), temporalDependenceC);        
-		    }
+			temp = MobileNode.getDegreeOfTemporalDependence(nodes[i], 0.0, s.getDuration(), temporalDependenceC);
 			D_temporal += temp[0];
 			D_temporal_count += temp[1];
 		}
@@ -833,24 +837,20 @@ public class Statistics extends App {
 
 	protected boolean parseArg(char key, String val) {
 		switch (key) {
+			case 'A': // Average Node Degree Distribution
+				calc_and_distri = true;
+				secA = App.parseDoubleArray(val);
+				return true;
+			case 'c': // c value for temporal dependence
+				temporalDependenceC = Double.parseDouble(val);
+				return true;
 			case 'f':
 				name = val;
-				return true;
-			case 'r': // radius
-				radius = App.parseDoubleArray(val);
-				return true;
-			case 't':
-				printTime = true;
 				return true;
 			case 'G': // Partitioning Degree
 				flags = flags ^ STATS_PARTDEG;
 				if (val.length() != 0)
 					secG = Double.parseDouble(val);
-				return true;
-			case 'M': // MinCut
-				flags = flags ^ STATS_MINCUT;
-				if (val.length() != 0)
-					secM = Double.parseDouble(val);
 				return true;
 			case 'N': // Node Degree
 				flags = flags ^ STATS_NODEDEG;
@@ -862,10 +862,21 @@ public class Statistics extends App {
 				if (val.length() != 0)
 					secP = Double.parseDouble(val);
 				return true;
+			case 'M': // MinCut
+				flags = flags ^ STATS_MINCUT;
+				if (val.length() != 0)
+					secM = Double.parseDouble(val);
+				return true;
+			case 'r': // radius
+				radius = App.parseDoubleArray(val);
+				return true;
 			case 'S': // Stability
 				flags = flags ^ STATS_STABILITY;
 				if (val.length() != 0)
 					secS = Double.parseDouble(val);
+				return true;
+			case 't':
+				printTime = true;
 				return true;
 			case 'U': // Unidirectional
 				flags = flags ^ STATS_UNIDIRECTIONAL;
@@ -876,13 +887,6 @@ public class Statistics extends App {
 				calc_velo_over_time = true;
 				if (val.length() != 0)
 					secV = Double.parseDouble(val);
-				return true;
-			case 'A': // Average Node Degree Distribution
-				calc_and_distri = true;
-				secA = App.parseDoubleArray(val);
-				return true;
-			case 'c': // c value for temporal dependence
-				temporalDependenceC = Double.parseDouble(val);
 				return true;
 			default:
 				return super.parseArg(key, val);
