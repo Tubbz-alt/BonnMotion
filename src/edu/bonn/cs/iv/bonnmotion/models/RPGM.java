@@ -27,9 +27,11 @@ import java.util.Vector;
 // ACS begin
 import java.io.FileReader;
 import java.io.LineNumberReader;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 // ACS end
@@ -67,9 +69,10 @@ public class RPGM extends RandomSpeedBase {
     }
 
     // ACS begin
-    protected HashMap<Integer, Vector<Integer>> groupMembershipTable = new HashMap<Integer, Vector<Integer>>();
+    protected HashMap<Integer, List<Integer>> groupMembershipTable = new HashMap<Integer, List<Integer>>();
     protected int numSubseg = 4;
     protected double speedScale = 1.5;
+    protected boolean referencePointIsNode = false;
     // ACS end
 
     /** Maximum deviation from group center [m]. */
@@ -120,8 +123,9 @@ public class RPGM extends RandomSpeedBase {
      * 
      * @return The reference node.
      */
-    private MobileNode generateForReferenceNode() {
-        MobileNode retval = new MobileNode();
+    private GroupNode generateForReferenceNode() {
+        GroupNode retval = new GroupNode(null);
+        retval.setgroup(retval);
 
         double t = 0.0;
 
@@ -186,7 +190,7 @@ public class RPGM extends RandomSpeedBase {
 
         Set<Integer> allNodeIds = new HashSet<Integer>();
 
-        for (Vector<Integer> nodeIds : groupMembershipTable.values()) {
+        for (List<Integer> nodeIds : groupMembershipTable.values()) {
             allNodeIds.addAll(nodeIds);
         }
 
@@ -365,11 +369,16 @@ public class RPGM extends RandomSpeedBase {
 
         final GroupNode[] node = allocateNodes();
 
-        for (Map.Entry<Integer, Vector<Integer>> groupentry : groupMembershipTable
+        for (Map.Entry<Integer, List<Integer>> groupentry : groupMembershipTable
                 .entrySet()) {
-            Vector<Integer> members = groupentry.getValue();
+            int groupId = groupentry.getKey();
+            List<Integer> members = groupentry.getValue();
 
-            MobileNode ref = generateForReferenceNode();
+            GroupNode ref = generateForReferenceNode();
+            
+            if (referencePointIsNode) {
+                node[groupId] = ref;
+            }
 
             for (int memberId : members) {
                 GroupNode memberNode = new GroupNode(ref);
@@ -684,13 +693,19 @@ public class RPGM extends RandomSpeedBase {
 
                 String[] splitLine = line.split(" ");
 
-                Vector<Integer> members = new Vector<Integer>(splitLine.length);
+                List<Integer> members = new ArrayList<Integer>(splitLine.length);
 
                 for (int i = 0; i < splitLine.length; i++) {
                     members.add(Integer.parseInt(splitLine[i]));
                 }
-
-                groupMembershipTable.put(reader.getLineNumber(), members);
+                
+                int groupId = reader.getLineNumber();
+                
+                if (referencePointIsNode) {
+                    groupId = members.remove(0);
+                }
+                
+                groupMembershipTable.put(groupId, members);
             }
 
             retval = true;
@@ -731,6 +746,9 @@ public class RPGM extends RandomSpeedBase {
         } else if (key.equals("speedScale")) {
             speedScale = Double.parseDouble(value);
             return true;
+        } else if (key.equals("referencePointIsNode")) {
+            referencePointIsNode = Boolean.parseBoolean(value);
+            return true;
         }
         // ACS end
         else
@@ -738,16 +756,17 @@ public class RPGM extends RandomSpeedBase {
     }
 
     public void write(String _name) throws FileNotFoundException, IOException {
-        String[] p = new String[6];
-
-        p[0] = "groupsize_E=" + avgMobileNodesPerGroup;
-        p[1] = "groupsize_S=" + groupSizeDeviation;
-        p[2] = "pGroupChange=" + pGroupChange;
-        p[3] = "maxdist=" + maxdist;
-        // ACS begin
-        p[4] = "numSubseg=" + numSubseg;
-        p[5] = "speedScale=" + speedScale;
-        // ACS end
+// ACS begin
+        String[] p = new String[] {
+                "groupsize_E=" + avgMobileNodesPerGroup,
+                "groupsize_S=" + groupSizeDeviation,
+                "pGroupChange=" + pGroupChange,
+                "maxdist=" + maxdist,
+                "numSubseg=" + numSubseg,
+                "speedScale=" + speedScale,
+                "referencePointIsNode=" + referencePointIsNode
+// ACS end
+        };
 
         super.write(_name, p);
     }
@@ -768,6 +787,9 @@ public class RPGM extends RandomSpeedBase {
             return readGroupMembership(val);
         case 'm':
             speedScale = Double.parseDouble(val);
+            return true;
+        case 'N':
+            referencePointIsNode = true;
             return true;
         // ACS end
         case 'r':
@@ -792,6 +814,8 @@ public class RPGM extends RandomSpeedBase {
         System.out.println("\t-g <group membership file>");
         System.out.println(
                 "\t-m <max speed scale for member speed relative to RP speed>");
+        System.out.println(
+                "\t-N Reference point is itself a node.  Requires -g");
         System.out.println("\t-t <terrain model file>");
         // ACS end
         System.out.println("\t-r <max. distance to group center>");
