@@ -24,6 +24,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Vector;
 
+import com.perspectalabs.bonnmotion.util.HeightMap;
+
 // ACS begin
 import java.io.FileReader;
 import java.io.LineNumberReader;
@@ -41,6 +43,7 @@ import edu.bonn.cs.iv.bonnmotion.MobileNode;
 import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
 import edu.bonn.cs.iv.bonnmotion.Position;
 import edu.bonn.cs.iv.bonnmotion.RandomSpeedBase;
+import edu.bonn.cs.iv.bonnmotion.printer.Dimension;
 
 /**
  * Application to create movement scenarios according to the Reference Point
@@ -73,6 +76,7 @@ public class RPGM extends RandomSpeedBase {
     protected int numSubseg = 4;
     protected double speedScale = 1.5;
     protected boolean referencePointIsNode = false;
+    protected HeightMap heightMap = null;
     // ACS end
 
     /** Maximum deviation from group center [m]. */
@@ -118,6 +122,25 @@ public class RPGM extends RandomSpeedBase {
         }
     }
 
+    private Position updateHeight(Position position) {
+        Position retval = position;
+        
+        if (heightMap != null) {
+            retval.z = heightMap.getHeight(retval);
+        }
+        
+        return retval;
+    }
+    
+    private Position newPosition(double x, double y) {
+        return updateHeight(new Position(x, y));
+    }
+    
+    private Position rndprox(Position position, double maxdist, double dist, double dir, Dimension dim)
+    {
+        return updateHeight(position.rndprox(maxdist, dist, dir, dim));
+    }
+    
     /**
      * Generate motion for a reference node using the random waypoint model
      * 
@@ -132,7 +155,7 @@ public class RPGM extends RandomSpeedBase {
         // pick position inside the interval
         // [maxdist; x - maxdist], [maxdist; y - maxdist]
         // (to ensure that the group area doesn't overflow the borders)
-        Position src = new Position(
+        Position src = newPosition(
                 (parameterData.x - 2 * maxdist) * randomNextDouble() + maxdist,
                 (parameterData.y - 2 * maxdist) * randomNextDouble() + maxdist);
 
@@ -143,7 +166,7 @@ public class RPGM extends RandomSpeedBase {
         }
 
         while (t < parameterData.duration) {
-            Position dst = new Position(
+            Position dst = newPosition(
                     (parameterData.x - 2 * maxdist) * randomNextDouble()
                             + maxdist,
                     (parameterData.y - 2 * maxdist) * randomNextDouble()
@@ -277,8 +300,8 @@ public class RPGM extends RandomSpeedBase {
             double prevY = grpSegStart.y
                     + (segm - 1) * (grpSegEnd.y - grpSegStart.y) / numSubseg;
 
-            Position grpSegInterim = new Position(interimX, interimY);
-            Position grpSegPrev = new Position(prevX, prevY);
+            Position grpSegInterim = newPosition(interimX, interimY);
+            Position grpSegPrev = newPosition(prevX, prevY);
 
             double interimTime = groupChangeTimes[timeindex - 1]
                     + segm * segTimeDelta;
@@ -286,7 +309,7 @@ public class RPGM extends RandomSpeedBase {
             double speed = 0;
 
             do {
-                mdst = grpSegInterim.rndprox(maxdist, randomNextDouble(),
+                mdst = rndprox(grpSegInterim, maxdist, randomNextDouble(),
                         randomNextDouble(), parameterData.calculationDim);
                 speed = prevLoc.distance(mdst) / segTimeDelta;
             } while (speed > maxspeed * speedScale);
@@ -316,7 +339,7 @@ public class RPGM extends RandomSpeedBase {
 
         MobileNode group = node.group();
 
-        Position msrc = group.positionAt(mt).rndprox(maxdist,
+        Position msrc = rndprox(group.positionAt(mt), maxdist,
                 randomNextDouble(), randomNextDouble(),
                 parameterData.calculationDim);
 
@@ -329,7 +352,7 @@ public class RPGM extends RandomSpeedBase {
         }
 
         while (mt < parameterData.duration) {
-            Position mdst = new Position(0.0, 0.0);
+            Position mdst = newPosition(0.0, 0.0);
             final double[] groupChangeTimes = group.changeTimes();
             int currentGroupChangeTimeIndex = 0;
 
@@ -416,7 +439,7 @@ public class RPGM extends RandomSpeedBase {
             // pick position inside the interval [maxdist; x - maxdist],
             // [maxdist; y - maxdist]
             // (to ensure that the group area doesn't overflow the borders)
-            Position src = new Position(
+            Position src = newPosition(
                     (parameterData.x - 2 * maxdist) * randomNextDouble()
                             + maxdist,
                     (parameterData.y - 2 * maxdist) * randomNextDouble()
@@ -429,7 +452,7 @@ public class RPGM extends RandomSpeedBase {
             }
 
             while (t < parameterData.duration) {
-                Position dst = new Position(
+                Position dst = newPosition(
                         (parameterData.x - 2 * maxdist) * randomNextDouble()
                                 + maxdist,
                         (parameterData.y - 2 * maxdist) * randomNextDouble()
@@ -482,7 +505,7 @@ public class RPGM extends RandomSpeedBase {
         for (int i = 0; i < node.length; i++) {
             double t = 0.0;
             MobileNode group = node[i].group();
-            Position src = group.positionAt(t).rndprox(maxdist,
+            Position src = rndprox(group.positionAt(t), maxdist,
                     randomNextDouble(), randomNextDouble(),
                     parameterData.calculationDim);
 
@@ -517,7 +540,7 @@ public class RPGM extends RandomSpeedBase {
 
                 if (!pause) {
                     do {
-                        dst = group.positionAt(next).rndprox(maxdist,
+                        dst = rndprox(group.positionAt(next), maxdist,
                                 randomNextDouble(), randomNextDouble(),
                                 parameterData.calculationDim);
                         speed = src.distance(dst) / (next - t);
@@ -637,7 +660,7 @@ public class RPGM extends RandomSpeedBase {
                 / refPos.distance(nodePos);
 
         // get position of the point with max distance
-        final Position src = new Position(
+        final Position src = newPosition(
                 refPos.x - scaledDistanceToWalk * nodePos.x,
                 refPos.y - scaledDistanceToWalk * nodePos.y);
 
@@ -678,7 +701,7 @@ public class RPGM extends RandomSpeedBase {
     }
 
     // ACS begin
-    public boolean readGroupMembership(String groupMembershipFileName) {
+    private boolean readGroupMembership(String groupMembershipFileName) {
 
         boolean retval = false;
 
@@ -722,7 +745,7 @@ public class RPGM extends RandomSpeedBase {
 
         return retval;
     }
-
+    
     // ACS end
 
     protected boolean parseArg(String key, String value) {
@@ -779,7 +802,7 @@ public class RPGM extends RandomSpeedBase {
         case 'c':
             pGroupChange = Double.parseDouble(val);
             return true;
-        // ACS begin
+// ACS begin
         case 'e':
             numSubseg = Integer.parseInt(val);
             return true;
@@ -791,7 +814,19 @@ public class RPGM extends RandomSpeedBase {
         case 'N':
             referencePointIsNode = true;
             return true;
-        // ACS end
+        case 't':
+            heightMap = new HeightMap(val);
+            parameterData.x = heightMap.getX();
+            parameterData.y = heightMap.getY();
+            return true;
+        case 'x':
+        case 'y':
+            if (heightMap == null) {
+                return super.parseArg(key, val);
+            } else {
+                return true;
+            }
+// ACS end
         case 'r':
             maxdist = Double.parseDouble(val);
             return true;
