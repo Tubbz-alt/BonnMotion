@@ -44,6 +44,7 @@ import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
 import edu.bonn.cs.iv.bonnmotion.Position;
 import edu.bonn.cs.iv.bonnmotion.RandomSpeedBase;
 import edu.bonn.cs.iv.bonnmotion.printer.Dimension;
+import edu.bonn.cs.iv.util.maps.PositionGeo;
 
 /**
  * Application to create movement scenarios according to the Reference Point
@@ -77,6 +78,9 @@ public class RPGM extends RandomSpeedBase {
     protected double speedScale = 1.5;
     protected boolean referencePointIsNode = false;
     protected HeightMap heightMap = null;
+    protected String heightMapPath = null;
+    protected Position referencePosition = new Position(0.0, 0.0);
+    protected PositionGeo referencePositionGeo = null;
     // ACS end
 
     /** Maximum deviation from group center [m]. */
@@ -124,23 +128,27 @@ public class RPGM extends RandomSpeedBase {
 
     private Position updateHeight(Position position) {
         Position retval = position;
-        
+
         if (heightMap != null) {
             retval.z = heightMap.getHeight(retval);
         }
-        
+
         return retval;
     }
-    
+
     private Position newPosition(double x, double y) {
         return updateHeight(new Position(x, y));
     }
-    
-    private Position rndprox(Position position, double maxdist, double dist, double dir, Dimension dim)
-    {
+
+    private Position newPosition(Position ref) {
+        return newPosition(ref.x, ref.y);
+    }
+
+    private Position rndprox(Position position, double maxdist, double dist,
+            double dir, Dimension dim) {
         return updateHeight(position.rndprox(maxdist, dist, dir, dim));
     }
-    
+
     /**
      * Generate motion for a reference node using the random waypoint model
      * 
@@ -156,8 +164,10 @@ public class RPGM extends RandomSpeedBase {
         // [maxdist; x - maxdist], [maxdist; y - maxdist]
         // (to ensure that the group area doesn't overflow the borders)
         Position src = newPosition(
-                (parameterData.x - 2 * maxdist) * randomNextDouble() + maxdist,
-                (parameterData.y - 2 * maxdist) * randomNextDouble() + maxdist);
+                (parameterData.x - 2 * maxdist) * randomNextDouble()
+                        + referencePosition.x + maxdist,
+                (parameterData.y - 2 * maxdist) * randomNextDouble()
+                        + referencePosition.y + maxdist);
 
         if (!retval.add(0.0, src)) {
             System.err.println(getInfo().name
@@ -168,9 +178,9 @@ public class RPGM extends RandomSpeedBase {
         while (t < parameterData.duration) {
             Position dst = newPosition(
                     (parameterData.x - 2 * maxdist) * randomNextDouble()
-                            + maxdist,
+                            + referencePosition.x + maxdist,
                     (parameterData.y - 2 * maxdist) * randomNextDouble()
-                            + maxdist);
+                            + referencePosition.y + maxdist);
 
             double speed = (maxspeed - minspeed) * randomNextDouble()
                     + minspeed;
@@ -205,7 +215,7 @@ public class RPGM extends RandomSpeedBase {
      * Since the node groups file may contain node IDs that are not sequential
      * from 0 to the number of nodes, this function may create an array that
      * contains nodes for which group motion is not defined. Those nodes should
-     * be given a position of 0.0, 0.0
+     * be given a position of the referencePoint
      * 
      * @return An array of GroupNodes in which to fill with group nodes.
      */
@@ -225,7 +235,7 @@ public class RPGM extends RandomSpeedBase {
             if (!allNodeIds.contains(i)) {
                 retval[i] = new GroupNode(null);
 
-                retval[i].add(0.0, new Position(0.0, 0.0, 0.0));
+                retval[i].add(0.0, newPosition(referencePosition));
             }
         }
 
@@ -352,7 +362,7 @@ public class RPGM extends RandomSpeedBase {
         }
 
         while (mt < parameterData.duration) {
-            Position mdst = newPosition(0.0, 0.0);
+            Position mdst = newPosition(referencePosition);
             final double[] groupChangeTimes = group.changeTimes();
             int currentGroupChangeTimeIndex = 0;
 
@@ -390,6 +400,14 @@ public class RPGM extends RandomSpeedBase {
     public void generateForExplicitlyDefinedGroups() {
         preGeneration();
 
+        if (heightMapPath != null) {
+            heightMap = new HeightMap(heightMapPath);
+
+            if (referencePositionGeo != null) {
+                referencePosition = heightMap.getPosition(referencePositionGeo);
+            }
+        }
+
         final GroupNode[] node = allocateNodes();
 
         for (Map.Entry<Integer, List<Integer>> groupentry : groupMembershipTable
@@ -398,7 +416,7 @@ public class RPGM extends RandomSpeedBase {
             List<Integer> members = groupentry.getValue();
 
             GroupNode ref = generateForReferenceNode();
-            
+
             if (referencePointIsNode) {
                 node[groupId] = ref;
             }
@@ -716,18 +734,19 @@ public class RPGM extends RandomSpeedBase {
 
                 String[] splitLine = line.split(" ");
 
-                List<Integer> members = new ArrayList<Integer>(splitLine.length);
+                List<Integer> members = new ArrayList<Integer>(
+                        splitLine.length);
 
                 for (int i = 0; i < splitLine.length; i++) {
                     members.add(Integer.parseInt(splitLine[i]));
                 }
-                
+
                 int groupId = reader.getLineNumber();
-                
+
                 if (referencePointIsNode) {
                     groupId = members.remove(0);
                 }
-                
+
                 groupMembershipTable.put(groupId, members);
             }
 
@@ -745,7 +764,7 @@ public class RPGM extends RandomSpeedBase {
 
         return retval;
     }
-    
+
     // ACS end
 
     protected boolean parseArg(String key, String value) {
@@ -779,16 +798,13 @@ public class RPGM extends RandomSpeedBase {
     }
 
     public void write(String _name) throws FileNotFoundException, IOException {
-// ACS begin
-        String[] p = new String[] {
-                "groupsize_E=" + avgMobileNodesPerGroup,
+        // ACS begin
+        String[] p = new String[] { "groupsize_E=" + avgMobileNodesPerGroup,
                 "groupsize_S=" + groupSizeDeviation,
-                "pGroupChange=" + pGroupChange,
-                "maxdist=" + maxdist,
-                "numSubseg=" + numSubseg,
-                "speedScale=" + speedScale,
+                "pGroupChange=" + pGroupChange, "maxdist=" + maxdist,
+                "numSubseg=" + numSubseg, "speedScale=" + speedScale,
                 "referencePointIsNode=" + referencePointIsNode
-// ACS end
+                // ACS end
         };
 
         super.write(_name, p);
@@ -802,7 +818,7 @@ public class RPGM extends RandomSpeedBase {
         case 'c':
             pGroupChange = Double.parseDouble(val);
             return true;
-// ACS begin
+        // ACS begin
         case 'e':
             numSubseg = Integer.parseInt(val);
             return true;
@@ -815,18 +831,12 @@ public class RPGM extends RandomSpeedBase {
             referencePointIsNode = true;
             return true;
         case 't':
-            heightMap = new HeightMap(val);
-            parameterData.x = heightMap.getX();
-            parameterData.y = heightMap.getY();
+            heightMapPath = val;
             return true;
-        case 'x':
-        case 'y':
-            if (heightMap == null) {
-                return super.parseArg(key, val);
-            } else {
-                return true;
-            }
-// ACS end
+        case 'o':
+            referencePositionGeo = PositionGeo.parsePositionGeo(val);
+            return true;
+        // ACS end
         case 'r':
             maxdist = Double.parseDouble(val);
             return true;
@@ -849,8 +859,8 @@ public class RPGM extends RandomSpeedBase {
         System.out.println("\t-g <group membership file>");
         System.out.println(
                 "\t-m <max speed scale for member speed relative to RP speed>");
-        System.out.println(
-                "\t-N Reference point is itself a node.  Requires -g");
+        System.out
+                .println("\t-N Reference point is itself a node.  Requires -g");
         System.out.println("\t-t <terrain model file>");
         // ACS end
         System.out.println("\t-r <max. distance to group center>");

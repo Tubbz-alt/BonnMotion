@@ -27,12 +27,24 @@ public class HeightMap {
      * The open GDAL Dataset for the terrain map.
      */
     private Dataset dataset = null;
+    private Band rasterBand = null;
+    private CoordinateTransformation toWgs84 = null;
+    private CoordinateTransformation fromWgs84 = null;
+
+    private double noDataValue = Double.NaN;
+
     /**
      * The scale of the map: how many meters per pixel in the raster image in
      * the x and y directions separately.
      */
     private double xScale = 1.0;
     private double yScale = 1.0;
+
+    /**
+     * Scaling for values read from the data
+     */
+    private double zScale = 1.0;
+    private double zOffset = 0.0;
 
     // Register all drivers so that GDAL can parse the terrain map
     static {
@@ -90,6 +102,7 @@ public class HeightMap {
 
         // Open the file
         dataset = gdal.Open(path);
+        rasterBand = dataset.GetRasterBand(1);
 
         // Compute the scale: get the top left of the map and the bottom right,
         // compute the X distance in meters and Y distance in meters, divide by
@@ -101,21 +114,40 @@ public class HeightMap {
         // Transform to WGS84 since PositionGeo.distance() uses that geodesic.
         SpatialReference wgs84 = new SpatialReference();
         wgs84.SetWellKnownGeogCS("WGS84");
-        CoordinateTransformation coordiateTransformation = CoordinateTransformation
-                .CreateCoordinateTransformation(
-                        new SpatialReference(dataset.GetProjection()), wgs84);
+        toWgs84 = CoordinateTransformation.CreateCoordinateTransformation(
+                new SpatialReference(dataset.GetProjection()), wgs84);
 
-        PositionGeo topLeftProjected = transformPosition(
-                coordiateTransformation, topLeft);
+        fromWgs84 = CoordinateTransformation.CreateCoordinateTransformation(
+                wgs84, new SpatialReference(dataset.GetProjection()));
 
-        PositionGeo bottomRightProjected = transformPosition(
-                coordiateTransformation, bottomRight);
+        PositionGeo topLeftProjected = transformPosition(toWgs84, topLeft);
+
+        PositionGeo bottomRightProjected = transformPosition(toWgs84,
+                bottomRight);
 
         xScale = topLeftProjected.distanceX(bottomRightProjected.x())
                 / dataset.GetRasterXSize();
 
         yScale = topLeftProjected.distanceY(bottomRightProjected.y())
                 / dataset.GetRasterYSize();
+
+        Double[] read = new Double[1];
+        rasterBand.GetNoDataValue(read);
+        if (read[0] != null) {
+            noDataValue = read[0];
+        }
+        
+        read[0] = null;
+        rasterBand.GetOffset(read);
+        if (read[0] != null) {
+            zOffset = read[0];
+        }
+        
+        read[0] = null;
+        rasterBand.GetScale(read);
+        if (read[0] != null) {
+            zScale = read[0];
+        }
     }
 
     /**
@@ -147,18 +179,17 @@ public class HeightMap {
         int scaledX = Double.valueOf(Math.round(x / xScale)).intValue();
         int scaledY = Double.valueOf(Math.round(y / yScale)).intValue();
 
-        int[] read = new int[1];
-
-        Band rasterBand = dataset.GetRasterBand(1);
+        double[] read = new double[1];
 
         int error = rasterBand.ReadRaster(scaledX, scaledY, 1, 1, read);
 
         if (error == gdalconst.CE_None) {
-            if (read[0] != Integer.MIN_VALUE) {
-                retval = read[0];
+            if (read[0] != noDataValue) {
+                retval = zScale * read[0] + zOffset;
             } else {
                 System.err.println("HeightMap.getHeight(): warning using 0 for "
-                        + x + ", " + y);
+                        + x + ", " + y + ": " + transformPosition(toWgs84,
+                                getPositionGeo(scaledX, scaledY)));
             }
         } else if (error == gdalconst.CE_Warning) {
             System.err.println("HeightMap.getHeight(): warning no values for "
@@ -173,14 +204,58 @@ public class HeightMap {
     /**
      * @return the size of the terrain map in meters along the X-axis
      */
-    public double getX() {
+    private double getX() {
         return dataset.GetRasterXSize() * xScale;
     }
 
     /**
      * @return the size of the terrain map in meters along the Y-axis
-     */    
-    public double getY() {
+     */
+    private double getY() {
         return dataset.GetRasterYSize() * yScale;
+    }
+
+    /**
+     * @param lon
+     *            The longitude of the point in the projection
+     * @param lat
+     *            The latitude of the point in the projection
+     * @return The X,Y position of the point corresponding to the geographical
+     *         position
+     */
+    private Position getPosition(double lon, double lat) {
+
+        double[] x = new double[1];
+        double[] y = new double[1];
+
+        gdal.ApplyGeoTransform(gdal.InvGeoTransform(dataset.GetGeoTransform()),
+                lon, lat, x, y);
+
+        return new Position(xScale * x[0], yScale * y[0]);
+    }
+
+    /**
+     * @param position
+     *            the geographical position
+     * 
+     * @return The X,Y position of the point corresponding to the geographical
+     *         position
+     * @throws IllegalArgumentException
+     *             if the position is not in the raster
+     *
+     **/
+    public Position getPosition(PositionGeo position) {
+        PositionGeo inDatasetCoordinates = transformPosition(fromWgs84,
+                position);
+        Position retval = getPosition(inDatasetCoordinates.lon(),
+                inDatasetCoordinates.lat());
+
+        if (retval.x < 0 || retval.x > getX() || retval.y < 0
+                || retval.y >= getY()) {
+            throw new IllegalArgumentException("The geographic position "
+                    + position + " is outside the height map");
+        }
+
+        return retval;
     }
 }
