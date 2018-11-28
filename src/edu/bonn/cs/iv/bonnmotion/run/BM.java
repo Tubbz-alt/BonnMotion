@@ -38,6 +38,7 @@ public class BM {
         "Column",
         "DisasterArea",
         "GaussMarkov",
+        "HeightMapRNGM",
         "ManhattanGrid",
         "MSLAW",
         "Nomadic",
