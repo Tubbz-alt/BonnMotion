@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.Vector;
 
 import com.perspectalabs.bonnmotion.util.HeightMap;
+import com.perspectalabs.bonnmotion.util.PositionGeoParser;
 
 // ACS begin
 import java.io.FileReader;
@@ -834,7 +835,7 @@ public class RPGM extends RandomSpeedBase {
             heightMapPath = val;
             return true;
         case 'o':
-            referencePositionGeo = PositionGeo.parsePositionGeo(val);
+            referencePositionGeo = PositionGeoParser.parsePositionGeo(val);
             return true;
         // ACS end
         case 'r':
