@@ -97,7 +97,6 @@ public class HeightMapRNGM extends RandomSpeedBase {
     protected boolean referencePointIsNode = false;
     protected HeightMap heightMap = null;
     protected String heightMapPath = null;
-    protected Position referencePosition = new Position(0.0, 0.0);
     protected PositionGeo referencePositionGeo = null;
 
     /** Maximum deviation from group center [m]. */
@@ -139,11 +138,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
     public void generate() {
 
         if (heightMapPath != null) {
-            heightMap = new HeightMap(heightMapPath);
-
-            if (referencePositionGeo != null) {
-                referencePosition = heightMap.getPosition(referencePositionGeo);
-            }
+            heightMap = new HeightMap(heightMapPath, referencePositionGeo);
         }
 
         if (groupMembershipTable.isEmpty()) {
@@ -192,9 +187,9 @@ public class HeightMapRNGM extends RandomSpeedBase {
         // (to ensure that the group area doesn't overflow the borders)
         Position src = newPosition(
                 (parameterData.x - 2 * maxdist) * randomNextDouble()
-                        + referencePosition.x + maxdist,
+                        + maxdist,
                 (parameterData.y - 2 * maxdist) * randomNextDouble()
-                        + referencePosition.y + maxdist);
+                        + maxdist);
 
         if (!retval.add(0.0, src)) {
             System.err.println(getInfo().name
@@ -205,9 +200,9 @@ public class HeightMapRNGM extends RandomSpeedBase {
         while (t < parameterData.duration) {
             Position dst = newPosition(
                     (parameterData.x - 2 * maxdist) * randomNextDouble()
-                            + referencePosition.x + maxdist,
+                            + maxdist,
                     (parameterData.y - 2 * maxdist) * randomNextDouble()
-                            + referencePosition.y + maxdist);
+                            + maxdist);
 
             double speed = (maxspeed - minspeed) * randomNextDouble()
                     + minspeed;
@@ -262,7 +257,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
             if (!allNodeIds.contains(i)) {
                 retval[i] = new GroupNode(null);
 
-                retval[i].add(0.0, newPosition(referencePosition));
+                retval[i].add(0.0, newPosition(0.0, 0.0));
             }
         }
 
@@ -389,7 +384,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
         }
 
         while (mt < parameterData.duration) {
-            Position mdst = newPosition(referencePosition);
+            Position mdst = newPosition(0.0, 0.0);
             final double[] groupChangeTimes = group.changeTimes();
             int currentGroupChangeTimeIndex = 0;
 
