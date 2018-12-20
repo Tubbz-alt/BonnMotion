@@ -61,6 +61,7 @@ import edu.bonn.cs.iv.bonnmotion.MobileNode;
 import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
 import edu.bonn.cs.iv.bonnmotion.Position;
 import edu.bonn.cs.iv.bonnmotion.RandomSpeedBase;
+import edu.bonn.cs.iv.bonnmotion.Waypoint;
 import edu.bonn.cs.iv.bonnmotion.printer.Dimension;
 import edu.bonn.cs.iv.util.maps.PositionGeo;
 
@@ -83,8 +84,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
         info.contacts.add("Alex Poylisher <apoylisher@perspectalabs.com>");
         info.contacts.add("Yitzchak M. Gottlieb <ygottlieb@perspectalabs.com>");
         info.authors.add("Perspecta Labs Inc.");
-        info.affiliation
-            = "Perspecta Labs Inc. <https://www.perspectalabs.com>";
+        info.affiliation = "Perspecta Labs Inc. <https://www.perspectalabs.com>";
     }
 
     public static ModuleInfo getInfo() {
@@ -98,6 +98,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
     protected HeightMap heightMap = null;
     protected String heightMapPath = null;
     protected PositionGeo referencePositionGeo = null;
+    protected String groupMembershipPath = null;
 
     /** Maximum deviation from group center [m]. */
     protected double maxdist = 2.5;
@@ -135,8 +136,18 @@ public class HeightMapRNGM extends RandomSpeedBase {
     }
 
     // ACS begin
+
+    /**
+     * Generate the mobility for the given parameters
+     */
     public void generate() {
 
+        if (groupMembershipPath != null) {
+            if (!readGroupMembership(groupMembershipPath)) {
+                System.exit(-1);
+            }
+        }
+        
         if (heightMapPath != null) {
             heightMap = new HeightMap(heightMapPath, referencePositionGeo);
         }
@@ -148,6 +159,13 @@ public class HeightMapRNGM extends RandomSpeedBase {
         }
     }
 
+    /**
+     * Update the height of the position from the heightMap.
+     * 
+     * @param position
+     *            The position to update
+     * @return The position with updated height (not a new position)
+     */
     private Position updateHeight(Position position) {
         Position retval = position;
 
@@ -158,14 +176,23 @@ public class HeightMapRNGM extends RandomSpeedBase {
         return retval;
     }
 
+    /**
+     * Create a new position with the correct height
+     * 
+     * @param x
+     *            The X-coordinate of the position
+     * @param y
+     *            The Y-coordinate of the position
+     * @return A new position at (x, y) with updated height
+     */
     private Position newPosition(double x, double y) {
         return updateHeight(new Position(x, y));
     }
 
-    private Position newPosition(Position ref) {
-        return newPosition(ref.x, ref.y);
-    }
-
+    /**
+     * Call {@link Position#rndprox} on the position and update the height on
+     * the returned value.
+     */
     private Position rndprox(Position position, double maxdist, double dist,
             double dir, Dimension dim) {
         return updateHeight(position.rndprox(maxdist, dist, dir, dim));
@@ -186,14 +213,13 @@ public class HeightMapRNGM extends RandomSpeedBase {
         // [maxdist; x - maxdist], [maxdist; y - maxdist]
         // (to ensure that the group area doesn't overflow the borders)
         Position src = newPosition(
-                (parameterData.x - 2 * maxdist) * randomNextDouble()
-                        + maxdist,
-                (parameterData.y - 2 * maxdist) * randomNextDouble()
-                        + maxdist);
+                (parameterData.x - 2 * maxdist) * randomNextDouble() + maxdist,
+                (parameterData.y - 2 * maxdist) * randomNextDouble() + maxdist);
 
         if (!retval.add(0.0, src)) {
             System.err.println(getInfo().name
-                    + ".generate: error while adding reference node movement (1)");
+                    + ".generate: error while adding reference node "
+                    + "movement (1)");
             System.exit(-1);
         }
 
@@ -211,7 +237,8 @@ public class HeightMapRNGM extends RandomSpeedBase {
 
             if (!retval.add(t, dst)) {
                 System.err.println(getInfo().name
-                        + ".generate: error while adding reference node movement (2)");
+                        + ".generate: error while adding reference node "
+                        + "movement (2)");
                 System.exit(-1);
             }
 
@@ -222,7 +249,8 @@ public class HeightMapRNGM extends RandomSpeedBase {
 
                     if (!retval.add(t, dst)) {
                         System.err.println(getInfo().name
-                                + ".generate: error while adding reference node movement (3)");
+                                + ".generate: error while adding reference "
+                                + "node movement (3)");
                         System.exit(-1);
                     }
                 }
@@ -327,13 +355,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
             double interimY = grpSegStart.y
                     + segm * (grpSegEnd.y - grpSegStart.y) / numSubseg;
 
-            double prevX = grpSegStart.x
-                    + (segm - 1) * (grpSegEnd.x - grpSegStart.x) / numSubseg;
-            double prevY = grpSegStart.y
-                    + (segm - 1) * (grpSegEnd.y - grpSegStart.y) / numSubseg;
-
             Position grpSegInterim = newPosition(interimX, interimY);
-            Position grpSegPrev = newPosition(prevX, prevY);
 
             double interimTime = groupChangeTimes[timeindex - 1]
                     + segm * segTimeDelta;
@@ -415,9 +437,64 @@ public class HeightMapRNGM extends RandomSpeedBase {
     }
 
     /**
+     * For each node, add waypoints between the node's waypoints to account for
+     * correct changes of height above datum.
+     * 
+     * @param nodes
+     *            The nodes whose way points to process
+     * @return The array of nodes with intercalated points.
+     */
+    private MobileNode[] intercalateHeightWayPoints(MobileNode[] nodes) {
+        MobileNode[] retval = nodes;
+
+        if (heightMap != null) {
+            retval = new MobileNode[nodes.length];
+
+            for (int i = 0; i < nodes.length; ++i) {
+                // Create a new node
+                MobileNode newnode = new MobileNode();
+                retval[i] = newnode;
+
+                // Process each way point
+                Waypoint prevWaypoint = null;
+                for (Waypoint waypoint : nodes[i].getWaypoints()) {
+                    if (prevWaypoint == null
+                            || prevWaypoint.pos.equals(waypoint.pos)) {
+                        // If there was no movement, copy the point
+                        newnode.add(waypoint.time, waypoint.pos);
+                    } else {
+                        // If there way movement, get the path
+                        List<Position> path = heightMap
+                                .getPath(prevWaypoint.pos, waypoint.pos);
+                        double distance = heightMap.getLength(path);
+                        path.remove(0); // The first point on the path is the
+                                        // previous way point, so remove it.
+
+                        // Use the average speed
+                        double speed = distance
+                                / (waypoint.time - prevWaypoint.time);
+
+                        double t = prevWaypoint.time;
+                        Position prevPosition = prevWaypoint.pos;
+
+                        for (Position position : path) {
+                            t += prevPosition.distance(position) / speed;
+                            newnode.add(t, position);
+                            prevPosition = position;
+                        }
+                    }
+                    prevWaypoint = waypoint;
+                }
+            }
+        }
+
+        return retval;
+    }
+
+    /**
      * Generate motion for when the groups are explicitly defined.
      */
-    public void generateForExplicitlyDefinedGroups() {
+    private void generateForExplicitlyDefinedGroups() {
         preGeneration();
 
         final GroupNode[] node = allocateNodes();
@@ -444,14 +521,14 @@ public class HeightMapRNGM extends RandomSpeedBase {
 
         } // end of iteration through group leaders
 
-        this.parameterData.nodes = node;
+        this.parameterData.nodes = intercalateHeightWayPoints(node);
 
         postGeneration();
     } // end of generateForExplicitlyDefinedGroups method
 
     // ACS end
 
-    public void generateForRandomlyDefinedGroups() {
+    private void generateForRandomlyDefinedGroups() {
         preGeneration();
 
         final GroupNode[] node = new GroupNode[this.parameterData.nodes.length];
@@ -751,7 +828,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
 
                 for (int i = 0; i < splitLine.length; i++) {
                     String member = splitLine[i];
-                    
+
                     if (!member.isEmpty()) {
                         members.add(Integer.parseInt(member));
                     }
@@ -844,13 +921,12 @@ public class HeightMapRNGM extends RandomSpeedBase {
             if (parameterData.nodes != null) {
                 System.err.println("Cannot specify the number of nodes and "
                         + "their groups simultaneously");
-                return false;                
-            } else if (readGroupMembership(val)) {
+                return false;
+            } else {
+                groupMembershipPath = val;
                 // Will be overwritten in generate()
                 parameterData.nodes = new MobileNode[0];
                 return true;
-            } else {
-                return false;
             }
         case 'm':
             speedScale = Double.parseDouble(val);
@@ -872,7 +948,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
             groupSizeDeviation = Double.parseDouble(val);
             return true;
         case 'n':
-            if (!groupMembershipTable.isEmpty()) {
+            if (groupMembershipPath != null) {
                 System.err.println("Cannot specify the number of nodes and "
                         + "their groups simultaneously");
                 return false;

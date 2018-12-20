@@ -1,6 +1,22 @@
-/**
- * 
- */
+/*******************************************************************************
+ ** HeightMap utility functions for BonnMotion                                **
+ ** Copyright (C) 2018 Perspecta Labs Inc.                                    **
+ **                                                                           **
+ ** This program is free software; you can redistribute it and/or modify      **
+ ** it under the terms of the GNU General Public License as published by      **
+ ** the Free Software Foundation; either version 2 of the License, or         **
+ ** (at your option) any later version.                                       **
+ **                                                                           **
+ ** This program is distributed in the hope that it will be useful,           **
+ ** but WITHOUT ANY WARRANTY; without even the implied warranty of            **
+ ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             **
+ ** GNU General Public License for more details.                              **
+ **                                                                           **
+ ** You should have received a copy of the GNU General Public License         **
+ ** along with this program; if not, write to the Free Software               **
+ ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
+ *******************************************************************************/
+
 package com.perspectalabs.bonnmotion.util;
 
 import java.util.ArrayList;
@@ -11,11 +27,9 @@ import java.util.List;
 import org.gdal.gdal.Band;
 import org.gdal.gdal.Dataset;
 import org.gdal.gdal.gdal;
-import org.gdal.gdalconst.gdalconst;
 import org.gdal.gdalconst.gdalconstConstants;
 import org.gdal.osr.CoordinateTransformation;
 import org.gdal.osr.SpatialReference;
-import org.gdal.osr.osr;
 import org.gdal.osr.osrConstants;
 
 import edu.bonn.cs.iv.bonnmotion.Position;
@@ -40,7 +54,6 @@ public class HeightMap {
     private CoordinateTransformation fromWgs84 = null;
 
     private double[] datasetInvTransform = null;
-    private double[] datasetTransform = null;
 
     private double noDataValue = Double.NaN;
 
@@ -480,14 +493,29 @@ public class HeightMap {
      * intermediate heights.
      * 
      * @param p1
+     *            The start position
      * @param p2
-     * @return
+     *            The end position of the path
+     * @return The length of the path (as computed by
+     *         {@link #getPath(Position, Position)}
      */
     public double getDistance(Position p1, Position p2) {
+        return getLength(getPath(p1, p2));
+    }
+
+    /**
+     * Compute the sum of the Euclidian distances between adjacent positions in
+     * the list.
+     * 
+     * @param path
+     *            The list of positions over which to compute the length.
+     * @return Return the computed length of the path
+     */
+    public double getLength(List<Position> path) {
         double retval = 0.0;
         Position previous = null;
 
-        for (Position position : getPath(p1, p2)) {
+        for (Position position : path) {
             if (previous != null) {
                 retval += previous.distance(position);
             }
