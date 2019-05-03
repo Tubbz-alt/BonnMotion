@@ -79,6 +79,7 @@ then
 	echo JAVA=\"\$JAVAPATH/java\" >> .head
 	echo JAVAC=\"\$JAVAPATH/javac\" >> .head
 	echo JAVADOC=\"\$JAVAPATH/javadoc\" >> .head
+	echo export LD_LIBRARY_PATH=\"$BONNMOTION/lib\" >> .head
 	echo >> .head
 
 	echo -n Creating scripts ...
