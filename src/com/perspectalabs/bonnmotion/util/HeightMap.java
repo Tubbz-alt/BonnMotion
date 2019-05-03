@@ -87,7 +87,7 @@ public class HeightMap {
         return new Position(retvalX[0], retvalY[0]);
     }
 
-    private PositionGeo transformPosition(CoordinateTransformation ct, double x,
+    private Position transformPosition(CoordinateTransformation ct, double x,
             double y) {
         double[] retval = new double[3];
 
@@ -97,7 +97,7 @@ public class HeightMap {
 
         ct.TransformPoint(retval);
 
-        return new PositionGeo(retval[0], retval[1]);
+        return new Position(retval[0], retval[1]);
     }
 
     /**
@@ -109,10 +109,15 @@ public class HeightMap {
      *            The position to transform
      * @return The position in the new projection
      */
-    private PositionGeo transformPosition(CoordinateTransformation ct,
+    private Position transformPosition(CoordinateTransformation ct,
+            Position position) {
+        return transformPosition(ct, position.x, position.y);
+    }
+    
+    private Position transformPosition(CoordinateTransformation ct,
             PositionGeo position) {
         return transformPosition(ct, position.x(), position.y());
-    }
+    }    
 
     private class Corner {
 
@@ -189,9 +194,9 @@ public class HeightMap {
      *
      **/
     private Position getOrigin(PositionGeo position) {
-        PositionGeo retval = transformPosition(fromWgs84, position);
+        Position retval = transformPosition(fromWgs84, position);
 
-        Position checkRaster = applyInvTransform(retval.x(), retval.y());
+        Position checkRaster = applyInvTransform(retval.x, retval.y);
 
         if (checkRaster.x < 0 || checkRaster.x > dataset.GetRasterXSize()
                 || checkRaster.y < 0
@@ -200,7 +205,7 @@ public class HeightMap {
                     + position + " is outside the height map");
         }
 
-        return new Position(retval.x(), retval.y());
+        return new Position(retval.x, retval.y);
     }
 
     private PositionGeo getPosition(int x, int y) {
@@ -209,7 +214,9 @@ public class HeightMap {
 
         gdal.ApplyGeoTransform(dataset.GetGeoTransform(), x, y, geoX, geoY);
 
-        return transformPosition(toWgs84, new PositionGeo(geoX[0], geoY[0]));
+        Position position = transformPosition(toWgs84, geoX[0], geoY[0]); 
+        
+        return new PositionGeo(position.x, position.y);
     }
 
     /**
