@@ -60,11 +60,10 @@ public class HeightMap {
     private Position origin;
 
     /**
-     * The scale of the map: how many meters per pixel in the raster image in
-     * the x and y directions separately.
+     * The scale of the map: how many meters per unit in the projection of the
+     * map
      */
-    private double xScale = 1.0;
-    private double yScale = 1.0;
+    private double linearScale = 1.0;
 
     /**
      * Scaling for values read from the data
@@ -77,6 +76,16 @@ public class HeightMap {
         gdal.AllRegister();
     }
 
+    /**
+     * Apply the inverse transform to convert between the projection's
+     * coordinates and the raster position.
+     * 
+     * @param x
+     *            The x-coordinate in the map's projection
+     * @param y
+     *            The y-coordinate in the maps' projection
+     * @return the raster point corresponding to the the given coordinate.
+     */
     private Position applyInvTransform(double x, double y) {
 
         double[] retvalX = new double[1];
@@ -87,6 +96,17 @@ public class HeightMap {
         return new Position(retvalX[0], retvalY[0]);
     }
 
+    /**
+     * Apply a coordinate transformation on a two dimensional point
+     * 
+     * @param ct
+     *            The transformation to apply
+     * @param x
+     *            The X-coordinate to which to apply the transformation
+     * @param y
+     *            The Y-coordinate to which to apply the transformation
+     * @return The position resulting from the applied transformation
+     */
     private Position transformPosition(CoordinateTransformation ct, double x,
             double y) {
         double[] retval = new double[3];
@@ -113,12 +133,18 @@ public class HeightMap {
             Position position) {
         return transformPosition(ct, position.x, position.y);
     }
-    
+
     private Position transformPosition(CoordinateTransformation ct,
             PositionGeo position) {
         return transformPosition(ct, position.x(), position.y());
-    }    
+    }
 
+    /**
+     * The corner position at the raster location (x, y)
+     * 
+     * @author ygottlieb
+     *
+     */
     private class Corner {
 
         PositionGeo geo;
@@ -131,6 +157,9 @@ public class HeightMap {
             this.geo = HeightMap.this.getPosition(x, y);
         }
 
+        /**
+         * @return The position in the projection corresponding to this corner
+         */
         public Position getPosition() {
             double[] retvalX = new double[1];
             double[] retvalY = new double[1];
@@ -185,6 +214,23 @@ public class HeightMap {
     }
 
     /**
+     * Is the given position valid in the raster (pixel/line) space
+     * 
+     * @param p
+     *            The position to check
+     * @return true if each of the position's indices is positive and less than
+     *         the maximum index.
+     */
+    private boolean isValidRaster(Position p) {
+        return isValidRaster(p.x, p.y);
+    }
+
+    private boolean isValidRaster(double x, double y) {
+        return 0 <= x && x < dataset.GetRasterXSize() && 0 <= y
+                && y < dataset.GetRasterYSize();
+    }
+
+    /**
      * @param position
      *            the geographical position in WGS84
      * @return The projected position of the geographical position onto the
@@ -198,9 +244,7 @@ public class HeightMap {
 
         Position checkRaster = applyInvTransform(retval.x, retval.y);
 
-        if (checkRaster.x < 0 || checkRaster.x > dataset.GetRasterXSize()
-                || checkRaster.y < 0
-                || checkRaster.y >= dataset.GetRasterYSize()) {
+        if (!isValidRaster(checkRaster)) {
             throw new IllegalArgumentException("The geographic position "
                     + position + " is outside the height map");
         }
@@ -208,14 +252,24 @@ public class HeightMap {
         return new Position(retval.x, retval.y);
     }
 
+    /**
+     * Return the geographic position in WGS84 corresponding to the given raster
+     * indices
+     * 
+     * @param x
+     *            the x-coordinate in the raster space
+     * @param y
+     *            the y-coordinate in the raster space
+     * @return The WGS84 geographic position corresponding to the gvein pointer.
+     */
     private PositionGeo getPosition(int x, int y) {
         double[] geoX = new double[1];
         double[] geoY = new double[1];
 
         gdal.ApplyGeoTransform(dataset.GetGeoTransform(), x, y, geoX, geoY);
 
-        Position position = transformPosition(toWgs84, geoX[0], geoY[0]); 
-        
+        Position position = transformPosition(toWgs84, geoX[0], geoY[0]);
+
         return new PositionGeo(position.x, position.y);
     }
 
@@ -240,11 +294,11 @@ public class HeightMap {
         } else if (datasetProjection.GetAxisOrientation(null,
                 0) != osrConstants.OAO_East) {
             throw new RuntimeException("Map " + path
-                    + " uses projection with first axis not towards NORTH.");
+                    + " uses projection with first axis not towards EAST.");
         } else if (datasetProjection.GetAxisOrientation(null,
                 1) != osrConstants.OAO_North) {
             throw new RuntimeException("Map " + path
-                    + " uses projection with second axis not towards EAST.");
+                    + " uses projection with second axis not towards NORTH.");
         }
 
         double[] datasetTransform = dataset.GetGeoTransform();
@@ -256,7 +310,7 @@ public class HeightMap {
                     "Map " + path + " uses non-invertable projection");
         }
 
-        xScale = yScale = datasetProjection.GetLinearUnits();
+        linearScale = datasetProjection.GetLinearUnits();
 
         // Transform to WGS84 since PositionGeo.distance() uses that geodesic.
         SpatialReference wgs84 = new SpatialReference();
@@ -300,7 +354,43 @@ public class HeightMap {
      * @return @see {@link #getHeight(double, double)}
      */
     public double getHeight(Position position) {
-        return getHeight(position.x, position.y);
+        return getAveragedHeight(position.x, position.y);
+    }
+
+    /**
+     * Read the information from the raster at the given point
+     * 
+     * @param x
+     *            The x-coordinate in the raster (pixel/line) space
+     * @param y
+     *            The y-coordinate in the raster (pixel/line) space
+     * @return The value of the raster map at that point. If the raster has no
+     *         value return Double.NEGATIVE_INFINITY, if there was an error
+     *         return NaN, if there was a warning return
+     *         Double.POSITIVE_INFINITY
+     */
+    private double readRaster(double x, double y) {
+        double retval = Double.NaN;
+
+        double[] read = new double[1];
+
+        int error = rasterBand.ReadRaster((int) x, (int) y, 1, 1, read);
+
+        if (error == gdalconstConstants.CE_None) {
+            if (read[0] != noDataValue) {
+                retval = zScale * read[0] + zOffset;
+            } else {
+                retval = Double.NEGATIVE_INFINITY;
+            }
+        } else if (error == gdalconstConstants.CE_Warning) {
+            retval = Double.POSITIVE_INFINITY;
+        }
+
+        return retval;
+    }
+
+    private double readRaster(Position p) {
+        return readRaster(p.x, p.y);
     }
 
     /**
@@ -318,8 +408,8 @@ public class HeightMap {
     public double getHeight(double x, double y) {
         double retval = 0.0;
 
-        double scaledX = origin.x + x / xScale;
-        double scaledY = origin.y + y / yScale;
+        double scaledX = origin.x + x / linearScale;
+        double scaledY = origin.y + y / linearScale;
 
         double[] rasterX = new double[1];
         double[] rasterY = new double[1];
@@ -327,32 +417,106 @@ public class HeightMap {
         gdal.ApplyGeoTransform(datasetInvTransform, scaledX, scaledY, rasterX,
                 rasterY);
 
-        double[] read = new double[1];
+        retval = readRaster(rasterX[0], rasterY[0]);
 
-        int error = rasterBand.ReadRaster((int) (rasterX[0]),
-                (int) (rasterY[0]), 1, 1, read);
+        if (Double.isInfinite(retval)) {
+            if (retval > 0) {
+                System.err
+                        .println("HeightMap.getHeight(): warning no values for "
+                                + x + ", " + y);
 
-        if (error == gdalconstConstants.CE_None) {
-            if (read[0] != noDataValue) {
-                retval = zScale * read[0] + zOffset;
             } else {
                 System.err.println("HeightMap.getHeight(): warning using 0 for "
                         + x + ", " + y + ": "
                         + transformPosition(toWgs84, scaledX, scaledY));
             }
-        } else if (error == gdalconstConstants.CE_Warning) {
-            System.err.println("HeightMap.getHeight(): warning no values for "
-                    + x + ", " + y);
-        } else {
-            retval = Double.NaN;
         }
 
         return retval;
     }
 
-    private Position getRasterPoint(Position p) {
-        double scaledX = origin.x + p.x / xScale;
-        double scaledY = origin.y + p.y / yScale;
+    /**
+     * Get the height from the terrain map at the given location averaged with
+     * the height from the next nearest cell.
+     * 
+     * @param x
+     *            The distance in meters from the top "left" point of the
+     *            terrain map along the X axis. ((0,0) to (x, 0) in the raster.)
+     * @param y
+     *            The distance in meters from the top "left" point of the
+     *            terrain map along the Y axis. ((0,0) to (0, y) in the raster.)
+     * @param epsilon
+     *            The minimum difference in distance that is considered
+     *            significant
+     * @return The value of the raster map at that point. If the raster has
+     *         value Integer.MIN_VALUE, returns 0
+     */
+
+    final private static double epsilon = 1e-8;
+
+    public double getAveragedHeight(double x, double y, double epsilon) {
+
+        double heightInCell = getHeight(x, y);
+
+        Position rasterPosition = getRasterPoint(x, y);
+        Position nextRaster = new Position(rasterPosition);
+
+        // The offsets into the pixel
+        double xOffset = Math.IEEEremainder(rasterPosition.x, 1);
+        double yOffset = Math.IEEEremainder(rasterPosition.y, 1);
+
+        double absXOffset = Math.abs(xOffset);
+        double absYOffset = Math.abs(yOffset);
+
+        if (Math.abs(0.5 - absXOffset) < epsilon
+                && Math.abs(0.5 - absYOffset) < epsilon) {
+            // Near enough to center, don't average
+        } else if (absXOffset < absYOffset) {
+            // Closer in x direction, update the raster to the next
+            nextRaster.x -= Math.signum(xOffset);
+        } else {
+            // Closer in y direction, update the raster to the next
+            nextRaster.y -= Math.signum(yOffset);
+        }
+
+        // The height in the next cell
+        double heightInNextCell = heightInCell;
+
+        // Read the raster if it is valid
+        if (isValidRaster(nextRaster)) {
+            heightInNextCell = readRaster(nextRaster);
+        }
+
+        return (heightInNextCell + heightInCell) / 2.0;
+    }
+
+    public double getAveragedHeight(double x, double y) {
+        return getAveragedHeight(x, y, epsilon);
+    }
+
+    public double getAveragedHeight(Position p, double epsilon) {
+        return getAveragedHeight(p, epsilon);
+    }
+
+    public double getAveragedHeight(Position p) {
+        return getAveragedHeight(p.x, p.y);
+    }
+
+    /**
+     * Get the point on the raster corresponding to given offset from the origin
+     * in the projection.
+     * 
+     * @param x
+     *            The x-position as an offset (in meters) from the origin in the
+     *            projection space.
+     * @param y
+     *            The x-position as an offset (in meters) from the origin in the
+     *            projection space.
+     * @return The indices of the raster cell corresponding to the given point
+     */
+    public Position getRasterPoint(double x, double y) {
+        double scaledX = origin.x + x / linearScale;
+        double scaledY = origin.y + y / linearScale;
 
         double[] rasterX = new double[1];
         double[] rasterY = new double[1];
@@ -363,6 +527,18 @@ public class HeightMap {
         return new Position(rasterX[0], rasterY[0]);
     }
 
+    /**
+     * Get the point on the raster corresponding to given offset from the origin
+     * in the projection.
+     * 
+     * @param p
+     *            The position as an offset (in meters) from the origin
+     * @return The indices of the raster cell corresponding to the
+     */
+    private Position getRasterPoint(Position p) {
+        return getRasterPoint(p.x, p.y);
+    }
+
     private Position getProjectionOffsetPoint(int x, int y) {
         double[] projectionX = new double[1];
         double[] projectionY = new double[1];
@@ -370,8 +546,8 @@ public class HeightMap {
         gdal.ApplyGeoTransform(dataset.GetGeoTransform(), x, y, projectionX,
                 projectionY);
 
-        return new Position(projectionX[0] * xScale - origin.x,
-                projectionY[0] * yScale - origin.y);
+        return new Position(projectionX[0] * linearScale - origin.x,
+                projectionY[0] * linearScale - origin.y);
     }
 
     private List<LineSegment> getEdgeSegments(Position p1, Position p2) {
@@ -444,7 +620,7 @@ public class HeightMap {
      * <ul>
      * <li>p1 and p2 are at the ends of the list</li>
      * <li>positions other than p1 and p2 are either at the edges of a raster
-     * pixel (edge point) or at the midpoint between to positions at the edges
+     * pixel (edge point) or at the midpoint between two positions at the edges
      * of a raster pixel (center point).</li>
      * <li>the height of each center point is the value in that raster
      * pixel</li>
