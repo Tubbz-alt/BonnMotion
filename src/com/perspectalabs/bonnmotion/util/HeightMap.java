@@ -39,7 +39,7 @@ import edu.bonn.cs.iv.util.maps.PositionGeo;
  * Maps between position and the height on a terrain map. The terrain map is
  * assumed to be raster image whose single raster band contains height values in
  * meters.
- * 
+ *
  * @author ygottlieb
  *
  */
@@ -79,7 +79,7 @@ public class HeightMap {
     /**
      * Apply the inverse transform to convert between the projection's
      * coordinates and the raster position.
-     * 
+     *
      * @param x
      *            The x-coordinate in the map's projection
      * @param y
@@ -98,7 +98,7 @@ public class HeightMap {
 
     /**
      * Apply a coordinate transformation on a two dimensional point
-     * 
+     *
      * @param ct
      *            The transformation to apply
      * @param x
@@ -122,7 +122,7 @@ public class HeightMap {
 
     /**
      * Transform the position from one projection to another
-     * 
+     *
      * @param ct
      *            The Coordinate Transformation between projections
      * @param position
@@ -141,7 +141,7 @@ public class HeightMap {
 
     /**
      * The corner position at the raster location (x, y)
-     * 
+     *
      * @author ygottlieb
      *
      */
@@ -215,7 +215,7 @@ public class HeightMap {
 
     /**
      * Is the given position valid in the raster (pixel/line) space
-     * 
+     *
      * @param p
      *            The position to check
      * @return true if each of the position's indices is positive and less than
@@ -255,7 +255,7 @@ public class HeightMap {
     /**
      * Return the geographic position in WGS84 corresponding to the given raster
      * indices
-     * 
+     *
      * @param x
      *            the x-coordinate in the raster space
      * @param y
@@ -275,7 +275,7 @@ public class HeightMap {
 
     /**
      * Create a height map from the terrain file
-     * 
+     *
      * @param path
      *            The path to the terrain file
      */
@@ -348,10 +348,10 @@ public class HeightMap {
 
     /**
      * Get the height based on the terrain map at the given location.
-     * 
+     *
      * @param position
      *            The position for which to get the height
-     * @return @see {@link #getHeight(double, double)}
+     * @return @see {@link #getAveragedHeight(double, double)}
      */
     public double getHeight(Position position) {
         return getAveragedHeight(position.x, position.y);
@@ -359,7 +359,7 @@ public class HeightMap {
 
     /**
      * Read the information from the raster at the given point
-     * 
+     *
      * @param x
      *            The x-coordinate in the raster (pixel/line) space
      * @param y
@@ -395,15 +395,15 @@ public class HeightMap {
 
     /**
      * Get the height based on the terrain map at the given location.
-     * 
+     *
      * @param x
-     *            The distance in meters from the top "left" point of the
-     *            terrain map along the X axis. ((0,0) to (x, 0) in the raster.)
+     *            The distance in meters from the origin along the X axis in the
+     *            projection space
      * @param y
-     *            The distance in meters from the top "left" point of the
-     *            terrain map along the Y axis. ((0,0) to (0, y) in the raster.)
-     * @return The value of the raster map at that point. If the raster has
-     *         value Integer.MIN_VALUE, returns 0
+     *            The distance in meters from the origin along the Y axis in the
+     *            projection space
+     * @return The value of the raster map at that point. If the raster has no
+     *         value, returns 0
      */
     public double getHeight(double x, double y) {
         double retval = 0.0;
@@ -438,7 +438,7 @@ public class HeightMap {
     /**
      * Get the height from the terrain map at the given location averaged with
      * the height from the next nearest cell.
-     * 
+     *
      * @param x
      *            The distance in meters from the top "left" point of the
      *            terrain map along the X axis. ((0,0) to (x, 0) in the raster.)
@@ -505,7 +505,7 @@ public class HeightMap {
     /**
      * Get the point on the raster corresponding to given offset from the origin
      * in the projection.
-     * 
+     *
      * @param x
      *            The x-position as an offset (in meters) from the origin in the
      *            projection space.
@@ -530,7 +530,7 @@ public class HeightMap {
     /**
      * Get the point on the raster corresponding to given offset from the origin
      * in the projection.
-     * 
+     *
      * @param p
      *            The position as an offset (in meters) from the origin
      * @return The indices of the raster cell corresponding to the
@@ -550,6 +550,15 @@ public class HeightMap {
                 projectionY[0] * linearScale - origin.y);
     }
 
+    /**
+     * Return a list of diagonal line segments between the two positions
+     *
+     * @param p1
+     *            The start position in the projection space
+     * @param p2
+     *            The end position in the projection space
+     * @return a (possibly empty) list of line segments
+     */
     private List<LineSegment> getEdgeSegments(Position p1, Position p2) {
         List<LineSegment> retval = new ArrayList<LineSegment>();
         Position rasterP1 = getRasterPoint(p1);
@@ -565,15 +574,29 @@ public class HeightMap {
                 Position tl = getProjectionOffsetPoint(x, y);
                 Position tr = getProjectionOffsetPoint(x + 1, y);
                 Position bl = getProjectionOffsetPoint(x, y + 1);
+                Position br = getProjectionOffsetPoint(x + 1, y + 1);
 
-                retval.add(new LineSegment(tl, tr));
-                retval.add(new LineSegment(tl, bl));
+                retval.add(new LineSegment(tl, br));
+                retval.add(new LineSegment(tr, bl));
             }
         }
 
         return retval;
     }
 
+    /**
+     * Add to edgePoints all the points at which the path between p1 and p2
+     * intersects each member of edgeSegments sorted by distance from p1
+     *
+     * @param edgePoints
+     *            the output list of positions
+     * @param p1
+     *            The start of the segment
+     * @param p2
+     *            The end of the segment
+     * @param edgeSegments
+     *            The segments against which to test
+     */
     private void addEdgePoints(List<Position> edgePoints, final Position p1,
             final Position p2, List<LineSegment> edgeSegments) {
         LineSegment path = new LineSegment(p1, p2);
@@ -611,8 +634,8 @@ public class HeightMap {
                 return retval;
             }
         };
-        edgePoints.sort(edgePointSorter);
 
+        edgePoints.sort(edgePointSorter);
     }
 
     /**
@@ -626,7 +649,7 @@ public class HeightMap {
      * pixel</li>
      * <li>the height of each edge point is an average of the two adjoining
      * center points</li> </ual>
-     * 
+     *
      * @param p1
      *            The position at the start of the path
      * @param p2
@@ -637,6 +660,8 @@ public class HeightMap {
 
         List<Position> retval = new ArrayList<Position>();
 
+        // Add all the points along the path at which the height calculation
+        // should change.
         addEdgePoints(retval, p1, p2, getEdgeSegments(p1, p2));
 
         List<Position> centerPoints = new ArrayList<Position>();
@@ -656,16 +681,10 @@ public class HeightMap {
         retval.add(0, p1);
         retval.add(p2);
 
-        Position prev = null;
-
         for (Position position : retval) {
-
-            if (prev != null && Double.isNaN(prev.z)
-                    && !Double.isNaN(position.z)) {
-                prev.z = position.z;
+            if (Double.isNaN(position.z)) {
+                position.z = getAveragedHeight(position);
             }
-
-            prev = position;
         }
 
         return retval;
@@ -674,7 +693,7 @@ public class HeightMap {
     /**
      * Compute the distance between p1 and p2 on the map including the
      * intermediate heights.
-     * 
+     *
      * @param p1
      *            The start position
      * @param p2
@@ -689,7 +708,7 @@ public class HeightMap {
     /**
      * Compute the sum of the Euclidian distances between adjacent positions in
      * the list.
-     * 
+     *
      * @param path
      *            The list of positions over which to compute the length.
      * @return Return the computed length of the path
