@@ -29,9 +29,7 @@ following parameters in addition to those defined by the RPGM:
 -e  The number of subsegments each following node in a group takes for each
     segment of the reference node's motion.
 
--g  The path to the membership group file.  Each line of the file is a
-    whitespace-separated list of node IDs defining a group that moves
-    together.  It is an error to specify both -g and -n.
+-g  The path to the membership group file.
 
 -m  The multiple of the maximum speed at which the following nodes can move
     during subsegment motion.
@@ -54,3 +52,12 @@ addition to those defined by RPGM:
     the natural origin of the terrain map (position 0,0 in the terrain file's
     raster).  The format of the position is ISO6709 annex H.  (E.g.
     +010203.45-0060708.9 for 1* 2' 3.45" N 6* 7' 8.9" W)
+
+Configuring Membership Group File
+---------------------------------------
+
+The default membership group file is "node_groups.txt". This default file contains
+two sections labeled [MOBILE] and [STATIONARY]. Each line in the [MOBILE] section
+is a group of nodes that move together. Each line in the [STATIONARY] section is
+a node and it's latitude, longitude, and altitude. For more information on this file,
+review the comments (lines prepended with #) inside it.
