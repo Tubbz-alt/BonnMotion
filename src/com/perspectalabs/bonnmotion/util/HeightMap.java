@@ -253,6 +253,52 @@ public class HeightMap {
     }
 
     /**
+     * Return the offset position given the geographical coordinate.
+     *
+     * @param position
+     *            The georgraphical coordinate to convert to offset position
+     * @return The offset position of the geographical coordinate
+     */
+    public Position transformFromWgs84ToPosition(PositionGeo position) {
+        Position projection = transformPosition(fromWgs84, position);
+        return transformFromProjectionToPosition(projection);
+    }
+
+    /**
+     * Return the raster position given the geographical coordinate
+     *
+     * @param position
+     *            The georgraphical coordinate to convert to raster position
+     * @return The raster position of the geographical coordinate
+     */
+    public Position transformFromWgs84ToRaster(PositionGeo position) {
+        Position retval = transformPosition(fromWgs84, position);
+
+        Position checkRaster = applyInvTransform(retval.x, retval.y);
+
+        if (!isValidRaster(checkRaster)) {
+            throw new IllegalArgumentException("The geographic position "
+                    + position + " is outside the height map");
+        }
+
+        return new Position(checkRaster.x, checkRaster.y);
+    }
+
+    /**
+     * Return the offset position given the projection coordinate
+     *
+     * @param position
+     *            The projection coordinate to convert to offset position
+     * @return The offset position of the projection coordinate
+     */
+    private Position transformFromProjectionToPosition(Position position) {
+        double scaledX = (position.x * linearScale) - origin.x;
+        double scaledY = (position.y * linearScale) - origin.y;
+        Position offset = new Position(scaledX, scaledY);
+        return offset;
+    }
+
+    /**
      * Return the geographic position in WGS84 corresponding to the given raster
      * indices
      *

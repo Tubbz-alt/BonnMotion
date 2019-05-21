@@ -41,28 +41,17 @@ package edu.bonn.cs.iv.bonnmotion.models;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.Vector;
+import java.util.*;
 
 import com.perspectalabs.bonnmotion.util.HeightMap;
 import com.perspectalabs.bonnmotion.util.PositionGeoParser;
 
 import java.io.FileReader;
 import java.io.LineNumberReader;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
-import edu.bonn.cs.iv.bonnmotion.GroupNode;
-import edu.bonn.cs.iv.bonnmotion.MobileNode;
-import edu.bonn.cs.iv.bonnmotion.ModuleInfo;
-import edu.bonn.cs.iv.bonnmotion.Position;
-import edu.bonn.cs.iv.bonnmotion.RandomSpeedBase;
-import edu.bonn.cs.iv.bonnmotion.Waypoint;
+import edu.bonn.cs.iv.bonnmotion.*;
 import edu.bonn.cs.iv.bonnmotion.printer.Dimension;
+import edu.bonn.cs.iv.bonnmotion.StationaryNode;
 import edu.bonn.cs.iv.util.maps.PositionGeo;
 
 /**
@@ -92,6 +81,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
     }
 
     protected HashMap<Integer, List<Integer>> groupMembershipTable = new HashMap<Integer, List<Integer>>();
+    protected List<StationaryNode> stationaryNodes = new ArrayList<>();
     protected int numSubseg = 4;
     protected double speedScale = 1.5;
     protected boolean referencePointIsNode = false;
@@ -99,6 +89,11 @@ public class HeightMapRNGM extends RandomSpeedBase {
     protected String heightMapPath = null;
     protected PositionGeo referencePositionGeo = null;
     protected String groupMembershipPath = null;
+
+    private static final String MOBILE_HEADER = "[MOBILE]";
+    private static final String STATIONARY_HEADER = "[STATIONARY]";
+    private static final char CONFIG_COMMENT = '#';
+
 
     /** Maximum deviation from group center [m]. */
     protected double maxdist = 2.5;
@@ -138,12 +133,12 @@ public class HeightMapRNGM extends RandomSpeedBase {
     // ACS begin
 
     /**
-     * Generate the mobility for the given parameters
+     * Generate the mobile and stationary nodes for the given parameters
      */
     public void generate() {
 
         if (groupMembershipPath != null) {
-            if (!readGroupMembership(groupMembershipPath)) {
+            if (!readNodeGroups(groupMembershipPath)) {
                 System.exit(-1);
             }
         }
@@ -155,7 +150,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
         if (groupMembershipTable.isEmpty()) {
             generateForRandomlyDefinedGroups();
         } else {
-            generateForExplicitlyDefinedGroups();
+            generateForExplicitlyDefinedNodes();
         }
     }
 
@@ -492,11 +487,23 @@ public class HeightMapRNGM extends RandomSpeedBase {
     }
 
     /**
-     * Generate motion for when the groups are explicitly defined.
+     * Generate for mobile and stationary nodes that
+     * are defined
      */
-    private void generateForExplicitlyDefinedGroups() {
+    private void generateForExplicitlyDefinedNodes() {
         preGeneration();
+        generateGroupNodes();
+        generateStationaryNodes();
+        postGeneration();
+    } // end of generateForExplicitlyDefinedGroups method
 
+    /**
+     * Generates for the group nodes that are defined.
+     * For each group make the first node a leader,
+     * and all the others a member of the group they
+     * belong to.
+     */
+    private void generateGroupNodes() {
         final GroupNode[] node = allocateNodes();
 
         for (Map.Entry<Integer, List<Integer>> groupentry : groupMembershipTable
@@ -523,8 +530,38 @@ public class HeightMapRNGM extends RandomSpeedBase {
 
         this.parameterData.nodes = intercalateHeightWayPoints(node);
 
-        postGeneration();
-    } // end of generateForExplicitlyDefinedGroups method
+    }
+
+    /**
+     * Generates the stationary nodes that are defined.
+     * For each stationary node convert it to a mobile node.
+     * Convert the Latitude and Longitude to offset points.
+     * The height of the node is taken from the Height Map,
+     * and the optional altitude is added on if it defined.
+     * Remove any nodes that previously had the same id, and
+     * insert the new node into its correct spot in the node list
+     */
+    private void generateStationaryNodes() {
+        ArrayList<MobileNode> allNodes = new ArrayList<>(Arrays.asList(this.parameterData.nodes));
+
+        for(StationaryNode node : this.stationaryNodes) {
+            MobileNode newNode = new MobileNode();
+            PositionGeo geoPosition = node.getPosition();
+            Position position = heightMap.transformFromWgs84ToPosition(geoPosition);
+            Position rasterPosition = heightMap.transformFromWgs84ToRaster(geoPosition);
+
+            position.z = this.heightMap.getHeight(rasterPosition);
+            if(node.getAltitude() != null) {
+                position.z += node.getAltitude();
+            }
+            newNode.add(0, position);
+            if(node.getId() < allNodes.size()) {
+                allNodes.remove(node.getId());
+            }
+            allNodes.add(node.getId(), newNode);
+        }
+        this.parameterData.nodes = Arrays.copyOf(allNodes.toArray(), allNodes.size(), MobileNode[].class);
+    }
 
     // ACS end
 
@@ -808,19 +845,22 @@ public class HeightMapRNGM extends RandomSpeedBase {
     }
 
     // ACS begin
-    private boolean readGroupMembership(String groupMembershipFileName) {
 
-        boolean retval = false;
+    /**
+     * Clears the groupMembershipTable and adds all the groups
+     * from the configuration file
+     *
+     * @param groups
+     *              Group membership lines that were read from the configuration file
+     * @return true if reading was successful
+     */
+    private boolean readGroupMembership(List<String> groups) {
+        boolean retval = true;
 
         groupMembershipTable.clear();
-
         try {
-            LineNumberReader reader = new LineNumberReader(
-                    new FileReader(groupMembershipFileName));
-
-            for (String line = reader.readLine(); line != null; line = reader
-                    .readLine()) {
-
+            for (int lineNumber = 0; lineNumber < groups.size(); lineNumber++) {
+                String line = groups.get(lineNumber);
                 String[] splitLine = line.split("\\s+");
 
                 List<Integer> members = new ArrayList<Integer>(
@@ -834,7 +874,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
                     }
                 }
 
-                int groupId = reader.getLineNumber();
+                int groupId = lineNumber + 1;
 
                 if (!members.isEmpty()) {
                     if (referencePointIsNode) {
@@ -844,17 +884,98 @@ public class HeightMapRNGM extends RandomSpeedBase {
                     groupMembershipTable.put(groupId, members);
                 }
             }
+        } catch(Exception e) {
+            retval = false;
+            System.err.println(
+                    "Unable to read group membership: " + e.getMessage());
+        }
 
-            retval = true;
+        return retval;
+    }
 
-            reader.close();
+    /**
+     * Reads the config file and adds the mobile and stationary
+     * nodes to separate groups
+     * @param nodeGroupsPath
+     *                          File path to the configuration
+     * @return true if successful configuration of mobile and stationary nodes
+     */
+    private boolean readNodeGroups(String nodeGroupsPath) {
+        ArrayList<String> mobile = new ArrayList<>();
+        ArrayList<String> stationary = new ArrayList<>();
+        List<String> pointer = mobile;
+        boolean retval = true;
 
+        try {
+            LineNumberReader reader = new LineNumberReader(
+                    new FileReader(nodeGroupsPath));
+
+            for (String line = reader.readLine(); line != null; line = reader
+                    .readLine()) {
+
+                if(line.contains(MOBILE_HEADER)) {
+                    pointer = mobile;
+                    continue;
+                } else if(line.contains(STATIONARY_HEADER)) {
+                    pointer = stationary;
+                    continue;
+                } else if((line.isEmpty())) {
+                    continue;
+                } else if(line.charAt(0) == CONFIG_COMMENT) {
+                    continue;
+                }
+
+                pointer.add(line);
+            }
+
+            retval &= readGroupMembership(mobile);
+            retval &= readStationaryNodes(stationary);
         } catch (java.io.FileNotFoundException fnfe) {
+            retval = false;
             System.err.println(
                     "Unable to read group membership: " + fnfe.getMessage());
         } catch (java.io.IOException ioe) {
+            retval = false;
             System.err.println(
                     "Unable to read group membership: " + ioe.getMessage());
+        }
+
+        return retval;
+    }
+
+    /**
+     * Clears stationaryNodes and adds all the stationary nodes
+     * from the configuration file
+     *
+     * @param stationary
+     *              Stationary node lines that were read from the configuration file
+     * @return true if reading was successful
+     */
+    private boolean readStationaryNodes(List<String> stationary) {
+
+        boolean retval = false;
+
+        this.stationaryNodes.clear();
+        try {
+            for(String line : stationary) {
+                String[] splitLine = line.split("\\s+");
+                int id = Integer.parseInt(splitLine[0]);
+                double latitude = Double.parseDouble(splitLine[1]);
+                double longitude = Double.parseDouble(splitLine[2]);
+                PositionGeo position = new PositionGeo(longitude, latitude);
+
+                Double altitude = null;
+                if(splitLine.length == 4) {
+                    altitude = Double.parseDouble(splitLine[3]);
+                }
+                this.stationaryNodes.add(StationaryNode.createNode(id, position, altitude));
+            }
+
+            this.stationaryNodes.sort(StationaryNode::compareById);
+            retval = true;
+        } catch(Exception e) {
+            System.err.println(
+                    "Unable to read stationary nodes: " + e.getMessage());
         }
 
         return retval;
