@@ -1,6 +1,6 @@
 /*******************************************************************************
  ** Line segment utility functions for BonnMotion                             **
- ** Copyright (C) 2018 Perspecta Labs Inc.                                    **
+ ** Copyright (C) 2018--2019 Perspecta Labs Inc.                              **
  **                                                                           **
  ** This program is free software; you can redistribute it and/or modify      **
  ** it under the terms of the GNU General Public License as published by      **
@@ -24,8 +24,8 @@ import edu.bonn.cs.iv.bonnmotion.Position;
 /**
  * A class that represents a line segment with the ability to compute
  * intersections.
- * 
- * @author ygottlieb
+ *
+ * @author Yitzchak M. Gottlieb <ygottlieb@perspectalabs.com>
  *
  */
 public class LineSegment {
@@ -43,9 +43,11 @@ public class LineSegment {
 
     /**
      * Create a new line segment between the positions.
-     * 
+     *
      * @param p1
+     *            First position
      * @param p2
+     *            Second Position
      */
     public LineSegment(Position p1, Position p2) {
         this.p1 = p1;
@@ -65,40 +67,34 @@ public class LineSegment {
     /**
      * Exception thrown when two line segments do not intersect, but are not
      * parallel.
-     * 
-     * @author ygottlieb
+     *
+     * @author Yitzchak M. Gottlieb <ygottlieb@perspectalabs.com>
      *
      */
     public static class NoIntersectionException extends Exception {
-        /**
-         * 
-         */
-        private static final long serialVersionUID = 5511931877940653676L;
 
+        private static final long serialVersionUID = 5511931877940653676L;
     }
 
     /**
      * Exception thrown when two line segments do not intersect and are
      * parallel.
-     * 
-     * @author ygottlieb
+     *
+     * @author Yitzchak M. Gottlieb <ygottlieb@perspectalabs.com>
      *
      */
     public static class ParallelLinesException extends Exception {
 
-        /**
-         * 
-         */
         private static final long serialVersionUID = 3988498536102069282L;
-
     }
 
     /**
-     * Compute the Y-coordinate of the line corresponding the given x. The
+     * Compute the ordinate corresponding to the abscissa on the line. The
      * returned value may not be on the segment.
-     * 
+     *
      * @param x
-     * @return
+     *            the abscissa
+     * @return the ordinate on the line of which this segment is a part
      */
     private double GetY(double x) {
         double retval = Double.NaN;
@@ -113,9 +109,10 @@ public class LineSegment {
     /**
      * Does the given position lie in the section of the plane bounded by the
      * segement's endpoints.
-     * 
+     *
      * @param p
-     * @return
+     *            The position to check
+     * @return true if p is bounded by the coordinates of the segment
      */
     private boolean isBetweenEndpoints(Position p) {
         return ((p1.x <= p.x && p.x <= p2.x) || (p2.x <= p.x && p.x <= p1.x))
@@ -125,9 +122,11 @@ public class LineSegment {
 
     /**
      * Is this segment parallel to other?
-     * 
+     *
      * @param other
-     * @return
+     *            The segment against which to test
+     * @return true if the lines are parallel (to within {@link #EPSILON} in the
+     *         slopes), false otherwise
      */
     private boolean isParallel(LineSegment other) {
         boolean retval = false;
@@ -145,11 +144,13 @@ public class LineSegment {
 
     /**
      * Return the intersection point of the two line segments.
-     * 
+     *
      * @param other
-     * @return
+     * @return the point on both segments at which the lines intersect
      * @throws NoIntersectionException
+     *             if the segments do not intersect
      * @throws ParallelLinesException
+     *             if the segments are parallel
      */
     public Position GetIntersection(LineSegment other)
             throws NoIntersectionException, ParallelLinesException {
@@ -176,10 +177,10 @@ public class LineSegment {
     }
 
     /**
-     * Do the lines intersect?
-     * 
+     * Do the segments intersect?
+     *
      * @param other
-     * @return
+     * @return true if the segments intersect, false otherwise
      */
     public boolean DoIntersect(LineSegment other) {
         boolean retval = false;
@@ -195,20 +196,16 @@ public class LineSegment {
     }
 
     /**
-     * Return the midpoint of the segment
-     * 
-     * @return
+     * @return the midpoint of the segment
      */
     public Position midPoint() {
         return midPoint(p1, p2);
     }
 
     /**
-     * Return the point on equidistant from p1 and p2 on the line between them.
-     * 
      * @param p1
      * @param p2
-     * @return
+     * @return the point on equidistant from p1 and p2 on the line between them.
      */
     public static Position midPoint(Position p1, Position p2) {
         return new Position((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
@@ -221,7 +218,8 @@ public class LineSegment {
     }
 
     /*************************************************************************/
-    /* Some tests
+    /*
+     * Some tests
      */
     private static void testIntersection() {
         Position p1 = new Position(0, 0);

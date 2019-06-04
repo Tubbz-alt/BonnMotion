@@ -38,7 +38,7 @@ public class BM {
         "Column",
         "DisasterArea",
         "GaussMarkov",
-        "HeightMapRNGM",
+        /* Perspecta Labs */ "HeightMapRNGM",
         "ManhattanGrid",
         "MSLAW",
         "Nomadic",

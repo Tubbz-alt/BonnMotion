@@ -1,6 +1,6 @@
 /*******************************************************************************
  ** HeightMap utility functions for BonnMotion                                **
- ** Copyright (C) 2018 Perspecta Labs Inc.                                    **
+ ** Copyright (C) 2018--2019 Perspecta Labs Inc.                              **
  **                                                                           **
  ** This program is free software; you can redistribute it and/or modify      **
  ** it under the terms of the GNU General Public License as published by      **
@@ -40,7 +40,7 @@ import edu.bonn.cs.iv.util.maps.PositionGeo;
  * assumed to be raster image whose single raster band contains height values in
  * meters.
  *
- * @author ygottlieb
+ * @author Yitzchak M. Gottlieb <ygottlieb@perspectalabs.com>
  *
  */
 public class HeightMap {
