@@ -1,6 +1,6 @@
 /*******************************************************************************
  ** ISO6709 Parser for BonnMotion                                             **
- ** Copyright (C) 2018 Perspecta Labs Inc.                                    **
+ ** Copyright (C) 2018--2019 Perspecta Labs Inc.                              **
  **                                                                           **
  ** This program is free software; you can redistribute it and/or modify      **
  ** it under the terms of the GNU General Public License as published by      **
@@ -19,6 +19,7 @@
 
 package com.perspectalabs.bonnmotion.util;
 
+import java.text.MessageFormat;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,7 +28,7 @@ import edu.bonn.cs.iv.util.maps.PositionGeo;
 /**
  * Class to parse ISO6709 Annex H strings to PositionGeo objects
  *
- * @author ygottlieb
+ * @author Yitzchak M. Gottlieb <ygottlieb@perspectalabs.com>
  *
  */
 public class PositionGeoParser {
@@ -174,5 +175,74 @@ public class PositionGeoParser {
 
             return retval;
         }
+    }
+
+    /**
+     * Format the of the position to a single string
+     * 
+     * @param positive
+     *            Is the value positive?
+     * @param degrees
+     *            The number of degrees
+     * @param minutes
+     *            The number of minutes
+     * @param seconds
+     *            The number of seconds
+     * @param degreeFormat
+     *            The format to use for degrees (2 or 3 digits
+     * @return A string formatting all the components
+     */
+    private static String toString(boolean positive, int degrees, int minutes,
+            double seconds, String degreeFormat) {
+
+        StringBuilder format = new StringBuilder();
+        format.append(positive ? "+" : "-");
+        format.append("{0,number,");
+        format.append(degreeFormat);
+        format.append("}");
+        format.append("{1,number,00}");
+        format.append("{2,number,00.00000000}");
+
+        return MessageFormat.format(format.toString(), degrees, minutes,
+                seconds);
+    }
+
+    /**
+     * Format the part of the position (latitude or longitude) as a ISO6709
+     * string
+     * 
+     * @param position
+     *            A double representing a degree and fractions of a degree
+     * @return The part of the position as an ISO6709 string
+     */
+    private static String toString(double position, String degreeFormat) {
+        double sign = Math.signum(position);
+        double absposition = Math.abs(position);
+
+        int degrees = Double.valueOf(Math.floor(absposition)).intValue();
+
+        // Get the fraction and shift by 60
+        absposition = 60 * (absposition % 1);
+        int minutes = Double.valueOf(Math.floor(absposition)).intValue();
+
+        double seconds = 60 * (absposition % 1);
+
+        return toString(sign > 0, degrees, minutes, seconds, degreeFormat);
+    }
+
+    /**
+     * Format a position as an ISO6709 string
+     * 
+     * @param position
+     *            the position
+     * @return the position formatted as an ISO6709 string
+     */
+    public static String toString(PositionGeo position) {
+        StringBuilder retval = new StringBuilder();
+
+        retval.append(toString(position.lat(), "00"));
+        retval.append(toString(position.lon(), "000"));
+
+        return retval.toString();
     }
 }
