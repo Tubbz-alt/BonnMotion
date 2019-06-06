@@ -1,11 +1,25 @@
-# Copyright (c) 2018--2019 Perspecta Labs Inc.
 #
-# This software was developed with government funds, and the government retains
-# rights to use this software.
+# BonnMotion - a mobility scenario generation and analysis tool             
+# Copyright (C) 2018--2019 Perspecta Labs Inc.
+#                                                                           
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
-# LICENSED MATERIAL - PROPERTY OF PERSPECTA LABS INC.
-# Possession and/or use of this material is subject to the provisions of a
-# written license agreement with Perspecta Labs Inc.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+# This work was supported by the Defense Advanced Research Projects Agency
+# (DARPA) under Contract No. HR0011-17-C-0047. Any opinions, findings,
+# conclusions or recommendations expressed in this material are those of
+# the authors and do not necessarily reflect the views of DARPA.
 #
 
 This file describes the use and implementation of the Height Map Reference Node

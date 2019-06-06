@@ -1,5 +1,6 @@
 /*******************************************************************************
  ** BonnMotion - a mobility scenario generation and analysis tool             **
+ ** Copyright (C) 2018--2019 Perspecta Labs Inc.                              **
  **                                                                           **
  ** This program is free software; you can redistribute it and/or modify      **
  ** it under the terms of the GNU General Public License as published by      **
@@ -14,6 +15,11 @@
  ** You should have received a copy of the GNU General Public License         **
  ** along with this program; if not, write to the Free Software               **
  ** Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA **
+ **                                                                           **
+ ** This work was supported by the Defense Advanced Research Projects Agency  **
+ ** (DARPA) under Contract No. HR0011-17-C-0047. Any opinions, findings,      **
+ ** conclusions or recommendations expressed in this material are those of    **
+ ** the authors and do not necessarily reflect the views of DARPA.            ** 
  *******************************************************************************/
 
 package edu.bonn.cs.iv.bonnmotion.models;
