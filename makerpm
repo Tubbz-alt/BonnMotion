@@ -35,8 +35,10 @@ done
 shift $((${OPTIND} - 1))
 
 if ! [ -d "${RPMBUILD_DIR}/SPECS" ] || ! [ -d "${RPMBUILD_DIR}/SOURCES" ]
-    printf 1>&2 "${RPMBUILD_DIR} is not set up for building RPMs"
 then
+    printf 1>&2 "${RPMBUILD_DIR} is not set up for building RPMs"
+    exit 1
+else
 
     curdate=$(date +"%Y%m%d")
 
