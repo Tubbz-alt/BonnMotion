@@ -529,10 +529,8 @@ public class HeightMapRNGM extends RandomSpeedBase {
             PositionGeo geoPosition = node.getPosition();
             Position position = heightMap
                     .transformFromWgs84ToPosition(geoPosition);
-            Position rasterPosition = heightMap
-                    .transformFromWgs84ToRaster(geoPosition);
 
-            position.z = this.heightMap.getHeight(rasterPosition);
+            position.z = this.heightMap.getHeight(position);
             if (node.getAltitude() != null) {
                 position.z += node.getAltitude();
             }
