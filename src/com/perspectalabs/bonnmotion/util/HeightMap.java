@@ -19,7 +19,9 @@
  ** This work was supported by the Defense Advanced Research Projects Agency  **
  ** (DARPA) under Contract No. HR0011-17-C-0047. Any opinions, findings,      **
  ** conclusions or recommendations expressed in this material are those of    **
- ** the authors and do not necessarily reflect the views of DARPA.            ** 
+ ** the authors and do not necessarily reflect the views of DARPA.            **
+ **                                                                           ** 
+ ** DISTRIBUTION STATEMENT A. Approved for public release.                    **
  *******************************************************************************/
 
 package com.perspectalabs.bonnmotion.util;

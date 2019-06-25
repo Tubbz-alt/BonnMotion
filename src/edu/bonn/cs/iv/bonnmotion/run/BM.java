@@ -29,6 +29,8 @@
  ** opinions, findings, conclusions or recommendations expressed in this      **
  ** material are those of the authors and do not necessarily reflect the      **
  ** views of DARPA.                                                           **
+ **                                                                           ** 
+ ** DISTRIBUTION STATEMENT A. Approved for public release.                    **
  *******************************************************************************/
 
 package edu.bonn.cs.iv.bonnmotion.run;
