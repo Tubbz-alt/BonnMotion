@@ -21,6 +21,7 @@
 # conclusions or recommendations expressed in this material are those of
 # the authors and do not necessarily reflect the views of DARPA.
 #
+# DISTRIBUTION STATEMENT A. Approved for public release.
 
 This file describes the use and implementation of the Height Map Reference Node
 Group Mobility (HM-RNGM) model for the BonnMotion generator.  The HM-RNGM
