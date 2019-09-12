@@ -83,6 +83,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
     protected List<StationaryNode> stationaryNodes = new ArrayList<>();
     protected int numSubseg = 4;
     protected double speedScale = 1.5;
+    protected double minpause = 0.0;
 
     protected HeightMap heightMap = null;
     protected String heightMapPath = null;
@@ -121,9 +122,15 @@ public class HeightMapRNGM extends RandomSpeedBase {
      */
     public void generate() {
 
+        if (minpause > maxpause) {
+            System.err.println("Minimum pause " + minpause
+                    + " is greater than maximum pause " + maxpause);
+            System.exit(-1);
+        }
+
         if (groupMembershipPath == null) {
             System.err.println("Group membership file not specified");
-            System.exit(-1);            
+            System.exit(-1);
         } else if (!readNodeGroups(groupMembershipPath)) {
             System.exit(-1);
 
@@ -224,7 +231,9 @@ public class HeightMapRNGM extends RandomSpeedBase {
             }
 
             if ((t < parameterData.duration) && (maxpause > 0.0)) {
-                double pause = maxpause * randomNextDouble();
+                double pause = minpause + (maxpause - minpause)
+                        * randomNextDouble();
+
                 if (pause > 0.0) {
                     t += pause;
 
@@ -706,6 +715,9 @@ public class HeightMapRNGM extends RandomSpeedBase {
         } else if (key.equals("speedScale")) {
             speedScale = Double.parseDouble(value);
             return true;
+        } else if (key.equals("minpause")) {
+            minpause = Double.parseDouble(value);
+            return true;
         } else if (key.equals("origin")) {
             referencePositionGeo = PositionGeoParser.parsePositionGeo(value);
             return true;
@@ -722,7 +734,8 @@ public class HeightMapRNGM extends RandomSpeedBase {
     public void write(String _name) throws FileNotFoundException, IOException {
         String[] p = new String[] { "maxdist=" + maxdist,
                 "numSubseg=" + numSubseg, "speedScale=" + speedScale,
-                "origin=" + PositionGeoParser.toString(referencePositionGeo) };
+                "origin=" + PositionGeoParser.toString(referencePositionGeo),
+                "minpause=" + minpause };
 
         super.write(_name, p);
     }
@@ -756,6 +769,9 @@ public class HeightMapRNGM extends RandomSpeedBase {
         case 'o':
             referencePositionGeo = PositionGeoParser.parsePositionGeo(val);
             return true;
+        case 'P':
+            minpause = Double.parseDouble(val);
+            return true;
         case 'r':
             maxdist = Double.parseDouble(val);
             return true;
@@ -779,6 +795,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
         System.out.println(
                 "\t-m <max speed scale for member speed relative to leader speed>");
         System.out.println("\t-o <origin geo. location>");
+        System.out.println("\t-P <min. pause time>");
         System.out.println("\t-r <max. distance to group leader>");
         System.out.println("\t-t <terrain model file>");
     }
