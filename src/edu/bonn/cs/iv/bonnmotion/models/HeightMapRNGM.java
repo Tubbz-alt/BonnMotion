@@ -19,23 +19,25 @@
  ** This work was supported by the Defense Advanced Research Projects Agency  **
  ** (DARPA) under Contract No. HR0011-17-C-0047. Any opinions, findings,      **
  ** conclusions or recommendations expressed in this material are those of    **
- ** the authors and do not necessarily reflect the views of DARPA.            ** 
- **                                                                           ** 
+ ** the authors and do not necessarily reflect the views of DARPA.            **
+ **                                                                           **
  ** DISTRIBUTION STATEMENT A. Approved for public release.                    **
  *******************************************************************************/
 
 package edu.bonn.cs.iv.bonnmotion.models;
 
+import java.awt.geom.Point2D;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import com.perspectalabs.bonnmotion.util.HeightMap;
 import com.perspectalabs.bonnmotion.util.PositionGeoParser;
 import com.perspectalabs.bonnmotion.util.StationaryNode;
-
-import java.io.FileReader;
-import java.io.LineNumberReader;
 
 import edu.bonn.cs.iv.bonnmotion.*;
 import edu.bonn.cs.iv.bonnmotion.printer.Dimension;
@@ -51,6 +53,8 @@ import edu.bonn.cs.iv.util.maps.PositionGeo;
  * <li>to set the reference point of a group to be a node rather than an
  * abstract point</li>
  * <li>to define groups statically</li>
+ * <li>to allow groups to be restricted to operating within a particular
+ * bounding box</li>
  * </ul>
  *
  * @author Yitzchak M. Gottlieb <ygottlieb@perspectalabs.com>
@@ -79,7 +83,357 @@ public class HeightMapRNGM extends RandomSpeedBase {
         return info;
     }
 
-    protected HashMap<Integer, List<Integer>> groupMembershipTable = new HashMap<Integer, List<Integer>>();
+    /**
+     * This class encapulates the information about a group of nodes. The group
+     * has the following properties:
+     * <ul>
+     * <li>A name {@link #getName}</li>
+     * <li>A group leader {@link #getLeader}</li>
+     * <li>A collection of member nodes {@link #getNodes}</li>
+     * <li>A bounding box in the meters from 0,0 space consisting of a lower
+     * left {@link #getLl} corner and an upper right {@link #getUr} corner</li>
+     * </ul>
+     * 
+     * @author ygottlieb
+     *
+     */
+    private static class NodeGroup {
+
+        /** The name of the group */
+        private String name;
+
+        /** The IDs of the members of the group */
+        private List<Integer> nodes = new ArrayList<>();
+
+        /** The lower left corner of the group;s bounding box. */
+        private Point2D.Double ll = new Point2D.Double(0, 0);
+
+        /** The upper right corner of the group's bounding box. */
+        private Point2D.Double ur = new Point2D.Double(0, 0);
+
+        /** The node ID of the group's leader/reference node. */
+        private int leader;
+
+        /**
+         * Create a new node group
+         * 
+         * @param name
+         *            The name of the group
+         * @param leader
+         *            The node ID of the group's leader
+         * @raises IllegalArgumentException if the leader's ID is negative
+         */
+        public NodeGroup(String name, int leader) {
+            this.name = name;
+
+            if (leader < 0) {
+                throw new IllegalArgumentException("Group " + name
+                        + "'s leader node has a negative index: " + leader);
+            } else {
+                this.leader = leader;
+            }
+        }
+
+        /**
+         * Create a node group with an explicit bounding box
+         * 
+         * @param name
+         *            The name of the group
+         * @param leader
+         *            The node ID of the group's leader
+         * @param ll
+         *            The lower left corner of the group's bounding box
+         * @param ur
+         *            The upper right corner of the group's bounding box
+         * @raises IllegalArgumentException if the leader's ID is negative or
+         *         the bounding box is misordered.
+         */
+        public NodeGroup(String name, int leader, Point2D.Double ll,
+                Point2D.Double ur) {
+            this(name, leader);
+
+            setBoundingBox(ll, ur);
+        }
+
+        /**
+         * Create a node group with an implicit bounding box from (0,0) to (x,y)
+         * 
+         * @param name
+         *            The name of the group
+         * @param leader
+         *            The node ID of the group's leader
+         * @param x
+         *            The x coordinate of the upper right corner of the bounding
+         *            box
+         * @param y
+         *            The y coordinate of the upper right corner of the bounding
+         *            box
+         */
+        public NodeGroup(String name, int leader, double x, double y) {
+            this(name, leader, new Point2D.Double(0, 0),
+                    new Point2D.Double(x, y));
+        }
+
+        /**
+         * Add a node to the group
+         * 
+         * @param node
+         *            The ID of the node to add
+         * @raise IllegalArgumentException if node is negative or the leader's
+         *        ID
+         */
+        public void addNode(int node) {
+            addNodes(Collections.singleton(node));
+        }
+
+        /**
+         * Add all the nodes to the group.
+         * 
+         * @param nodes
+         *            The nodes to add
+         * 
+         * @raise IllegalArgumentException if any of node IDs are negative,
+         *        leader's ID, or already in group
+         * 
+         */
+        public void addNodes(Collection<Integer> nodes) {
+
+            Stream<Integer> negativeIDs = nodes.stream().filter(i -> i < 0);
+
+            Set<Integer> intersection = new HashSet<>(nodes);
+            intersection.retainAll(this.nodes);
+
+            if (negativeIDs.count() > 0) {
+                throw new IllegalArgumentException("Nodes have negative ID: "
+                        + negativeIDs.sorted().toArray());
+            } else if (nodes.stream().filter(i -> i == leader).count() > 0) {
+                throw new IllegalArgumentException(
+                        "Node ID is leader ID: " + leader);
+            } else if (intersection.size() > 0) {
+                throw new IllegalArgumentException(
+                        "Nodes are already in the group: " + intersection);
+            } else {
+                this.nodes.addAll(nodes);
+            }
+        }
+
+        /**
+         * Set the bounding box of the group. The format of the string is four,
+         * space-separated doubles:
+         * <ul>
+         * <li>lower left X</li>
+         * <li>lower left Y</li>
+         * <li>upper right X</li>
+         * <li>upper right Y</li>
+         * </ul>
+         * 
+         * @param boundingBox
+         *            A string formatted as above representing the bounding box
+         * @raises IllegalArgumentException see
+         *         {@link #setBoundingBox(Point2D.Double, Point2D.Double)}
+         */
+        public void setBoundingBox(String boundingBox) {
+            String[] parts = boundingBox.split("\\s+");
+
+            if (parts.length != 4) {
+                throw new IllegalArgumentException(
+                        "Cannot parse bounding box " + boundingBox);
+            } else {
+                setBoundingBox(
+                        new Point2D.Double(Double.parseDouble(parts[0]),
+                                Double.parseDouble(parts[1])),
+                        new Point2D.Double(Double.parseDouble(parts[2]),
+                                Double.parseDouble(parts[3])));
+
+            }
+        }
+
+        /**
+         * Set the bounding box of the group
+         * 
+         * @param ll
+         *            The lower left corner
+         * @param ur
+         *            The upper right corner
+         * @raises IllegalArgumentException if the lower left corner is above or
+         *         to the right of the upper right corner.
+         */
+        public void setBoundingBox(Point2D.Double ll, Point2D.Double ur) {
+
+            if (ll.x > ur.x || ll.y > ur.y) {
+                throw new IllegalArgumentException("The lower left corner " + ll
+                        + " is not below and to the left of the upper right corner "
+                        + ur);
+            } else {
+                this.ll.setLocation(ll);
+                this.ur.setLocation(ur);
+            }
+        }
+
+        /**
+         * @return the name of the group
+         */
+        public String getName() {
+            return name;
+        }
+
+        /**
+         * @return the node ID of the leader/reference node of the group
+         */
+        public int getLeader() {
+            return leader;
+        }
+
+        /**
+         * @return the node IDs of the members of the group
+         */
+        public List<Integer> getNodes() {
+            return Collections.unmodifiableList(nodes);
+        }
+
+        /**
+         * @return the lower left corner of the bounding box
+         */
+        public Point2D.Double getLl() {
+            return ll;
+        }
+
+        /**
+         * @return the upper right corner of the bounding box
+         */
+        public Point2D.Double getUr() {
+            return ur;
+        }
+
+        /** The key in the groups file giving the name of groups */
+        public static final String GROUPS_KEY = "groups";
+
+        /**
+         * The prefix of keys in the groups file giving IDs of group members of
+         * named groups
+         */
+        public static final String GROUP_NODES_KEY_PREFIX = "nodes_";
+
+        /**
+         * The prefix of keys in the groups file giving the bounding box of
+         * named groups
+         */
+        public static final String GROUP_BOUNDING_BOX_KEY_PREFIX = "bounding_box_";
+
+        /** List separators for group and node lists: comma or spaces */
+        public static final Pattern LIST_SEPARATOR = Pattern
+                .compile("(,\\s*)|\\s+");
+
+        /** Node lists may include ID ranges */
+        public static final Pattern NODE_RANGE = Pattern
+                .compile("(\\d+)(-(\\d+))?");
+
+        /**
+         * Parse the string representation of the node list. The list is a
+         * space- or comma-separated list of integers or ranges of integers.
+         * 
+         * @param nodelist
+         *            The string representation of a list of node IDs
+         * @return A Collection of node IDs, empty if nodelist is null or the
+         *         empty string
+         * @raises IllegalArgumentException if any elements of the list are not
+         *         integers or ranges
+         */
+        private static List<Integer> parseNodeList(String nodelist) {
+            List<Integer> retval = new ArrayList<>();
+
+            if (nodelist != null && !nodelist.isEmpty()) {
+                for (String part : LIST_SEPARATOR.split(nodelist)) {
+                    Matcher match = NODE_RANGE.matcher(part);
+                    if (!match.matches()) {
+                        throw new IllegalArgumentException("Node list element '"
+                                + part + "' is not an integer or range.");
+                    } else {
+                        int low = Integer.parseInt(match.group(1));
+                        int high;
+
+                        try {
+                            high = Integer.parseInt(match.group(3));
+                        } catch (NumberFormatException e) {
+                            // The NODE_RANGE regular expression ensures that
+                            // the match group is all digits, so NFE is only if
+                            // the match group is null.
+                            high = low;
+                        }
+
+                        for (int i = low; i <= high; ++i) {
+                            retval.add(i);
+                        }
+                    }
+                }
+            }
+
+            return retval;
+        }
+
+        /**
+         * Parse the configuration file to return all the groups defined it.
+         * 
+         * @param configfile
+         *            The contents of the configuration files
+         * @param x
+         *            The X coordinate of the upper right corner of the overall
+         *            bounding box
+         * @param y
+         *            The Y coordinate of the upper right corner of the overall
+         *            bounding box
+         * @return A map between the name of a group and the NodeGroup object
+         *         representing it.
+         * @raises IllegalArgumentException if any of the group member
+         *         definitions is invalid or empty
+         * @RuntimeException if there are duplicate group names
+         */
+        public static Map<String, NodeGroup> parseGroups(Properties configfile,
+                double x, double y) {
+            Map<String, NodeGroup> retval = new TreeMap<>();
+
+            String allgroups = configfile.getProperty(GROUPS_KEY);
+
+            if (allgroups != null) {
+
+                for (String groupname : LIST_SEPARATOR.split(allgroups)) {
+
+                    // Parse the list of nodes
+                    List<Integer> members = parseNodeList(configfile
+                            .getProperty(GROUP_NODES_KEY_PREFIX + groupname));
+
+                    if (members.isEmpty()) {
+                        throw new IllegalArgumentException(
+                                "No members for group " + groupname);
+                    } else {
+                        // The new group has no bounding box by default
+                        NodeGroup group = new NodeGroup(groupname,
+                                members.remove(0), x, y);
+                        group.addNodes(members);
+
+                        // Look for a bounding box
+                        String boxconf = configfile.getProperty(
+                                GROUP_BOUNDING_BOX_KEY_PREFIX + groupname);
+
+                        if (boxconf != null) {
+                            group.setBoundingBox(boxconf);
+                        }
+
+                        // Put the group in the map
+                        if (retval.put(groupname, group) != null) {
+                            throw new RuntimeException(
+                                    "There is more than one group named "
+                                            + groupname);
+                        }
+                    }
+                }
+            }
+
+            return retval;
+        }
+    }
+
+    protected Map<String, NodeGroup> groupMembershipTable = new HashMap<>();
     protected List<StationaryNode> stationaryNodes = new ArrayList<>();
     protected int numSubseg = 4;
     protected double speedScale = 1.5;
@@ -89,10 +443,6 @@ public class HeightMapRNGM extends RandomSpeedBase {
     protected String heightMapPath = null;
     protected PositionGeo referencePositionGeo = null;
     protected String groupMembershipPath = null;
-
-    private static final String MOBILE_HEADER = "[MOBILE]";
-    private static final String STATIONARY_HEADER = "[STATIONARY]";
-    private static final char CONFIG_COMMENT = '#';
 
     /** Maximum deviation from group center [m]. */
     protected double maxdist = 2.5;
@@ -149,7 +499,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
 
     /**
      * Update the height of the position from the heightMap.
-     * 
+     *
      * @param position
      *            The position to update
      * @return The position with updated height (not a new position)
@@ -166,7 +516,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
 
     /**
      * Create a new position with the correct height
-     * 
+     *
      * @param x
      *            The X-coordinate of the position
      * @param y
@@ -186,12 +536,44 @@ public class HeightMapRNGM extends RandomSpeedBase {
         return updateHeight(position.rndprox(maxdist, dist, dir, dim));
     }
 
+    private double randomInRange(double low, double high) {
+        double retval = Math.min(low, high) + Math.abs(high - low) / 2;
+
+        if (high > low) {
+            retval = low + randomNextDouble(high - low);
+        }
+
+        return retval;
+    }
+
+    /**
+     * Return a random position in the box bounded by ll and ur at the corners
+     * that is at least maxdist away from the box's edges
+     *
+     * @param ll
+     *            The lower left corner of the bounding box
+     * @param ur
+     *            The upper right corner of the bounding box
+     * @return a new random position in the box. If the box is smaller than
+     *         maxdist in either dimension, return the center of that dimension.
+     */
+    private Position newPositionInBox(Point2D.Double ll, Point2D.Double ur) {
+
+        return newPosition(randomInRange(ll.x + maxdist, ur.x - maxdist),
+                randomInRange(ll.y + maxdist, ur.y - maxdist));
+    }
+
     /**
      * Generate motion for a reference node using the random waypoint model
      *
+     * @param ll
+     *            The lower left corner of the bounding box of the group
+     * @param ur
+     *            The upper right corner of the bounding box of the group
      * @return The reference node.
      */
-    private GroupNode generateForReferenceNode() {
+    private GroupNode generateForReferenceNode(Point2D.Double ll,
+            Point2D.Double ur) {
         GroupNode retval = new GroupNode(null);
         retval.setgroup(retval);
 
@@ -200,9 +582,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
         // pick position inside the interval
         // [maxdist; x - maxdist], [maxdist; y - maxdist]
         // (to ensure that the group area doesn't overflow the borders)
-        Position src = newPosition(
-                (parameterData.x - 2 * maxdist) * randomNextDouble() + maxdist,
-                (parameterData.y - 2 * maxdist) * randomNextDouble() + maxdist);
+        Position src = newPositionInBox(ll, ur);
 
         if (!retval.add(0.0, src)) {
             System.err.println(getInfo().name
@@ -212,11 +592,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
         }
 
         while (t < parameterData.duration) {
-            Position dst = newPosition(
-                    (parameterData.x - 2 * maxdist) * randomNextDouble()
-                            + maxdist,
-                    (parameterData.y - 2 * maxdist) * randomNextDouble()
-                            + maxdist);
+            Position dst = newPositionInBox(ll, ur);
 
             double speed = (maxspeed - minspeed) * randomNextDouble()
                     + minspeed;
@@ -231,8 +607,8 @@ public class HeightMapRNGM extends RandomSpeedBase {
             }
 
             if ((t < parameterData.duration) && (maxpause > 0.0)) {
-                double pause = minpause + (maxpause - minpause)
-                        * randomNextDouble();
+                double pause = minpause
+                        + (maxpause - minpause) * randomNextDouble();
 
                 if (pause > 0.0) {
                     t += pause;
@@ -259,17 +635,22 @@ public class HeightMapRNGM extends RandomSpeedBase {
      *
      * @return An array of GroupNodes in which to fill with group nodes.
      */
-    private GroupNode[] allocateNodes() {
+    private MobileNode[] allocateNodes() {
 
         Set<Integer> allNodeIds = new HashSet<Integer>();
 
-        for (List<Integer> nodeIds : groupMembershipTable.values()) {
-            allNodeIds.addAll(nodeIds);
+        for (NodeGroup group : groupMembershipTable.values()) {
+            allNodeIds.add(group.getLeader());
+            allNodeIds.addAll(group.getNodes());
+        }
+
+        for (StationaryNode node : stationaryNodes) {
+            allNodeIds.add(node.getId());
         }
 
         int maxNodeId = Collections.max(allNodeIds);
 
-        GroupNode[] retval = new GroupNode[maxNodeId + 1];
+        MobileNode[] retval = new MobileNode[maxNodeId + 1];
 
         for (int i = 0; i < retval.length; ++i) {
             if (!allNodeIds.contains(i)) {
@@ -429,7 +810,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
     /**
      * For each node, add waypoints between the node's waypoints to account for
      * correct changes of height above datum.
-     * 
+     *
      * @param nodes
      *            The nodes whose way points to process
      * @return The array of nodes with intercalated points.
@@ -486,8 +867,14 @@ public class HeightMapRNGM extends RandomSpeedBase {
      */
     private void generateForExplicitlyDefinedNodes() {
         preGeneration();
-        generateGroupNodes();
-        generateStationaryNodes();
+
+        MobileNode[] nodes = allocateNodes();
+
+        generateStationaryNodes(nodes);
+        generateGroupNodes(nodes);
+
+        this.parameterData.nodes = intercalateHeightWayPoints(nodes);
+
         postGeneration();
     } // end of generateForExplicitlyDefinedGroups method
 
@@ -496,31 +883,26 @@ public class HeightMapRNGM extends RandomSpeedBase {
      * first node a leader, and all the others a member of the group they belong
      * to.
      */
-    private void generateGroupNodes() {
-        final GroupNode[] node = allocateNodes();
+    private void generateGroupNodes(MobileNode[] nodes) {
+        for (NodeGroup group : groupMembershipTable.values()) {
+            int groupId = group.getLeader();
+            List<Integer> members = group.getNodes();
 
-        for (Map.Entry<Integer, List<Integer>> groupentry : groupMembershipTable
-                .entrySet()) {
-            int groupId = groupentry.getKey();
-            List<Integer> members = groupentry.getValue();
+            GroupNode ref = generateForReferenceNode(group.getLl(),
+                    group.getUr());
 
-            GroupNode ref = generateForReferenceNode();
-
-            node[groupId] = ref;
+            nodes[groupId] = ref;
 
             for (int memberId : members) {
                 GroupNode memberNode = new GroupNode(ref);
 
                 generateForGroupMember(memberNode);
 
-                node[memberId] = memberNode;
+                nodes[memberId] = memberNode;
 
             } // end of iteration through nodes of a group
 
         } // end of iteration through group leaders
-
-        this.parameterData.nodes = intercalateHeightWayPoints(node);
-
     }
 
     /**
@@ -531,9 +913,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
      * previously had the same id, and insert the new node into its correct spot
      * in the node list
      */
-    private void generateStationaryNodes() {
-        ArrayList<MobileNode> allNodes = new ArrayList<>(
-                Arrays.asList(this.parameterData.nodes));
+    private void generateStationaryNodes(MobileNode[] nodes) {
 
         for (StationaryNode node : this.stationaryNodes) {
             MobileNode newNode = new MobileNode();
@@ -546,56 +926,31 @@ public class HeightMapRNGM extends RandomSpeedBase {
                 position.z += node.getAltitude();
             }
             newNode.add(0, position);
-            if (node.getId() < allNodes.size()) {
-                allNodes.remove(node.getId());
-            }
-            allNodes.add(node.getId(), newNode);
+            nodes[node.getId()] = newNode;
         }
-        this.parameterData.nodes = Arrays.copyOf(allNodes.toArray(),
-                allNodes.size(), MobileNode[].class);
     }
 
     /**
      * Clears the groupMembershipTable and adds all the groups from the
      * configuration file
      *
-     * @param groups
-     *            Group membership lines that were read from the configuration
-     *            file
+     * @param configfile
+     *            the properties file containing group information
+     * 
      * @return true if reading was successful
      */
-    private boolean readGroupMembership(List<String> groups) {
+    private boolean readGroupMembership(Properties configfile) {
         boolean retval = true;
 
         groupMembershipTable.clear();
         try {
-            for (int lineNumber = 0; lineNumber < groups.size(); lineNumber++) {
-                String line = groups.get(lineNumber);
-                String[] splitLine = line.split("\\s+");
+            groupMembershipTable.putAll(NodeGroup.parseGroups(configfile,
+                    parameterData.x, parameterData.y));
 
-                List<Integer> members = new ArrayList<Integer>(
-                        splitLine.length);
-
-                for (int i = 0; i < splitLine.length; i++) {
-                    String member = splitLine[i];
-
-                    if (!member.isEmpty()) {
-                        members.add(Integer.parseInt(member));
-                    }
-                }
-
-                int groupId = lineNumber + 1;
-
-                if (!members.isEmpty()) {
-                    groupId = members.remove(0);
-
-                    groupMembershipTable.put(groupId, members);
-                }
-            }
         } catch (Exception e) {
             retval = false;
-            System.err.println(
-                    "Unable to read group membership: " + e.getMessage());
+            System.err.println("Unable to read group membership: " + e + ": "
+                    + e.getMessage());
         }
 
         return retval;
@@ -604,43 +959,22 @@ public class HeightMapRNGM extends RandomSpeedBase {
     /**
      * Reads the config file and adds the mobile and stationary nodes to
      * separate groups
-     * 
+     *
      * @param nodeGroupsPath
      *            File path to the configuration
      * @return true if successful configuration of mobile and stationary nodes
      */
     private boolean readNodeGroups(String nodeGroupsPath) {
-        ArrayList<String> mobile = new ArrayList<>();
-        ArrayList<String> stationary = new ArrayList<>();
-        List<String> pointer = mobile;
+
         boolean retval = true;
 
         try {
-            LineNumberReader reader = new LineNumberReader(
-                    new FileReader(nodeGroupsPath));
+            Properties nodeGroupsFile = new Properties();
 
-            for (String line = reader.readLine(); line != null; line = reader
-                    .readLine()) {
+            nodeGroupsFile.load(new FileInputStream(nodeGroupsPath));
 
-                if (line.contains(MOBILE_HEADER)) {
-                    pointer = mobile;
-                    continue;
-                } else if (line.contains(STATIONARY_HEADER)) {
-                    pointer = stationary;
-                    continue;
-                } else if ((line.isEmpty())) {
-                    continue;
-                } else if (line.charAt(0) == CONFIG_COMMENT) {
-                    continue;
-                }
-
-                pointer.add(line);
-            }
-
-            reader.close();
-
-            retval &= readGroupMembership(mobile);
-            retval &= readStationaryNodes(stationary);
+            retval &= readGroupMembership(nodeGroupsFile);
+            retval &= readStationaryNodes(nodeGroupsFile);
         } catch (java.io.FileNotFoundException fnfe) {
             retval = false;
             System.err.println(
@@ -654,38 +988,64 @@ public class HeightMapRNGM extends RandomSpeedBase {
         return retval;
     }
 
+    /** The prefix of the keys that set static positions for nodes */
+    private static final Pattern STATIONARY_NODE_RE = Pattern
+            .compile("position_node_(\\d+)");
+
     /**
      * Clears stationaryNodes and adds all the stationary nodes from the
      * configuration file
      *
-     * @param stationary
-     *            Stationary node lines that were read from the configuration
-     *            file
+     * @param configfile
+     *            The parsed configuration file containing the static nodes
      * @return true if reading was successful
      */
-    private boolean readStationaryNodes(List<String> stationary) {
+    private boolean readStationaryNodes(Properties configfile) {
 
-        boolean retval = false;
+        boolean retval = true;
 
         this.stationaryNodes.clear();
-        try {
-            for (String line : stationary) {
-                String[] splitLine = line.split("\\s+");
-                int id = Integer.parseInt(splitLine[0]);
-                double latitude = Double.parseDouble(splitLine[1]);
-                double longitude = Double.parseDouble(splitLine[2]);
-                PositionGeo position = new PositionGeo(longitude, latitude);
 
-                Double altitude = null;
-                if (splitLine.length == 4) {
-                    altitude = Double.parseDouble(splitLine[3]);
+        try {
+
+            for (Map.Entry<Object, Object> entry : configfile.entrySet()) {
+
+                Matcher m = STATIONARY_NODE_RE.matcher((String) entry.getKey());
+
+                if (m.matches()) {
+
+                    boolean addNode = true;
+
+                    int nodeid = Integer.parseInt(m.group(1), 10);
+                    String[] value = ((String) entry.getValue()).split("\\s+");
+                    Double altitude = null;
+
+                    switch (value.length) {
+                    case 1:
+                        break;
+                    case 2:
+                        altitude = Double.parseDouble(value[1]);
+                        break;
+                    default:
+                        System.err.println("Could not parse position for node "
+                                + nodeid + ": too many parameters");
+                        addNode = false;
+                    }
+
+                    if (addNode) {
+                        this.stationaryNodes
+                                .add(StationaryNode.createNode(
+                                        nodeid, PositionGeoParser
+                                                .parsePositionGeo(value[0]),
+                                        altitude));
+                    }
+
+                    retval &= addNode;
                 }
-                this.stationaryNodes
-                        .add(StationaryNode.createNode(id, position, altitude));
             }
 
             this.stationaryNodes.sort(StationaryNode::compareById);
-            retval = true;
+
         } catch (Exception e) {
             System.err.println(
                     "Unable to read stationary nodes: " + e.getMessage());
@@ -697,10 +1057,10 @@ public class HeightMapRNGM extends RandomSpeedBase {
     /**
      * Parse the arguments from the parameters file generated by
      * {@link #write(String)}
-     * 
+     *
      * @param key
      *            The name of the parameter
-     * 
+     *
      * @param value
      *            The value of the parameter
      */
@@ -727,7 +1087,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
 
     /**
      * Write the scenario properties to a file that can be parsed later
-     * 
+     *
      * @param _name
      */
     @Override
@@ -742,7 +1102,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
 
     /**
      * Parse the command-line arguments to the module
-     * 
+     *
      * @param key
      *            The option (flag)
      * @param val
