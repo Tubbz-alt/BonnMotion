@@ -36,7 +36,7 @@ shift $((${OPTIND} - 1))
 
 if ! [ -d "${RPMBUILD_DIR}/SPECS" ] || ! [ -d "${RPMBUILD_DIR}/SOURCES" ]
 then
-    printf 1>&2 "${RPMBUILD_DIR} is not set up for building RPMs"
+    printf 1>&2 "${RPMBUILD_DIR} is not set up for building RPMs\n"
     exit 1
 else
 
