@@ -241,21 +241,27 @@ public class HeightMapRNGM extends RandomSpeedBase {
          *         and heightMap is null
          */
         public void setBoundingBox(String boundingBox, HeightMap heightMap) {
-            String[] parts = boundingBox.split("\\s+");
+            String[] parts = LIST_SEPARATOR.split(boundingBox);
 
             switch (parts.length) {
             case 2: {
                 if (heightMap == null) {
-                    throw new IllegalArgumentException(
-                            "Cannot parse bounding box " + boundingBox
-                                    + " without a heightMap");
+                    throw new IllegalArgumentException("Group " + getName()
+                            + ": Cannot parse bounding box " + boundingBox
+                            + " without a heightMap");
                 } else {
                     Position ll = heightMap.transformFromWgs84ToPosition(
                             PositionGeoParser.parsePositionGeo(parts[0]));
                     Position ur = heightMap.transformFromWgs84ToPosition(
                             PositionGeoParser.parsePositionGeo(parts[1]));
 
-                    setBoundingBox(ll, ur);
+                    try {
+                        setBoundingBox(ll, ur);
+                    } catch (IllegalArgumentException e) {
+                        throw new IllegalArgumentException("Group " + getName()
+                                + ": Cannot set bounding box " + boundingBox,
+                                e);
+                    }
                 }
 
             }
@@ -271,8 +277,8 @@ public class HeightMapRNGM extends RandomSpeedBase {
                 break;
 
             default:
-                throw new IllegalArgumentException(
-                        "Cannot parse bounding box " + boundingBox);
+                throw new IllegalArgumentException("Group " + getName()
+                        + ": Cannot parse bounding box " + boundingBox);
             }
         }
 
@@ -289,7 +295,8 @@ public class HeightMapRNGM extends RandomSpeedBase {
         public void setBoundingBox(Position ll, Position ur) {
 
             if (ll.x > ur.x || ll.y > ur.y) {
-                throw new IllegalArgumentException("The lower left corner " + ll
+                throw new IllegalArgumentException("Group " + getName()
+                        + ": The lower left corner " + ll
                         + " is not below and to the left of the upper right corner "
                         + ur);
             } else {
@@ -977,8 +984,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
 
         } catch (Exception e) {
             retval = false;
-            System.err.println("Unable to read group membership: " + e + ": "
-                    + e.getMessage());
+            System.err.println("Unable to read group membership: " + e);
         }
 
         return retval;
