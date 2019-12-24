@@ -26,7 +26,6 @@
 
 package edu.bonn.cs.iv.bonnmotion.models;
 
-import java.awt.geom.Point2D;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -106,10 +105,10 @@ public class HeightMapRNGM extends RandomSpeedBase {
         private List<Integer> nodes = new ArrayList<>();
 
         /** The lower left corner of the group;s bounding box. */
-        private Point2D.Double ll = new Point2D.Double(0, 0);
+        private Position ll = new Position(0, 0);
 
         /** The upper right corner of the group's bounding box. */
-        private Point2D.Double ur = new Point2D.Double(0, 0);
+        private Position ur = new Position(0, 0);
 
         /** The node ID of the group's leader/reference node. */
         private int leader;
@@ -148,8 +147,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
          * @raises IllegalArgumentException if the leader's ID is negative or
          *         the bounding box is misordered.
          */
-        public NodeGroup(String name, int leader, Point2D.Double ll,
-                Point2D.Double ur) {
+        public NodeGroup(String name, int leader, Position ll, Position ur) {
             this(name, leader);
 
             setBoundingBox(ll, ur);
@@ -170,8 +168,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
          *            box
          */
         public NodeGroup(String name, int leader, double x, double y) {
-            this(name, leader, new Point2D.Double(0, 0),
-                    new Point2D.Double(x, y));
+            this(name, leader, new Position(0, 0), new Position(x, y));
         }
 
         /**
@@ -218,33 +215,64 @@ public class HeightMapRNGM extends RandomSpeedBase {
         }
 
         /**
-         * Set the bounding box of the group. The format of the string is four,
-         * space-separated doubles:
+         * Set the bounding box of the group. The format of the string is
+         * either:
+         * 
+         * <ol>
+         * <li>four, space-separated doubles:
          * <ul>
          * <li>lower left X</li>
          * <li>lower left Y</li>
          * <li>upper right X</li>
          * <li>upper right Y</li>
          * </ul>
+         * or</li>
+         * <li>a space-separated pair of ISO6709 coordinates</li>
+         * </ol>
+         * 
          * 
          * @param boundingBox
          *            A string formatted as above representing the bounding box
+         * @param heightMap
+         *            The height map of the model
          * @raises IllegalArgumentException see
-         *         {@link #setBoundingBox(Point2D.Double, Point2D.Double)}
+         *         {@link #setBoundingBox(Position, Position)}
+         * @raises IllegalArgumentException if the bounding box has coordinates
+         *         and heightMap is null
          */
-        public void setBoundingBox(String boundingBox) {
+        public void setBoundingBox(String boundingBox, HeightMap heightMap) {
             String[] parts = boundingBox.split("\\s+");
 
-            if (parts.length != 4) {
-                throw new IllegalArgumentException(
-                        "Cannot parse bounding box " + boundingBox);
-            } else {
+            switch (parts.length) {
+            case 2: {
+                if (heightMap == null) {
+                    throw new IllegalArgumentException(
+                            "Cannot parse bounding box " + boundingBox
+                                    + " without a heightMap");
+                } else {
+                    Position ll = heightMap.transformFromWgs84ToPosition(
+                            PositionGeoParser.parsePositionGeo(parts[0]));
+                    Position ur = heightMap.transformFromWgs84ToPosition(
+                            PositionGeoParser.parsePositionGeo(parts[1]));
+
+                    setBoundingBox(ll, ur);
+                }
+
+            }
+                break;
+            case 4: {
                 setBoundingBox(
-                        new Point2D.Double(Double.parseDouble(parts[0]),
+                        new Position(Double.parseDouble(parts[0]),
                                 Double.parseDouble(parts[1])),
-                        new Point2D.Double(Double.parseDouble(parts[2]),
+                        new Position(Double.parseDouble(parts[2]),
                                 Double.parseDouble(parts[3])));
 
+            }
+                break;
+
+            default:
+                throw new IllegalArgumentException(
+                        "Cannot parse bounding box " + boundingBox);
             }
         }
 
@@ -258,15 +286,15 @@ public class HeightMapRNGM extends RandomSpeedBase {
          * @raises IllegalArgumentException if the lower left corner is above or
          *         to the right of the upper right corner.
          */
-        public void setBoundingBox(Point2D.Double ll, Point2D.Double ur) {
+        public void setBoundingBox(Position ll, Position ur) {
 
             if (ll.x > ur.x || ll.y > ur.y) {
                 throw new IllegalArgumentException("The lower left corner " + ll
                         + " is not below and to the left of the upper right corner "
                         + ur);
             } else {
-                this.ll.setLocation(ll);
-                this.ur.setLocation(ur);
+                this.ll = new Position(ll);
+                this.ur = new Position(ur);
             }
         }
 
@@ -294,14 +322,14 @@ public class HeightMapRNGM extends RandomSpeedBase {
         /**
          * @return the lower left corner of the bounding box
          */
-        public Point2D.Double getLl() {
+        public Position getLl() {
             return ll;
         }
 
         /**
          * @return the upper right corner of the bounding box
          */
-        public Point2D.Double getUr() {
+        public Position getUr() {
             return ur;
         }
 
@@ -389,7 +417,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
          * @RuntimeException if there are duplicate group names
          */
         public static Map<String, NodeGroup> parseGroups(Properties configfile,
-                double x, double y) {
+                HeightMapRNGM mobility) {
             Map<String, NodeGroup> retval = new TreeMap<>();
 
             String allgroups = configfile.getProperty(GROUPS_KEY);
@@ -408,7 +436,8 @@ public class HeightMapRNGM extends RandomSpeedBase {
                     } else {
                         // The new group has no bounding box by default
                         NodeGroup group = new NodeGroup(groupname,
-                                members.remove(0), x, y);
+                                members.remove(0), mobility.parameterData.x,
+                                mobility.parameterData.y);
                         group.addNodes(members);
 
                         // Look for a bounding box
@@ -416,7 +445,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
                                 GROUP_BOUNDING_BOX_KEY_PREFIX + groupname);
 
                         if (boxconf != null) {
-                            group.setBoundingBox(boxconf);
+                            group.setBoundingBox(boxconf, mobility.heightMap);
                         }
 
                         // Put the group in the map
@@ -478,19 +507,19 @@ public class HeightMapRNGM extends RandomSpeedBase {
             System.exit(-1);
         }
 
+        if (heightMapPath != null) {
+            heightMap = new HeightMap(heightMapPath, referencePositionGeo);
+        }
+
         if (groupMembershipPath == null) {
             System.err.println("Group membership file not specified");
             System.exit(-1);
         } else if (!readNodeGroups(groupMembershipPath)) {
             System.exit(-1);
-
-        }
-
-        if (heightMapPath != null) {
-            heightMap = new HeightMap(heightMapPath, referencePositionGeo);
         }
 
         if (groupMembershipTable.isEmpty()) {
+            System.err.println("Group membership table is empty");
             System.exit(-1);
         } else {
             generateForExplicitlyDefinedNodes();
@@ -557,7 +586,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
      * @return a new random position in the box. If the box is smaller than
      *         maxdist in either dimension, return the center of that dimension.
      */
-    private Position newPositionInBox(Point2D.Double ll, Point2D.Double ur) {
+    private Position newPositionInBox(Position ll, Position ur) {
 
         return newPosition(randomInRange(ll.x + maxdist, ur.x - maxdist),
                 randomInRange(ll.y + maxdist, ur.y - maxdist));
@@ -572,8 +601,7 @@ public class HeightMapRNGM extends RandomSpeedBase {
      *            The upper right corner of the bounding box of the group
      * @return The reference node.
      */
-    private GroupNode generateForReferenceNode(Point2D.Double ll,
-            Point2D.Double ur) {
+    private GroupNode generateForReferenceNode(Position ll, Position ur) {
         GroupNode retval = new GroupNode(null);
         retval.setgroup(retval);
 
@@ -944,8 +972,8 @@ public class HeightMapRNGM extends RandomSpeedBase {
 
         groupMembershipTable.clear();
         try {
-            groupMembershipTable.putAll(NodeGroup.parseGroups(configfile,
-                    parameterData.x, parameterData.y));
+            groupMembershipTable
+                    .putAll(NodeGroup.parseGroups(configfile, this));
 
         } catch (Exception e) {
             retval = false;
