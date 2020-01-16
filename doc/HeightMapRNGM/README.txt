@@ -73,9 +73,16 @@ those defined by the RandomSpeedBase model:
 Configuring Membership Group File
 ---------------------------------------
 
-The default membership group file is "node_groups.txt". This default file
-contains two sections labeled [MOBILE] and [STATIONARY]. Each line in the
-[MOBILE] section is a group of nodes that move together. Each line in the
-[STATIONARY] section is a node and it's latitude, longitude, and altitude. For
-more information on this file, review the comments (lines prepended with #)
-inside it.
+The default membership group file is "node_groups.txt". This default file is in
+the format defined by Java Properties.  The requires key is groups, which
+contains a comma-separated list of names of groups.  Each group has two
+possible keys: nodes_<groupname> and bounding_box_<groupname>.  The value
+associated with the nodes_<> key is a list of comma-separated numeric ranges
+defining the node IDs for nodes that are part of the groups.  The value
+associated with the bounding_box_<groupname> defines the lower left and upper
+right corners of the box in which the nodes of the groups may move.  The
+specification is either 4 space-separated integers or two space-separated
+ISO6709 Annex H positions.  In addition, nodes may specified a position using
+the key position_node_<nodeid> for which the value is either 2 (or 3 to
+indicated height above ground) space separated integers for an offset in meters
+from 0 0 or a single ISO6709 Annex H position.
