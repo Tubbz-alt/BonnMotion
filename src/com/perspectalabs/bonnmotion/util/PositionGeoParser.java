@@ -26,6 +26,7 @@
 
 package com.perspectalabs.bonnmotion.util;
 
+import java.math.BigInteger;
 import java.text.MessageFormat;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -61,13 +62,13 @@ public class PositionGeoParser {
      *            The name of the group to return from the matcher
      * @return the parsed integer, may be null
      */
-    private static Integer getPositionPart(Matcher m, String groupname) {
-        Integer retval = null;
+    private static BigInteger getPositionPart(Matcher m, String groupname) {
+        BigInteger retval = null;
 
         String group = m.group(groupname);
 
         if (group != null) {
-            retval = Integer.parseInt(group, 10);
+            retval = new BigInteger(group, 10);
         }
 
         return retval;
@@ -85,12 +86,12 @@ public class PositionGeoParser {
             int max) {
         Double retval;
 
-        Integer intValue = getPositionPart(m, groupname);
+        BigInteger part = getPositionPart(m, groupname);
 
-        if (intValue == null) {
+        if (part == null) {
             retval = null;
-        } else if (intValue <= max) {
-            retval = intValue.doubleValue();
+        } else if (part.intValue() <= max) {
+            retval = part.doubleValue();
         } else {
             retval = Double.NaN;
         }
@@ -132,7 +133,7 @@ public class PositionGeoParser {
                 retval += sec;
             }
 
-            Integer fraction = getPositionPart(m, "fraction");
+            BigInteger fraction = getPositionPart(m, "fraction");
             if (fraction != null) {
                 retval += Double.parseDouble("0." + fraction);
             }
